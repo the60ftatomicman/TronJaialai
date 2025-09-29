@@ -1,0 +1,404 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Header
+        processor 6502
+        include "vcs.h"
+        include "macro.h"
+        ; include "custom_macro.h" ; -- do so much work online this seems nice but necessary atm
+        include "xmacro.h"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Constants
+CONS_PLAYER_HEIGHT  EQU  $F0 ; FF-intended height
+CONS_TILE_HEIGHT    EQU  #24
+CONS_TILE_HIDE      EQU  %00000000
+CONS_TILE_PF0_SHOW  EQU  %11111111
+CONS_TILE_PF1_SHOW  EQU  %11101111;%11110111 -- gives a middle line
+CONS_TILE_PF2_SHOW  EQU  %00011111
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Macros
+; TODO add to includes
+;--------
+; FLIP_BOOL duration
+; Original author: Andy Garber
+; Takes a memory address and flips it's value than stores it
+; Assumes the Memory address value is 1 or 0
+;usage: FLIP_BOOL SomeAddress
+        MAC FLIP_BOOL
+.MEMADDR     SET {1}
+        lda .MEMADDR
+        EOR #$01
+        sta .MEMADDR
+        ENDM
+;--------
+; CLEAR_PLAYFIELD duration
+; Original author: Andy Garber
+; sets playfield to 0 across the board
+        MAC CLEAR_PLAYFIELD
+        lda #%00000000
+        sta PF0
+        sta PF1
+        sta PF2
+        ENDM
+;--------
+; DRAW_PLAYER duration
+; Original author: Andy Garber
+; Draws a player based on the lineIdx var
+        MAC DRAW_PLAYER
+.YPOS        SET {1}
+.HEIGHT      SET {2}
+.PLAYER_REG  SET {3}
+
+        lda .YPOS
+        SBC LineIdx
+        BPL .skip
+        CMP #.HEIGHT
+        BMI .skip
+        lda #%11111111
+        jmp .end
+.skip
+        lda #%0000000
+.end   
+        sta .PLAYER_REG
+        ENDM
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Variables segment
+        seg.u Variables
+        org $80
+
+DrawCycle       .byte ;-- what cycle of our draws we are on
+                      ; 1: Draw playfield
+                      ; 2: Draw Players
+DrawPlayer      .byte ;-- what cycle of our draws we are on
+                      ; 1: Draw playfield
+                      ; 2: Draw Players
+ReadJoystick    .byte
+
+LineIdx         .byte
+
+loopIntI        .byte
+loopIntJ        .byte
+loopIntK        .byte
+
+P0Pf_1          .byte
+P0Pf_2A         .byte
+P0Pf_2B         .byte
+P0Pf_3          .byte
+P0Pf_4A         .byte
+P0Pf_4B         .byte
+P0Pf_5          .byte
+P0Pf_6A         .byte
+P0Pf_6B         .byte
+
+P1Pf_1          .byte
+P1Pf_2A         .byte
+P1Pf_2B         .byte
+P1Pf_3          .byte
+P1Pf_4A         .byte
+P1Pf_4B         .byte
+P1Pf_5          .byte
+P1Pf_6A         .byte
+P1Pf_6B         .byte
+
+P0XPos          .byte ;-- X coordinates
+P1XPos          .byte
+
+P0YPos          .byte ;-- Y coordinate (offset from the start of the playfield)
+P1YPos          .byte
+
+P0Idx           .byte ;-- data index of our sprite data
+P1Idx           .byte
+
+
+P0CIdx          .byte ;-- color index of our sprite data
+P1CIdx          .byte
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+        seg Code
+        org $f000
+
+Start
+        CLEAN_START
+        lda #5
+        sta P0XPos
+        lda #160
+        sta P1XPos
+        lda #1
+        sta P0YPos
+        sta P1YPos
+        
+        lda #CONS_TILE_PF0_SHOW
+        sta P0Pf_1
+        sta P1Pf_1
+        lda #CONS_TILE_PF1_SHOW
+        sta P0Pf_2A
+        ;lda #CONS_TILE_HIDE
+        sta P1Pf_2A
+        lda #CONS_TILE_PF2_SHOW
+        sta P0Pf_2B
+        sta P1Pf_2B
+
+        lda #CONS_TILE_PF0_SHOW
+        sta P0Pf_3
+        sta P1Pf_3
+        lda #CONS_TILE_PF1_SHOW
+        sta P0Pf_4A
+        sta P1Pf_4A
+        lda #CONS_TILE_PF2_SHOW
+        sta P0Pf_4B
+        sta P1Pf_4B
+
+        lda #CONS_TILE_PF0_SHOW
+        sta P0Pf_5
+        sta P1Pf_5
+        lda #CONS_TILE_PF1_SHOW
+
+        sta P0Pf_6A
+        sta P1Pf_6A
+        lda #CONS_TILE_PF2_SHOW
+
+        sta P0Pf_6B
+        sta P1Pf_6B
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Main
+NextFrame
+        lsr SWCHB ; test Game Reset switch
+        bcc Start ; reset?
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_PreScreen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
+        TIMER_SETUP 37 ; 37 lines of underscan
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Screen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;      
+        CLEAR_PLAYFIELD
+        lda #$FF
+        sta COLUP0
+        lda #$07
+
+        sta COLUP1
+        lda #$00
+        sta COLUBK
+        lda #255
+        sta LineIdx
+        TIMER_WAIT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;               Main (192 lines)
+; What is a Kernal?
+; These are groupings of line sections.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+Kernal_Movement
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+; This is where we do player X logic
+; Set Player 1 x position
+        lda P0XPos      ; get X coordinate
+        ldx #0          ; player 0
+        jsr SetHorizPos ; set coarse offset
+        sta WSYNC       ; sync w/ scanline
+        sta HMOVE       ; apply fine offsets
+
+        lda P1XPos      ; get X coordinate
+        ldx #1          ; player 1
+        jsr SetHorizPos ; set coarse offset
+        sta WSYNC       ; sync w/ scanline
+        sta HMOVE       ; apply fine offsets
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
+        sta WSYNC
+Kernal_Tower
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+; Background art for the upper half of the game.
+; PF is set to Mirror and we just draw. than wait
+
+        TIMER_SETUP 90
+        lda #$01
+        sta CTRLPF
+        lda #$82
+        sta COLUPF
+        lda #%01100000
+        sta PF2
+        TIMER_WAIT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+        ldx #2 ; this will always do +1 what you want
+        stx loopIntI
+        lda #%11110000
+Kernal_Stairs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; This draws a nice staircase from our tower
+; More background mumbo jumbo
+; TODO -- allow drawing of player here
+
+        ldx #3 ; this will always do +1 what you want
+        stx loopIntJ
+Kernal_Stairs_J
+        sta WSYNC
+        sta PF2
+        DEC loopIntJ
+        BPL Kernal_Stairs_J
+        LSR
+        LSR
+        DEC loopIntI
+        BPL Kernal_Stairs
+        sta WSYNC
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Gap
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; This is just a spacing between the tiles
+; we setup the presets for the complex stuff below!
+; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
+
+        CLEAR_PLAYFIELD
+        sta CTRLPF
+
+        TIMER_SETUP 90
+        lda #0
+        sta LineIdx
+        lda #3 ; this will always do +1 what you want
+        sta loopIntI
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_CombatField
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Draws the lower playfield and players.
+; very complex atm.
+
+        lda CONS_TILE_HEIGHT
+        sta loopIntJ
+Kernal_CombatField_startOfDraw
+        sta WSYNC
+        FLIP_BOOL DrawCycle
+        bne Kernal_CombatField_DrawPlayers
+
+Kernal_CombatField_DrawPlayfied
+        ldx P0Pf_1;TODO, add comma + offset here!
+        stx PF0
+        ldx P0Pf_2A
+        stx PF1
+        ldx P0Pf_2B
+        stx PF2
+
+
+	SLEEP 4 ; Must be a certain way into screen before redraw!
+                ; 4 is PERFECT
+
+        ;; TODO MACRO!
+        ldx P1Pf_1
+        stx PF0
+        ldx P1Pf_2A
+        stx PF1
+        ldx P1Pf_2B
+        stx PF2
+        jmp Kernal_CombatField_EndOfDraw
+Kernal_CombatField_DrawPlayers
+        CLEAR_PLAYFIELD
+        FLIP_BOOL DrawPlayer
+        bne DrawP1
+DrawP0
+	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0
+        JMP Kernal_CombatField_EndOfDraw
+DrawP1
+        DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1
+Kernal_CombatField_EndOfDraw
+	inc LineIdx
+        dec loopIntJ
+        bne Kernal_CombatField_startOfDraw
+        CLEAR_PLAYFIELD
+        sta WSYNC
+
+        dec loopIntI
+        bne Kernal_CombatField
+        TIMER_WAIT
+	jsr MoveJoystick
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 29 lines of overscan
+Overscan
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        TIMER_SETUP 9 ; could be more
+        TIMER_WAIT
+        nop           ; just to make breakpoints easier!
+        TIMER_SETUP 29
+        TIMER_WAIT
+        ; total = 262 lines, go to next frame
+        jmp NextFrame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Subroutines
+;;;;;;;;;;;;;;;;;;;;;
+; SetHorizPos routine
+; A = X coordinate
+; X = player number (0 or 1)
+SetHorizPos
+        sta WSYNC        ; start a new line
+        sec               ; set carry flag
+DivideLoop
+        sbc #15          ; subtract 15
+        bcs DivideLoop   ; branch until negative
+        eor #7           ; calculate fine offset
+        asl
+        asl
+        asl
+        asl
+        sta RESP0,x      ; fix coarse position
+        sta HMP0,x       ; set fine offset
+        rts              ; return to caller
+; Read joystick movement and apply to object 0
+MoveJoystick
+; Move vertically
+; (up and down are actually reversed since ypos starts at bottom)
+	ldx P0YPos
+	lda #%00100000	;Up?
+	bit SWCHA
+	bne SkipMoveUp
+        cpx #2
+        bcc SkipMoveUp
+        dex
+        ;dex
+SkipMoveUp
+	lda #%00010000	;Down?
+	bit SWCHA 
+	bne SkipMoveDown
+        cpx #183
+        bcs SkipMoveDown
+        inx
+        ;inx
+SkipMoveDown
+	stx P0YPos
+; Move horizontally
+        ldx P0XPos
+	lda #%01000000	;Left?
+	bit SWCHA
+	bne SkipMoveLeft
+        cpx #16
+        bcc SkipMoveLeft
+        dex
+SkipMoveLeft
+	lda #%10000000	;Right?
+	bit SWCHA 
+	bne SkipMoveRight
+        cpx #153
+        bcs SkipMoveRight
+        inx
+SkipMoveRight
+	stx P0XPos
+	rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DATA
+Player_DATA  ; table 0 
+        .byte  %11100111
+        .byte  %00100100
+        .byte  %10111101
+        .byte  %01111110
+        .byte  %00111100
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Epilogue
+        org $fffc
+        .word Start ; reset vector
+        .word Start ; BRK vector
