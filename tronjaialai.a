@@ -8,12 +8,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
 CONS_PLAYER_HEIGHT  EQU  $F0 ; FF-intended height
-CONS_TILE_HEIGHT    EQU  #24
+CONS_TILE_HEIGHT    EQU  #15
 CONS_TILE_HIDE      EQU  %00000000
-CONS_TILE_PF0_SHOW  EQU  %11111111
-CONS_TILE_PF1_SHOW  EQU  %11101111;%11110111 -- gives a middle line
-CONS_TILE_PF2_SHOW  EQU  %00011111
 
+CONS_COLOR_BLACK EQU $00
+CONS_COLOR_RED   EQU $40
+CONS_COLOR_BLUE  EQU $82
+CONS_COLOR_GREEN EQU $C6
+
+CONS_TILE_P0_PF0_SHOW  EQU  %11111111
+CONS_TILE_P0_PF1_SHOW  EQU  %11100111
+CONS_TILE_P0_PF2_SHOW  EQU  %00001111 ; TODO -- maybe only make THIS one different?
+
+CONS_TILE_P1_PF0_SHOW  EQU  %00001111
+CONS_TILE_P1_PF1_SHOW  EQU  %00000000
+CONS_TILE_P1_PF2_SHOW  EQU  %00000000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -39,6 +48,18 @@ CONS_TILE_PF2_SHOW  EQU  %00011111
         sta PF1
         sta PF2
         ENDM
+        
+;--------
+; FILL_PLAYFIELD duration
+; Original author: Andy Garber
+; sets playfield to 1 across the board
+        MAC FILL_PLAYFIELD
+        lda #%11111111
+        sta PF0
+        sta PF1
+        sta PF2
+        ENDM
+        
 ;--------
 ; DRAW_PLAYER duration
 ; Original author: Andy Garber
@@ -80,25 +101,21 @@ loopIntI        .byte
 loopIntJ        .byte
 loopIntK        .byte
 
-P0Pf_1          .byte
-P0Pf_2A         .byte
-P0Pf_2B         .byte
-P0Pf_3          .byte
-P0Pf_4A         .byte
-P0Pf_4B         .byte
-P0Pf_5          .byte
-P0Pf_6A         .byte
-P0Pf_6B         .byte
+;TODO -- reoganize this!
+p0_T1           .byte
+p0_T2           .byte
+p1_T1           .byte
+p1_T2           .byte
 
-P1Pf_1          .byte
-P1Pf_2A         .byte
-P1Pf_2B         .byte
-P1Pf_3          .byte
-P1Pf_4A         .byte
-P1Pf_4B         .byte
-P1Pf_5          .byte
-P1Pf_6A         .byte
-P1Pf_6B         .byte
+p0_T3           .byte
+p0_T4           .byte
+p1_T3           .byte
+p1_T4           .byte
+
+p0_T5           .byte
+p0_T6           .byte
+p1_T5           .byte
+p1_T6           .byte
 
 P0XPos          .byte ;-- X coordinates
 P1XPos          .byte
@@ -127,46 +144,34 @@ Start
         lda #1
         sta P0YPos
         sta P1YPos
+        ; TODO -- lessen or make a loop ya doofus
+        lda #CONS_COLOR_BLUE
+        sta p0_T1
+	sta p0_T2
+	sta p1_T1
+	sta p1_T2
+
+        sta p0_T3
+	sta p0_T4
+	sta p1_T3
+	sta p1_T4
         
-        lda #CONS_TILE_PF0_SHOW
-        sta P0Pf_1
-        sta P1Pf_1
-        lda #CONS_TILE_PF1_SHOW
-        sta P0Pf_2A
-        ;lda #CONS_TILE_HIDE
-        sta P1Pf_2A
-        lda #CONS_TILE_PF2_SHOW
-        sta P0Pf_2B
-        sta P1Pf_2B
-
-        lda #CONS_TILE_PF0_SHOW
-        sta P0Pf_3
-        sta P1Pf_3
-        lda #CONS_TILE_PF1_SHOW
-        sta P0Pf_4A
-        sta P1Pf_4A
-        lda #CONS_TILE_PF2_SHOW
-        sta P0Pf_4B
-        sta P1Pf_4B
-
-        lda #CONS_TILE_PF0_SHOW
-        sta P0Pf_5
-        sta P1Pf_5
-        lda #CONS_TILE_PF1_SHOW
-
-        sta P0Pf_6A
-        sta P1Pf_6A
-        lda #CONS_TILE_PF2_SHOW
-
-        sta P0Pf_6B
-        sta P1Pf_6B
-
+        sta p0_T5
+	sta p0_T6
+	sta p1_T5
+	sta p1_T6
+        
+        lda #CONS_COLOR_BLACK ; for debug
+        sta p1_T6
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
 NextFrame
         lsr SWCHB ; test Game Reset switch
         bcc Start ; reset?
-
+        lda #$01
+        sta CTRLPF
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_PreScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -215,17 +220,38 @@ Kernal_Tower
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; Background art for the upper half of the game.
 ; PF is set to Mirror and we just draw. than wait
-
-        TIMER_SETUP 90
-        lda #$01
-        sta CTRLPF
-        lda #$82
+; The BLACK we see is really the PF mirroed.
+; Color of the towers is controlled by the background.
+        lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
-        lda #%01100000
-        sta PF2
-        TIMER_WAIT
-
+       
+        ldx #%11110000
+        stx PF0
+        ldx #%11110111
+        stx PF1
+        ldx #%01111111
+       	stx PF2
+        
+        ldy #70
+Kernal_Tower_Draw
+        sta WSYNC
+        lda #CONS_COLOR_RED
+        sta COLUBK
+        SLEEP 30
+        lda #CONS_COLOR_BLUE
+        sta COLUBK      
+        SLEEP 10 
+        lda #CONS_COLOR_GREEN
+        sta COLUBK
+        dey
+        bne Kernal_Tower_Draw
+Kernal_Tower_End
+        lda #CONS_COLOR_BLACK
+        sta COLUBK
+	CLEAR_PLAYFIELD
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+        lda #CONS_COLOR_BLUE ; Make this a define
+        sta COLUPF
         ldx #2 ; this will always do +1 what you want
         stx loopIntI
         lda #%11110000
@@ -234,7 +260,6 @@ Kernal_Stairs
 ; This draws a nice staircase from our tower
 ; More background mumbo jumbo
 ; TODO -- allow drawing of player here
-
         ldx #3 ; this will always do +1 what you want
         stx loopIntJ
 Kernal_Stairs_J
@@ -256,78 +281,91 @@ Kernal_Gap
 ; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
 
         CLEAR_PLAYFIELD
-        sta CTRLPF
-
-        TIMER_SETUP 90
+        sta WSYNC
+        lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
+        sta COLUPF
+        lda #CONS_COLOR_BLUE
+        sta COLUBK  
         lda #0
         sta LineIdx
         lda #3 ; this will always do +1 what you want
         sta loopIntI
+        ldy 0 ; uused to change address levels
+        sta WSYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_CombatField
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Draws the lower playfield and players.
 ; very complex atm.
-
+; Going to TRY to make it so we draw
+	lda #%00010000
+        sta PF0
+        lda #%00001100
+        sta PF1
+        lda #%11100000
+        sta PF2
         lda CONS_TILE_HEIGHT
+        
         sta loopIntJ
 Kernal_CombatField_startOfDraw
         sta WSYNC
-        FLIP_BOOL DrawCycle
-        bne Kernal_CombatField_DrawPlayers
-
+	
 Kernal_CombatField_DrawPlayfied
-        ldx P0Pf_1;TODO, add comma + offset here!
-        stx PF0
-        ldx P0Pf_2A
-        stx PF1
-        ldx P0Pf_2B
-        stx PF2
+        lda p0_T1,y
+        sta COLUBK 
+        
+        SLEEP 20
+        
+        lda p0_T2,y
+        sta COLUBK
+        
+        SLEEP 7 ; minimal. mid is red atm.
+        
+	lda p1_T1,y
+	sta COLUBK
+        
+        SLEEP 10
+        
+        lda p1_T2,y
+        sta COLUBK
 
+	SLEEP 5
 
-	SLEEP 4 ; Must be a certain way into screen before redraw!
-                ; 4 is PERFECT
-
-        ;; TODO MACRO!
-        ldx P1Pf_1
-        stx PF0
-        ldx P1Pf_2A
-        stx PF1
-        ldx P1Pf_2B
-        stx PF2
+        lda #CONS_COLOR_BLACK
+	sta COLUBK
+        
         jmp Kernal_CombatField_EndOfDraw
 Kernal_CombatField_DrawPlayers
-        CLEAR_PLAYFIELD
-        FLIP_BOOL DrawPlayer
-        bne DrawP1
-DrawP0
-	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0
-        JMP Kernal_CombatField_EndOfDraw
-DrawP1
-        DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1
 Kernal_CombatField_EndOfDraw
-	inc LineIdx
+
+	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0
+	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1
+
+        inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
-        CLEAR_PLAYFIELD
+        
+        lda #CONS_COLOR_BLACK
+        sta COLUBK
         sta WSYNC
-
+        
+        iny
+        iny
+        iny
         dec loopIntI
         bne Kernal_CombatField
-        TIMER_WAIT
+        
 	jsr MoveJoystick
+        nop ;DEBUG! til i fill this out
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        TIMER_SETUP 9 ; could be more
-        TIMER_WAIT
-        nop           ; just to make breakpoints easier!
         TIMER_SETUP 29
         TIMER_WAIT
+        nop ; for debugging!
         ; total = 262 lines, go to next frame
         jmp NextFrame
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 ;;;;;;;;;;;;;;;;;;;;;
@@ -348,7 +386,7 @@ DivideLoop
         sta RESP0,x      ; fix coarse position
         sta HMP0,x       ; set fine offset
         rts              ; return to caller
-; Read joystick movement and apply to object 0
+;;;;;;;;;;;;;;;;;;;;;
 MoveJoystick
 ; Move vertically
 ; (up and down are actually reversed since ypos starts at bottom)
@@ -389,16 +427,8 @@ SkipMoveRight
 	stx P0XPos
 	rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DATA
-Player_DATA  ; table 0 
-        .byte  %11100111
-        .byte  %00100100
-        .byte  %10111101
-        .byte  %01111110
-        .byte  %00111100
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ; Epilogue
+;;;;;;;;;;;;;;;;;;;;;
         org $fffc
         .word Start ; reset vector
         .word Start ; BRK vector
