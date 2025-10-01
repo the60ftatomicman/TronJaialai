@@ -162,7 +162,8 @@ Start
 	sta p1_T6
         
         lda #CONS_COLOR_BLACK ; for debug
-        sta p1_T6
+        sta p0_T5
+        sta p0_T6
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
@@ -349,6 +350,7 @@ Kernal_CombatField_EndOfDraw
         sta COLUBK
         sta WSYNC
         
+        iny
         iny
         iny
         iny
