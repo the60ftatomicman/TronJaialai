@@ -7,7 +7,7 @@
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
-CONS_PLAYER_HEIGHT  EQU  $F0 ; FF-intended height
+CONS_PLAYER_HEIGHT  EQU  $F2 ; FF-intended height
 CONS_TILE_HEIGHT    EQU  #15
 CONS_TILE_HIDE      EQU  %00000000
 
@@ -16,13 +16,11 @@ CONS_COLOR_RED   EQU $40
 CONS_COLOR_BLUE  EQU $82
 CONS_COLOR_GREEN EQU $C6
 
-CONS_TILE_P0_PF0_SHOW  EQU  %11111111
-CONS_TILE_P0_PF1_SHOW  EQU  %11100111
-CONS_TILE_P0_PF2_SHOW  EQU  %00001111 ; TODO -- maybe only make THIS one different?
-
-CONS_TILE_P1_PF0_SHOW  EQU  %00001111
-CONS_TILE_P1_PF1_SHOW  EQU  %00000000
-CONS_TILE_P1_PF2_SHOW  EQU  %00000000
+CONS_BOUNDRY_P0_LEFT  EQU #7
+CONS_BOUNDRY_P0_RIGHT EQU #6
+CONS_BOUNDRY_P1_LEFT  EQU #6
+CONS_BOUNDRY_P1_RIGHT EQU #156
+CONS_BOUNDRY_BOTTOM   EQU #158
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -68,13 +66,15 @@ CONS_TILE_P1_PF2_SHOW  EQU  %00000000
 .YPOS        SET {1}
 .HEIGHT      SET {2}
 .PLAYER_REG  SET {3}
-
+.PLAYER_DATA SET {4}
+.PLAYER_IDX  SET {5}
         lda .YPOS
         SBC LineIdx
         BPL .skip
         CMP #.HEIGHT
         BMI .skip
-        lda #%11111111
+        lda .PLAYER_DATA,x
+        inc .PLAYER_IDX
         jmp .end
 .skip
         lda #%0000000
@@ -137,13 +137,16 @@ P1CIdx          .byte
 
 Start
         CLEAN_START
-        lda #5
+        lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
         sta P0XPos
-        lda #160
+        lda #CONS_BOUNDRY_P1_RIGHT ; Max right
         sta P1XPos
         lda #1
         sta P0YPos
         sta P1YPos
+        lda #0
+        sta P0Idx
+        sta P1Idx
         ; TODO -- lessen or make a loop ya doofus
         lda #CONS_COLOR_BLUE
         sta p0_T1
@@ -162,8 +165,8 @@ Start
 	sta p1_T6
         
         lda #CONS_COLOR_BLACK ; for debug
-        sta p0_T5
-        sta p0_T6
+        ;sta p0_T5
+        ;sta p0_T6
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
@@ -215,6 +218,9 @@ Kernal_Movement
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
         
+        lda #0
+        sta P0Idx
+        sta P1Idx
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
         sta WSYNC
 Kernal_Tower
@@ -225,7 +231,7 @@ Kernal_Tower
 ; Color of the towers is controlled by the background.
         lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
-       
+       	;TODO -- move lower.... we are going to DRAW these arrows
         ldx #%11110000
         stx PF0
         ldx #%11110111
@@ -335,20 +341,20 @@ Kernal_CombatField_DrawPlayfied
         lda #CONS_COLOR_BLACK
 	sta COLUBK
         
-        jmp Kernal_CombatField_EndOfDraw
+        ;jmp Kernal_CombatField_DrawPlayers
 Kernal_CombatField_DrawPlayers
+	ldx P0Idx
+	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
+        ldx P1Idx
+	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1_Frame_0,P1Idx
 Kernal_CombatField_EndOfDraw
-
-	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0
-	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1
-
         inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
         
-        lda #CONS_COLOR_BLACK
-        sta COLUBK
-        sta WSYNC
+        ;lda #CONS_COLOR_BLACK
+        ;sta COLUBK
+        ;sta WSYNC
         
         iny
         iny
@@ -428,6 +434,43 @@ SkipMoveLeft
 SkipMoveRight
 	stx P0XPos
 	rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Data
+;;;;;;;;;;;;;;;;;;;;;
+PF_Kernal_Tower
+	.byte #%01111100
+P0_Frame_0
+        ; draw from top to bottom
+        .byte #%01111100
+        .byte #%01111110
+        .byte #%01101000
+        .byte #%01111100
+        .byte #%00111100
+        .byte #%00000000
+        .byte #%01111000
+        .byte #%10111101
+        .byte #%10111110
+        .byte #%01011100
+        .byte #%01111000
+        .byte #%00000000
+        .byte #%01110110
+        .byte #0 
+P1_Frame_0
+        ; draw from top to bottom
+        .byte #%00111110   ; 0x3E
+        .byte #%01111110   ; 0x7E
+        .byte #%00010110   ; 0x16
+        .byte #%00111110   ; 0x3E
+        .byte #%00111100   ; 0x3C
+        .byte #%00000000   ; 0x00
+        .byte #%00011110   ; 0x1E
+        .byte #%10111101   ; 0xBD
+        .byte #%01111101   ; 0x7D
+        .byte #%00111010   ; 0x3A
+        .byte #%00011110   ; 0x1E
+        .byte #%00000000   ; 0x00
+        .byte #%01101110   ; 0x6E
+        .byte #0 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;
