@@ -14,6 +14,7 @@ CONS_TILE_HIDE      EQU  %00000000
 CONS_COLOR_BLACK EQU $00
 CONS_COLOR_RED   EQU $40
 CONS_COLOR_BLUE  EQU $82
+CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
 
 CONS_BOUNDRY_P0_LEFT  EQU #7
@@ -231,26 +232,38 @@ Kernal_Tower
 ; Color of the towers is controlled by the background.
         lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
-       	;TODO -- move lower.... we are going to DRAW these arrows
-        ldx #%11110000
-        stx PF0
-        ldx #%11110111
-        stx PF1
-        ldx #%01111111
-       	stx PF2
-        
-        ldy #70
-Kernal_Tower_Draw
+        ldx #$0
+        ldy #$48
         sta WSYNC
+Kernal_Tower_Draw
+	;sta WSYNC
+        ldx #$0
+	cpy #$48
+        bmi Kernal_Tower_Draw_Colorize
+        
+        inx
+        lda PF_Kernal_Tower,x
+        sta PF0
+        
+        inx
+        lda PF_Kernal_Tower,x
+        sta PF1
+        
+        inx
+        lda PF_Kernal_Tower,x;#%01111111
+       	sta PF2
+Kernal_Tower_Draw_Colorize        
         lda #CONS_COLOR_RED
         sta COLUBK
-        SLEEP 30
-        lda #CONS_COLOR_BLUE
+        SLEEP 11 ;; as we add more code for playfield, edit this.
+        lda #CONS_COLOR_TEAL
         sta COLUBK      
         SLEEP 10 
         lda #CONS_COLOR_GREEN
         sta COLUBK
+        inx
         dey
+        sta WSYNC
         bne Kernal_Tower_Draw
 Kernal_Tower_End
         lda #CONS_COLOR_BLACK
@@ -291,7 +304,7 @@ Kernal_Gap
         sta WSYNC
         lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
         sta COLUPF
-        lda #CONS_COLOR_BLUE
+        lda #CONS_COLOR_BLACK
         sta COLUBK  
         lda #0
         sta LineIdx
@@ -438,7 +451,12 @@ SkipMoveRight
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
-	.byte #%01111100
+
+	; --- line 3
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111
+        
 P0_Frame_0
         ; draw from top to bottom
         .byte #%01111100
