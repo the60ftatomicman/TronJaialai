@@ -146,12 +146,11 @@ init_PF_Tiles
         sta p0_TileBooleans,x
         sta p1_TileBooleans,x
         dex
-        bne init_PF_Tiles
+        bpl init_PF_Tiles
         
-        
-        lda #CONS_COLOR_BLACK ; for debug
-        sta p0_TileBooleans,0
-        sta p1_TileBooleans,2
+        ;lda #CONS_COLOR_BLACK ; for debug
+        ;sta p0_TileBooleans+5
+        ;sta p1_TileBooleans+5
         
         lda #<(P0_Frame_0)
         sta P0Ptr
@@ -297,60 +296,61 @@ Kernal_Gap
         sta WSYNC
         lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
         sta COLUPF
-        lda #CONS_COLOR_BLACK
-        sta COLUBK  
-        lda #0
-        sta LineIdx
-        lda #3 ; this will always do +1 what you want
-        sta loopIntI
-        ldy 0 ; uused to change address levels
-        sta WSYNC
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_CombatField
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Draws the lower playfield and players.
-; very complex atm.
-; Going to TRY to make it so we draw
-	lda #%00010000
+
+
+        
+        lda #%00010000
         sta PF0
         lda #%00001100
         sta PF1
         lda #%11100000
         sta PF2
-        lda CONS_TILE_HEIGHT
         
+        lda #0
+        sta LineIdx
+        lda #3 ; this will always do +1 what you want
+        sta loopIntI
+        ldy #0 ; uused to change address levels
+        
+        sta WSYNC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_CombatField
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        lda CONS_TILE_HEIGHT
         sta loopIntJ
 Kernal_CombatField_startOfDraw
         sta WSYNC
-	
+        
 Kernal_CombatField_DrawPlayfied
 
-        lda p0_TileBooleans,y+1
+        lda p0_TileBooleans,y
         sta COLUBK 
         
         SLEEP 20
         
-        lda p0_TileBooleans,y+2
+        lda p0_TileBooleans,y+1
         sta COLUBK
         
-        SLEEP 7 ; minimal. mid is red atm.
+        SLEEP 5 ; minimal. mid is red atm.
         
-        lda p1_TileBooleans,y+1
+
+        lda p1_TileBooleans,y
 	sta COLUBK
         
         SLEEP 10
         
-       	lda p1_TileBooleans,y+2
+
+       	lda p1_TileBooleans,y+1
         sta COLUBK
 
-	SLEEP 5
+	SLEEP 7
 
         lda #CONS_COLOR_BLACK
 	sta COLUBK
         
 Kernal_CombatField_DrawPlayers
 	ldx P0Idx
-	;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
+	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
         ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
         ldx P1Idx
 	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1_Frame_0,P1Idx
@@ -358,7 +358,9 @@ Kernal_CombatField_EndOfDraw
         inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
-
+        
+	sta WSYNC
+        iny
         iny
         dec loopIntI
         bne Kernal_CombatField
