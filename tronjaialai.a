@@ -7,22 +7,23 @@
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
-CONS_PLAYER_HEIGHT  EQU  $F0 ; FF-intended height
+CONS_PLAYER_HEIGHT  EQU  $F2 ; FF-intended height
 CONS_TILE_HEIGHT    EQU  #15
 CONS_TILE_HIDE      EQU  %00000000
 
 CONS_COLOR_BLACK EQU $00
 CONS_COLOR_RED   EQU $40
+CONS_COLOR_PINK  EQU $4A
 CONS_COLOR_BLUE  EQU $82
+CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
+CONS_COLOR_CHART EQU $CA
 
-CONS_TILE_P0_PF0_SHOW  EQU  %11111111
-CONS_TILE_P0_PF1_SHOW  EQU  %11100111
-CONS_TILE_P0_PF2_SHOW  EQU  %00001111 ; TODO -- maybe only make THIS one different?
-
-CONS_TILE_P1_PF0_SHOW  EQU  %00001111
-CONS_TILE_P1_PF1_SHOW  EQU  %00000000
-CONS_TILE_P1_PF2_SHOW  EQU  %00000000
+CONS_BOUNDRY_P0_LEFT  EQU #7
+CONS_BOUNDRY_P0_RIGHT EQU #6
+CONS_BOUNDRY_P1_LEFT  EQU #6
+CONS_BOUNDRY_P1_RIGHT EQU #156
+CONS_BOUNDRY_BOTTOM   EQU #158
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -68,13 +69,16 @@ CONS_TILE_P1_PF2_SHOW  EQU  %00000000
 .YPOS        SET {1}
 .HEIGHT      SET {2}
 .PLAYER_REG  SET {3}
-
+.PLAYER_DATA SET {4}
+.PLAYER_IDX  SET {5}
         lda .YPOS
         SBC LineIdx
         BPL .skip
         CMP #.HEIGHT
         BMI .skip
-        lda #%11111111
+        lda .PLAYER_DATA,x
+        ;lda (.PLAYER_DATA,x)
+        inc .PLAYER_IDX
         jmp .end
 .skip
         lda #%0000000
@@ -101,21 +105,8 @@ loopIntI        .byte
 loopIntJ        .byte
 loopIntK        .byte
 
-;TODO -- reoganize this!
-p0_T1           .byte
-p0_T2           .byte
-p1_T1           .byte
-p1_T2           .byte
-
-p0_T3           .byte
-p0_T4           .byte
-p1_T3           .byte
-p1_T4           .byte
-
-p0_T5           .byte
-p0_T6           .byte
-p1_T5           .byte
-p1_T6           .byte
+p0_TileBooleans .DS 6
+p1_TileBooleans .DS 6
 
 P0XPos          .byte ;-- X coordinates
 P1XPos          .byte
@@ -126,10 +117,11 @@ P1YPos          .byte
 P0Idx           .byte ;-- data index of our sprite data
 P1Idx           .byte
 
-
 P0CIdx          .byte ;-- color index of our sprite data
 P1CIdx          .byte
 
+P0Ptr		.DS 2
+P1Ptr		.DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
         seg Code
@@ -137,32 +129,34 @@ P1CIdx          .byte
 
 Start
         CLEAN_START
-        lda #5
+        lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
         sta P0XPos
-        lda #160
+        lda #CONS_BOUNDRY_P1_RIGHT ; Max right
         sta P1XPos
         lda #1
         sta P0YPos
         sta P1YPos
+        lda #0
+        sta P0Idx
+        sta P1Idx
         ; TODO -- lessen or make a loop ya doofus
+        ldx #05
+init_PF_Tiles
         lda #CONS_COLOR_BLUE
-        sta p0_T1
-	sta p0_T2
-	sta p1_T1
-	sta p1_T2
-
-        sta p0_T3
-	sta p0_T4
-	sta p1_T3
-	sta p1_T4
+        sta p0_TileBooleans,x
+        sta p1_TileBooleans,x
+        dex
+        bne init_PF_Tiles
         
-        sta p0_T5
-	sta p0_T6
-	sta p1_T5
-	sta p1_T6
         
         lda #CONS_COLOR_BLACK ; for debug
-        sta p1_T6
+        sta p0_TileBooleans,0
+        sta p1_TileBooleans,2
+        
+        lda #<(P0_Frame_0)
+        sta P0Ptr
+        lda #>(P0_Frame_0)
+        sta P0Ptr+1
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
@@ -182,15 +176,15 @@ Kernal_PreScreen
 Kernal_Screen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;      
         CLEAR_PLAYFIELD
-        lda #$FF
+        lda #CONS_COLOR_PINK
         sta COLUP0
-        lda #$07
-
+        lda #CONS_COLOR_CHART
         sta COLUP1
-        lda #$00
+        lda #CONS_COLOR_BLACK
         sta COLUBK
         lda #255
         sta LineIdx
+        
         TIMER_WAIT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -214,6 +208,9 @@ Kernal_Movement
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
         
+        lda #0
+        sta P0Idx
+        sta P1Idx
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
         sta WSYNC
 Kernal_Tower
@@ -224,26 +221,42 @@ Kernal_Tower
 ; Color of the towers is controlled by the background.
         lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
-       
-        ldx #%11110000
-        stx PF0
-        ldx #%11110111
-        stx PF1
-        ldx #%01111111
-       	stx PF2
-        
-        ldy #70
-Kernal_Tower_Draw
+        ldx #$0
+        ldy #$48
         sta WSYNC
+Kernal_Tower_Draw
+	;sta WSYNC
+        ldx #$0
+	cpy #$48
+        bmi Kernal_Tower_Draw_Colorize
+        ;        .byte #%11110000
+        ;.byte #%11110111
+        ;.byte #%01111111
+        ;
+        ;
+        inx
+        lda #%11110000;PF_Kernal_Tower,x
+        sta PF0
+        
+        inx
+        lda #%11110111;PF_Kernal_Tower,x
+        sta PF1
+        
+        inx
+        lda #%01111111;PF_Kernal_Tower,x;#%01111111
+       	sta PF2
+Kernal_Tower_Draw_Colorize        
         lda #CONS_COLOR_RED
         sta COLUBK
-        SLEEP 30
-        lda #CONS_COLOR_BLUE
+        SLEEP 16 ;; as we add more code for playfield, edit this.
+        lda #CONS_COLOR_TEAL
         sta COLUBK      
         SLEEP 10 
         lda #CONS_COLOR_GREEN
         sta COLUBK
+        inx
         dey
+        sta WSYNC
         bne Kernal_Tower_Draw
 Kernal_Tower_End
         lda #CONS_COLOR_BLACK
@@ -284,7 +297,7 @@ Kernal_Gap
         sta WSYNC
         lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
         sta COLUPF
-        lda #CONS_COLOR_BLUE
+        lda #CONS_COLOR_BLACK
         sta COLUBK  
         lda #0
         sta LineIdx
@@ -311,22 +324,23 @@ Kernal_CombatField_startOfDraw
         sta WSYNC
 	
 Kernal_CombatField_DrawPlayfied
-        lda p0_T1,y
+
+        lda p0_TileBooleans,y+1
         sta COLUBK 
         
         SLEEP 20
         
-        lda p0_T2,y
+        lda p0_TileBooleans,y+2
         sta COLUBK
         
         SLEEP 7 ; minimal. mid is red atm.
         
-	lda p1_T1,y
+        lda p1_TileBooleans,y+1
 	sta COLUBK
         
         SLEEP 10
         
-        lda p1_T2,y
+       	lda p1_TileBooleans,y+2
         sta COLUBK
 
 	SLEEP 5
@@ -334,23 +348,17 @@ Kernal_CombatField_DrawPlayfied
         lda #CONS_COLOR_BLACK
 	sta COLUBK
         
-        jmp Kernal_CombatField_EndOfDraw
 Kernal_CombatField_DrawPlayers
+	ldx P0Idx
+	;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
+        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+        ldx P1Idx
+	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1_Frame_0,P1Idx
 Kernal_CombatField_EndOfDraw
-
-	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0
-	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1
-
         inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
-        
-        lda #CONS_COLOR_BLACK
-        sta COLUBK
-        sta WSYNC
-        
-        iny
-        iny
+
         iny
         dec loopIntI
         bne Kernal_CombatField
@@ -426,6 +434,48 @@ SkipMoveLeft
 SkipMoveRight
 	stx P0XPos
 	rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Data
+;;;;;;;;;;;;;;;;;;;;;
+PF_Kernal_Tower
+
+	; --- line 3
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111
+        
+P0_Frame_0
+        ; draw from top to bottom
+        .byte #%01111100
+        .byte #%01111110
+        .byte #%01101000
+        .byte #%01111100
+        .byte #%00111100
+        .byte #%00000000
+        .byte #%01111000
+        .byte #%10111101
+        .byte #%10111110
+        .byte #%01011100
+        .byte #%01111000
+        .byte #%00000000
+        .byte #%01110110
+        .byte #0 
+P1_Frame_0
+        ; draw from top to bottom
+        .byte #%00111110   ; 0x3E
+        .byte #%01111110   ; 0x7E
+        .byte #%00010110   ; 0x16
+        .byte #%00111110   ; 0x3E
+        .byte #%00111100   ; 0x3C
+        .byte #%00000000   ; 0x00
+        .byte #%00011110   ; 0x1E
+        .byte #%10111101   ; 0xBD
+        .byte #%01111101   ; 0x7D
+        .byte #%00111010   ; 0x3A
+        .byte #%00011110   ; 0x1E
+        .byte #%00000000   ; 0x00
+        .byte #%01101110   ; 0x6E
+        .byte #0 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;
