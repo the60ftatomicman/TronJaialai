@@ -129,6 +129,20 @@ P1Ptr		.DS 2
 
 Start
         CLEAN_START
+        
+        ldx #05
+init_PF_Tiles
+        lda #CONS_COLOR_BLUE
+        sta p0_TileBooleans,x
+        sta p1_TileBooleans,x
+        dex
+        bpl init_PF_Tiles
+        lda #$01
+        sta CTRLPF
+        ;lda #CONS_COLOR_BLACK ; for debug
+        ;sta p0_TileBooleans+5
+        ;sta p1_TileBooleans+5
+init_Players        
         lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
         sta P0XPos
         lda #CONS_BOUNDRY_P1_RIGHT ; Max right
@@ -139,18 +153,6 @@ Start
         lda #0
         sta P0Idx
         sta P1Idx
-        ; TODO -- lessen or make a loop ya doofus
-        ldx #05
-init_PF_Tiles
-        lda #CONS_COLOR_BLUE
-        sta p0_TileBooleans,x
-        sta p1_TileBooleans,x
-        dex
-        bpl init_PF_Tiles
-        
-        ;lda #CONS_COLOR_BLACK ; for debug
-        ;sta p0_TileBooleans+5
-        ;sta p1_TileBooleans+5
         
         lda #<(P0_Frame_0)
         sta P0Ptr
@@ -162,9 +164,6 @@ init_PF_Tiles
 NextFrame
         lsr SWCHB ; test Game Reset switch
         bcc Start ; reset?
-        lda #$01
-        sta CTRLPF
-        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_PreScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
