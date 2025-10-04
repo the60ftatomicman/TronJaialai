@@ -19,11 +19,11 @@ CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
 CONS_COLOR_CHART EQU $CA
 
-CONS_BOUNDRY_P0_LEFT  EQU #7
+CONS_BOUNDRY_P0_LEFT  EQU #12
 CONS_BOUNDRY_P0_RIGHT EQU #6
 CONS_BOUNDRY_P1_LEFT  EQU #6
-CONS_BOUNDRY_P1_RIGHT EQU #156
-CONS_BOUNDRY_BOTTOM   EQU #158
+CONS_BOUNDRY_P1_RIGHT EQU #146
+CONS_BOUNDRY_BOTTOM   EQU #146
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -69,15 +69,15 @@ CONS_BOUNDRY_BOTTOM   EQU #158
 .YPOS        SET {1}
 .HEIGHT      SET {2}
 .PLAYER_REG  SET {3}
-.PLAYER_DATA SET {4}
+.PLAYER_PTR  SET {4}
 .PLAYER_IDX  SET {5}
+	ldy .PLAYER_IDX
         lda .YPOS
         SBC LineIdx
         BPL .skip
         CMP #.HEIGHT
         BMI .skip
-        lda .PLAYER_DATA,x
-        ;lda (.PLAYER_DATA,x)
+        lda (.PLAYER_PTR),y
         inc .PLAYER_IDX
         jmp .end
 .skip
@@ -141,7 +141,7 @@ init_PF_Tiles
         sta CTRLPF
         ;lda #CONS_COLOR_BLACK ; for debug
         ;sta p0_TileBooleans+5
-        ;sta p1_TileBooleans+5
+        ;sta p1_TileBooleans+1
 init_Players        
         lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
         sta P0XPos
@@ -154,11 +154,15 @@ init_Players
         sta P0Idx
         sta P1Idx
         
-        lda #<(P0_Frame_0)
+        lda #<P0_Frame_0; I flipped this
         sta P0Ptr
-        lda #>(P0_Frame_0)
+        lda #>P0_Frame_0; I flipped this
         sta P0Ptr+1
         
+        lda #<P1_Frame_0; I flipped this
+        sta P1Ptr
+        lda #>P0_Frame_0; I flipped this
+        sta P1Ptr+1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
 NextFrame
@@ -296,20 +300,19 @@ Kernal_Gap
         lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
         sta COLUPF
 
-
         
-        lda #%00010000
+        lda #%01110000
         sta PF0
-        lda #%00001100
+        lda #%000000100
         sta PF1
-        lda #%11100000
+        lda #%11110000
         sta PF2
         
         lda #0
         sta LineIdx
         lda #3 ; this will always do +1 what you want
         sta loopIntI
-        ldy #0 ; uused to change address levels
+        ldx #0 ; uused to change address levels
         
         sta WSYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -322,45 +325,44 @@ Kernal_CombatField_startOfDraw
         
 Kernal_CombatField_DrawPlayfied
 
-        lda p0_TileBooleans,y
+        lda p0_TileBooleans,x
         sta COLUBK 
         
-        SLEEP 20
+        SLEEP 21
         
-        lda p0_TileBooleans,y+1
+        lda p0_TileBooleans,x+1
         sta COLUBK
         
         SLEEP 5 ; minimal. mid is red atm.
         
 
-        lda p1_TileBooleans,y
+        lda p1_TileBooleans,x
 	sta COLUBK
         
         SLEEP 10
         
 
-       	lda p1_TileBooleans,y+1
+       	lda p1_TileBooleans,x+1
         sta COLUBK
 
-	SLEEP 7
+	SLEEP 4
 
         lda #CONS_COLOR_BLACK
 	sta COLUBK
         
 Kernal_CombatField_DrawPlayers
-	ldx P0Idx
-	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
-        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
-        ldx P1Idx
-	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1_Frame_0,P1Idx
+	
+        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1Ptr,P1Idx
+        
 Kernal_CombatField_EndOfDraw
         inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
         
 	sta WSYNC
-        iny
-        iny
+        inx
+        inx
         dec loopIntI
         bne Kernal_CombatField
         
