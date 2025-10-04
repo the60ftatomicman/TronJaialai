@@ -224,47 +224,37 @@ Kernal_Tower
         lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
         ldx #$0
-        ldy #$48
+        ldy #$10 ; was 48
         sta WSYNC
 Kernal_Tower_Draw
-	;sta WSYNC
-        ldx #$0
-	cpy #$48
-        bmi Kernal_Tower_Draw_Colorize
-        ;        .byte #%11110000
-        ;.byte #%11110111
-        ;.byte #%01111111
-        ;
-        ;
-        inx
-        lda #%11110000;PF_Kernal_Tower,x
-        sta PF0
-        
-        inx
-        lda #%11110111;PF_Kernal_Tower,x
+	sta WSYNC
+        lda #%11110000
+        sta PF0  
+        lda PF_Kernal_Tower,x+1
         sta PF1
-        
-        inx
-        lda #%01111111;PF_Kernal_Tower,x;#%01111111
+        lda #%01111111 
        	sta PF2
-Kernal_Tower_Draw_Colorize        
+Kernal_Tower_Draw_Colorize   
         lda #CONS_COLOR_RED
         sta COLUBK
-        SLEEP 16 ;; as we add more code for playfield, edit this.
+        SLEEP 11 ;; as we add more code for playfield, edit this.
         lda #CONS_COLOR_TEAL
         sta COLUBK      
-        SLEEP 10 
+        SLEEP 8 
         lda #CONS_COLOR_GREEN
         sta COLUBK
         inx
+        inx
+        inx
         dey
-        sta WSYNC
         bne Kernal_Tower_Draw
 Kernal_Tower_End
+	TIMER_SETUP 48
+        TIMER_WAIT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         lda #CONS_COLOR_BLACK
         sta COLUBK
 	CLEAR_PLAYFIELD
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         lda #CONS_COLOR_BLUE ; Make this a define
         sta COLUPF
         ldx #2 ; this will always do +1 what you want
@@ -441,12 +431,71 @@ SkipMoveRight
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
-
-	; --- line 3
         .byte #%11110000
         .byte #%11110111
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%10000000
         .byte #%01111111
-        
+
+        .byte #%11110000
+        .byte #%10000000
+        .byte #%01111111
+
+        .byte #%11110000
+        .byte #%10000000
+        .byte #%01111111
+;----------------------------
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111  
+
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111    
+
+        .byte #0
 P0_Frame_0
         ; draw from top to bottom
         .byte #%01111100
