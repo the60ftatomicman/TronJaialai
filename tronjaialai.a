@@ -221,23 +221,33 @@ Kernal_Tower
 ; PF is set to Mirror and we just draw. than wait
 ; The BLACK we see is really the PF mirroed.
 ; Color of the towers is controlled by the background.
+; TODO make this less gross.
         lda #CONS_COLOR_BLACK ; Make this a define
         sta COLUPF
+	; These are ALWAYS the same
+        lda #%11110000
+        sta PF0  
+        lda #%01111111 
+       	sta PF2
+        
         ldx #$0
-        ldy #$10 ; was 48
+        ldy #$48
         sta WSYNC
 Kernal_Tower_Draw
 	sta WSYNC
-        lda #%11110000
-        sta PF0  
+        tya
+        cmp #$40
+        bmi Kernal_Tower_WaitASecond
         lda PF_Kernal_Tower,x+1
         sta PF1
-        lda #%01111111 
-       	sta PF2
+        jmp Kernal_Tower_Draw_Colorize
+Kernal_Tower_WaitASecond
+        lda #%11110111
+        sta PF1
 Kernal_Tower_Draw_Colorize   
         lda #CONS_COLOR_RED
         sta COLUBK
-        SLEEP 11 ;; as we add more code for playfield, edit this.
+        SLEEP 16 ;; as we add more code for playfield, edit this.
         lda #CONS_COLOR_TEAL
         sta COLUBK      
         SLEEP 8 
@@ -249,8 +259,8 @@ Kernal_Tower_Draw_Colorize
         dey
         bne Kernal_Tower_Draw
 Kernal_Tower_End
-	TIMER_SETUP 48
-        TIMER_WAIT
+	;TIMER_SETUP 48
+        ;TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         lda #CONS_COLOR_BLACK
         sta COLUBK
@@ -479,22 +489,6 @@ PF_Kernal_Tower
         .byte #%10000000
         .byte #%01111111
 ;----------------------------
-        .byte #%11110000
-        .byte #%11110111
-        .byte #%01111111  
-
-        .byte #%11110000
-        .byte #%11110111
-        .byte #%01111111    
-
-        .byte #%11110000
-        .byte #%11110111
-        .byte #%01111111    
-
-        .byte #%11110000
-        .byte #%11110111
-        .byte #%01111111    
-
         .byte #0
 P0_Frame_0
         ; draw from top to bottom
