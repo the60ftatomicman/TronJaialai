@@ -1,7 +1,7 @@
 --- Symbol List (sorted by symbol)
 0.FREE_BYTES             0000                  
 1.CLEAR_STACK            f006              (R )
-10.CYCLES                0014              (R )
+10.CYCLES                0012              (R )
 11.CYCLES                0002              (R )
 12.CYCLES                000a              (R )
 13.CYCLES                0004              (R )
@@ -27,7 +27,7 @@
 3.lines                  0025              (R )
 5.waittimer              f06b              (R )
 6.CYCLES                 0010              (R )
-7.CYCLES                 000a              (R )
+7.CYCLES                 0008              (R )
 AUDC0                    0015                  
 AUDC1                    0016                  
 AUDF0                    0017                  
@@ -38,11 +38,12 @@ COLUBK                   0009              (R )
 COLUP0                   0006              (R )
 COLUP1                   0007              (R )
 COLUPF                   0008              (R )
-CONS_BOUNDRY_BOTTOM      009e                  
-CONS_BOUNDRY_P0_LEFT     0007              (R )
-CONS_BOUNDRY_P0_RIGHT    0006                  
-CONS_BOUNDRY_P1_LEFT     0006                  
-CONS_BOUNDRY_P1_RIGHT    009c              (R )
+CONS_BOUNDRY_BOTTOM      001e              (R )
+CONS_BOUNDRY_P0_LEFT     0017              (R )
+CONS_BOUNDRY_P0_RIGHT    0040              (R )
+CONS_BOUNDRY_P1_LEFT     0062                  
+CONS_BOUNDRY_P1_RIGHT    0092              (R )
+CONS_BOUNDRY_TOP         0001              (R )
 CONS_COLOR_BLACK         0000              (R )
 CONS_COLOR_BLUE          0082              (R )
 CONS_COLOR_CHART         00ca              (R )
@@ -87,21 +88,22 @@ INPT3                    000b
 INPT4                    000c                  
 INPT5                    000d                  
 INTIM                    0284              (R )
-Kernal_CombatField       f11e              (R )
+Kernal_CombatField       f11f              (R )
 Kernal_CombatField_DrawPlayers f14e                  
-Kernal_CombatField_DrawPlayfied f124                  
+Kernal_CombatField_DrawPlayfied f125                  
 Kernal_CombatField_EndOfDraw f17c                  
-Kernal_CombatField_startOfDraw f122              (R )
-Kernal_Gap               f0f8                  
+Kernal_CombatField_startOfDraw f123              (R )
+Kernal_Gap               f0f9                  
 Kernal_Movement          f072                  
 Kernal_PreScreen         f043                  
 Kernal_Screen            f053                  
-Kernal_Stairs            f0e4              (R )
-Kernal_Stairs_J          f0e8              (R )
-Kernal_Tower             f090                  
-Kernal_Tower_Draw        f09a              (R )
-Kernal_Tower_Draw_Colorize f0af              (R )
-Kernal_Tower_End         f0ce                  
+Kernal_Stairs            f0e5              (R )
+Kernal_Stairs_J          f0e9              (R )
+Kernal_Tower             f08c                  
+Kernal_Tower_Draw        f09e              (R )
+Kernal_Tower_Draw_Colorize f0b1              (R )
+Kernal_Tower_End         f0cf                  
+Kernal_Tower_WaitASecond f0ad              (R )
 LineIdx                  0083              (R )
 loopIntI                 0084              (R )
 loopIntJ                 0085              (R )
@@ -112,14 +114,14 @@ NO_ILLEGAL_OPCODES       0000 ????         (R )
 NUSIZ0                   0004                  
 NUSIZ1                   0005                  
 Overscan                 f18e                  
-P0_Frame_0               f1ee              (R )
+P0_Frame_0               f210              (R )
 p0_TileBooleans          0087              (R )
 P0CIdx                   0099                  
 P0Idx                    0097              (R )
 P0Ptr                    009b              (R )
 P0XPos                   0093              (R )
 P0YPos                   0095              (R )
-P1_Frame_0               f1fc              (R )
+P1_Frame_0               f21e              (R )
 p1_TileBooleans          008d              (R )
 P1CIdx                   009a                  
 P1Idx                    0098              (R )
@@ -129,7 +131,7 @@ P1YPos                   0096              (R )
 PF0                      000d              (R )
 PF1                      000e              (R )
 PF2                      000f              (R )
-PF_Kernal_Tower          f1eb                  
+PF_Kernal_Tower          f1eb              (R )
 ReadJoystick             0082                  
 REFP0                    000b                  
 REFP1                    000c                  
@@ -142,10 +144,10 @@ RESP0                    0010              (R )
 RESP1                    0011                  
 RSYNC                    0003                  
 SetHorizPos              f1a0              (R )
-SkipMoveDown             f1cc              (R )
+SkipMoveDown             f1c0              (R )
 SkipMoveLeft             f1dc              (R )
 SkipMoveRight            f1e8              (R )
-SkipMoveUp               f1c0              (R )
+SkipMoveUp               f1cc              (R )
 Start                    f000              (R )
 SWACNT                   0281                  
 SWBCNT                   0283                  

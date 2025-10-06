@@ -19,11 +19,12 @@ CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
 CONS_COLOR_CHART EQU $CA
 
-CONS_BOUNDRY_P0_LEFT  EQU #12
-CONS_BOUNDRY_P0_RIGHT EQU #6
-CONS_BOUNDRY_P1_LEFT  EQU #6
+CONS_BOUNDRY_P0_LEFT  EQU #23
+CONS_BOUNDRY_P0_RIGHT EQU #64
+CONS_BOUNDRY_P1_LEFT  EQU #98
 CONS_BOUNDRY_P1_RIGHT EQU #146
-CONS_BOUNDRY_BOTTOM   EQU #146
+CONS_BOUNDRY_TOP      EQU #00
+CONS_BOUNDRY_BOTTOM   EQU #29
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -143,11 +144,11 @@ init_PF_Tiles
         ;sta p0_TileBooleans+5
         ;sta p1_TileBooleans+1
 init_Players        
-        lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
+        lda #CONS_BOUNDRY_P0_LEFT  ; Max Left
         sta P0XPos
         lda #CONS_BOUNDRY_P1_RIGHT ; Max right
         sta P1XPos
-        lda #1
+        lda #CONS_BOUNDRY_TOP+3
         sta P0YPos
         sta P1YPos
         lda #0
@@ -398,38 +399,36 @@ DivideLoop
         rts              ; return to caller
 ;;;;;;;;;;;;;;;;;;;;;
 MoveJoystick
-; Move vertically
-; (up and down are actually reversed since ypos starts at bottom)
 	ldx P0YPos
-	lda #%00100000	;Up?
+	lda #%00100000	;Down?
 	bit SWCHA
-	bne SkipMoveUp
-        ;cpx #2 -- border
-        ;bcc SkipMoveUp
-        inx
-SkipMoveUp
-	lda #%00010000	;Down?
-	bit SWCHA 
 	bne SkipMoveDown
-        ;cpx #183    -- border
-        ;bcs SkipMoveDown
-        dex
+        cpx #CONS_BOUNDRY_BOTTOM
+        bcs SkipMoveDown
+        inx
 SkipMoveDown
+	lda #%00010000	;Up
+	bit SWCHA 
+	bne SkipMoveUp
+        cpx #CONS_BOUNDRY_TOP
+        beq SkipMoveUp
+        dex
+SkipMoveUp
 	stx P0YPos
 ; Move horizontally
         ldx P0XPos
 	lda #%01000000	;Left?
 	bit SWCHA
 	bne SkipMoveLeft
-        ;cpx #16
-        ;bcc SkipMoveLeft
+        cpx #CONS_BOUNDRY_P0_LEFT
+        bcc SkipMoveLeft
         dex
 SkipMoveLeft
 	lda #%10000000	;Right?
 	bit SWCHA 
 	bne SkipMoveRight
-        ;cpx #153
-        ;bcs SkipMoveRight
+        cpx #CONS_BOUNDRY_P0_RIGHT
+        bcs SkipMoveRight
         inx
 SkipMoveRight
 	stx P0XPos
