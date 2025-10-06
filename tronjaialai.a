@@ -404,18 +404,16 @@ MoveJoystick
 	lda #%00100000	;Up?
 	bit SWCHA
 	bne SkipMoveUp
-        cpx #2
-        bcc SkipMoveUp
-        dex
-        ;dex
+        ;cpx #2 -- border
+        ;bcc SkipMoveUp
+        inx
 SkipMoveUp
 	lda #%00010000	;Down?
 	bit SWCHA 
 	bne SkipMoveDown
-        cpx #183
-        bcs SkipMoveDown
-        inx
-        ;inx
+        ;cpx #183    -- border
+        ;bcs SkipMoveDown
+        dex
 SkipMoveDown
 	stx P0YPos
 ; Move horizontally
@@ -423,15 +421,15 @@ SkipMoveDown
 	lda #%01000000	;Left?
 	bit SWCHA
 	bne SkipMoveLeft
-        cpx #16
-        bcc SkipMoveLeft
+        ;cpx #16
+        ;bcc SkipMoveLeft
         dex
 SkipMoveLeft
 	lda #%10000000	;Right?
 	bit SWCHA 
 	bne SkipMoveRight
-        cpx #153
-        bcs SkipMoveRight
+        ;cpx #153
+        ;bcs SkipMoveRight
         inx
 SkipMoveRight
 	stx P0XPos
