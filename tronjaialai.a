@@ -201,12 +201,11 @@ Kernal_Movement
         lda P0XPos      ; get X coordinate
         ldx #0          ; player 0
         jsr SetHorizPos ; set coarse offset
-        sta WSYNC       ; sync w/ scanline
-        sta HMOVE       ; apply fine offsets
 
         lda P1XPos      ; get X coordinate
         ldx #1          ; player 1
         jsr SetHorizPos ; set coarse offset
+        
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
         
