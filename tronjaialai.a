@@ -19,6 +19,8 @@ CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
 CONS_COLOR_CHART EQU $CA
 
+CONS_FRAME_ANIMATION_COUNTER EQU $03
+
 CONS_BOUNDRY_P0_LEFT  EQU #23
 CONS_BOUNDRY_P0_RIGHT EQU #64
 CONS_BOUNDRY_P1_LEFT  EQU #98
@@ -121,6 +123,9 @@ P1Idx           .byte
 P0CIdx          .byte ;-- color index of our sprite data
 P1CIdx          .byte
 
+P0FrameIdx      .byte ;--- animation frame
+P0FrameCounter  .byte ;--- frame counter
+
 P0Ptr		.DS 2
 P1Ptr		.DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -154,7 +159,9 @@ init_Players
         lda #0
         sta P0Idx
         sta P1Idx
-        
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+
         lda #<P0_Frame_0; I flipped this
         sta P0Ptr
         lda #>P0_Frame_0; I flipped this
@@ -188,7 +195,7 @@ Kernal_Screen
         lda #255
         sta LineIdx
         
-        TIMER_WAIT
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;               Main (192 lines)
@@ -213,6 +220,7 @@ Kernal_Movement
         lda #0
         sta P0Idx
         sta P1Idx
+        TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
         sta WSYNC
 Kernal_Tower
@@ -398,6 +406,7 @@ DivideLoop
         sta HMP0,x       ; set fine offset
         rts              ; return to caller
 ;;;;;;;;;;;;;;;;;;;;;
+; TODO -- cannot handle double motion!
 MoveJoystick
 	ldx P0YPos
 	lda #%00100000	;Down?
@@ -406,6 +415,7 @@ MoveJoystick
         cpx #CONS_BOUNDRY_BOTTOM
         bcs SkipMoveDown
         inx
+        dec P0FrameCounter
 SkipMoveDown
 	lda #%00010000	;Up
 	bit SWCHA 
@@ -413,6 +423,7 @@ SkipMoveDown
         cpx #CONS_BOUNDRY_TOP
         beq SkipMoveUp
         dex
+        dec P0FrameCounter
 SkipMoveUp
 	stx P0YPos
 ; Move horizontally
@@ -423,6 +434,7 @@ SkipMoveUp
         cpx #CONS_BOUNDRY_P0_LEFT
         bcc SkipMoveLeft
         dex
+        dec P0FrameCounter
 SkipMoveLeft
 	lda #%10000000	;Right?
 	bit SWCHA 
@@ -430,8 +442,31 @@ SkipMoveLeft
         cpx #CONS_BOUNDRY_P0_RIGHT
         bcs SkipMoveRight
         inx
+        dec P0FrameCounter
 SkipMoveRight
 	stx P0XPos
+        lda P0FrameCounter
+        cmp #0
+        bpl joystickEnd
+        ;TODO -- can probaby handle this faster!
+        FLIP_BOOL P0FrameIdx
+        cmp #$01
+        beq DrawFrameB
+DrawFrameA
+        lda #<P0_Frame_0
+        sta P0Ptr
+        lda #>P0_Frame_0
+        sta P0Ptr+1
+        jmp ResetFrameTimer
+DrawFrameB
+        lda #<P0_Frame_1
+        sta P0Ptr
+        lda #>P0_Frame_1
+        sta P0Ptr+1
+ResetFrameTimer
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+joystickEnd
 	rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
@@ -501,7 +536,23 @@ P0_Frame_0
         .byte #%01111000
         .byte #%00000000
         .byte #%01110110
-        .byte #0 
+        .byte #0
+P0_Frame_1
+        ; draw from top to bottom
+        .byte #%01111100
+        .byte #%01111110
+        .byte #%01101000
+        .byte #%01111100
+        .byte #%00111100
+        .byte #%00000000
+        .byte #%01111000
+        .byte #%10111101
+        .byte #%10111110
+        .byte #%01011100
+        .byte #%01111000
+        .byte #%00000000
+        .byte #%00111100
+        .byte #0
 P1_Frame_0
         ; draw from top to bottom
         .byte #%00111110   ; 0x3E
