@@ -609,12 +609,12 @@
     183  f02e		       a9 03		      lda	#CONS_FRAME_ANIMATION_COUNTER
     184  f030		       85 9d		      sta	P0FrameCounter
     185  f032
-    186  f032		       a9 59		      lda	#<P0_Frame_0
+    186  f032		       a9 58		      lda	#<P0_Frame_0
     187  f034		       85 9e		      sta	P0Ptr
     188  f036		       a9 f2		      lda	#>P0_Frame_0
     189  f038		       85 9f		      sta	P0Ptr+1
     190  f03a
-    191  f03a		       a9 75		      lda	#<P1_Frame_0
+    191  f03a		       a9 74		      lda	#<P1_Frame_0
     192  f03c		       85 a0		      sta	P1Ptr
     193  f03e		       a9 f2		      lda	#>P0_Frame_0
     194  f040		       85 a1		      sta	P1Ptr+1
@@ -660,92 +660,88 @@
     213  f065		       85 07		      sta	COLUP1
     214  f067		       a9 00		      lda	#CONS_COLOR_BLACK
     215  f069		       85 09		      sta	COLUBK
-    216  f06b							;lda #255
-    217  f06b							;sta LineIdx
-    218  f06b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    219  f06b							;		 Main (192 lines)
-    220  f06b							; What is a Kernal?
-    221  f06b							; These are groupings of line sections.
+    216  f06b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    217  f06b							;		 Main (192 lines)
+    218  f06b							; What is a Kernal?
+    219  f06b							; These are groupings of line sections.
+    220  f06b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    221  f06b				   Kernal_Movement
     222  f06b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-    223  f06b				   Kernal_Movement
-    224  f06b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-    225  f06b							; This is where we do player X logic
-    226  f06b							; Set Player 1 x position
-    227  f06b		       a5 94		      lda	P0XPos	; get X coordinate
-    228  f06d		       a2 00		      ldx	#0	; player 0
-    229  f06f		       20 e6 f1 	      jsr	SetHorizPos	; set coarse offset
-    230  f072
-    231  f072		       a5 95		      lda	P1XPos	; get X coordinate
-    232  f074		       a2 01		      ldx	#1	; player 1
-    233  f076		       20 e6 f1 	      jsr	SetHorizPos	; set coarse offset
-    234  f079
-    235  f079		       85 02		      sta	WSYNC	; sync w/ scanline
-    236  f07b		       85 2a		      sta	HMOVE	; apply fine offsets
-    237  f07d
-    238  f07d		       a9 00		      lda	#0
-    239  f07f		       85 98		      sta	P0Idx
-    240  f081		       85 99		      sta	P1Idx
-      0  f083					      TIMER_WAIT
-      1  f083				   .waittimer
-      2  f083		       ad 84 02 	      lda	INTIM
-      3  f086		       d0 fb		      bne	.waittimer
-      4  f088		       85 02		      sta	WSYNC
-    242  f08a							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	 
-    243  f08a		       85 02		      sta	WSYNC
-    244  f08c				   Kernal_Tower
-    245  f08c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-    246  f08c							; Background art for the upper half of the game.
-    247  f08c							; PF is set to Mirror and we just draw. than wait
-    248  f08c							; The BLACK we see is really the PF mirroed.
-    249  f08c							; Color of the towers is controlled by the background.
-    250  f08c							; TODO make this less gross.
-    251  f08c		       a9 00		      lda	#CONS_COLOR_BLACK	; Make this a define
-    252  f08e		       85 08		      sta	COLUPF
-    253  f090							; These are ALWAYS the same
-    254  f090		       a9 f0		      lda	#%11110000
-    255  f092		       85 0d		      sta	PF0
-    256  f094		       a9 7f		      lda	#%01111111
-    257  f096		       85 0f		      sta	PF2
-    258  f098
-    259  f098		       a2 00		      ldx	#$0
-    260  f09a		       a0 48		      ldy	#$48
-    261  f09c		       85 02		      sta	WSYNC
-    262  f09e				   Kernal_Tower_Draw
-    263  f09e		       85 02		      sta	WSYNC
-    264  f0a0		       98		      tya
-    265  f0a1		       c9 40		      cmp	#$40
-    266  f0a3		       30 08		      bmi	Kernal_Tower_WaitASecond
-    267  f0a5		       bd 35 f2 	      lda	PF_Kernal_Tower,x+1
-    268  f0a8		       85 0e		      sta	PF1
-    269  f0aa		       4c b1 f0 	      jmp	Kernal_Tower_Draw_Colorize
-    270  f0ad				   Kernal_Tower_WaitASecond
-    271  f0ad		       a9 f7		      lda	#%11110111
-    272  f0af		       85 0e		      sta	PF1
-    273  f0b1				   Kernal_Tower_Draw_Colorize
-    274  f0b1		       a9 40		      lda	#CONS_COLOR_RED
-    275  f0b3		       85 09		      sta	COLUBK
-      0  f0b5					      SLEEP	16	;; as we add more code for playfield, edit this.
-      1  f0b5				   .CYCLES    SET	16
-      2  f0b5
-      3  f0b5				  -	      IF	.CYCLES < 2
-      4  f0b5				  -	      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
-      5  f0b5				  -	      ERR
-      6  f0b5					      ENDIF
-      7  f0b5
-      8  f0b5				  -	      IF	.CYCLES & 1
-      9  f0b5				  -	      IFNCONST	NO_ILLEGAL_OPCODES
-     10  f0b5				  -	      nop	0
-     11  f0b5				  -	      ELSE
-     12  f0b5				  -	      bit	VSYNC
-     13  f0b5				  -	      ENDIF
-     14  f0b5				  -.CYCLES    SET	.CYCLES - 3
-     15  f0b5					      ENDIF
-     16  f0b5
-     17  f0b5					      REPEAT	.CYCLES / 2
-     18  f0b5		       ea		      nop
-     17  f0b5					      REPEND
-     18  f0b6		       ea		      nop
-     17  f0b6					      REPEND
+    223  f06b							; This is where we do player X logic
+    224  f06b							; Set Player 1 x position
+    225  f06b		       85 2b		      sta	HMCLR
+    226  f06d
+    227  f06d		       a5 94		      lda	P0XPos	; get X coordinate
+    228  f06f		       a2 00		      ldx	#0	; player 0
+    229  f071		       20 e5 f1 	      jsr	SetHorizPos	; set coarse offset
+    230  f074
+    231  f074		       a5 95		      lda	P1XPos	; get X coordinate
+    232  f076		       a2 01		      ldx	#1	; player 1
+    233  f078		       20 e5 f1 	      jsr	SetHorizPos	; set coarse offset
+    234  f07b
+    235  f07b		       85 02		      sta	WSYNC	; sync w/ scanline
+    236  f07d		       85 2a		      sta	HMOVE	; apply fine offsets
+    237  f07f
+    238  f07f		       a9 00		      lda	#0
+    239  f081		       85 98		      sta	P0Idx
+    240  f083		       85 99		      sta	P1Idx
+      0  f085					      TIMER_WAIT
+      1  f085				   .waittimer
+      2  f085		       ad 84 02 	      lda	INTIM
+      3  f088		       d0 fb		      bne	.waittimer
+      4  f08a		       85 02		      sta	WSYNC
+    242  f08c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	 
+    243  f08c		       85 02		      sta	WSYNC
+    244  f08e				   Kernal_Tower
+    245  f08e							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    246  f08e							; Background art for the upper half of the game.
+    247  f08e							; PF is set to Mirror and we just draw. than wait
+    248  f08e							; The BLACK we see is really the PF mirroed.
+    249  f08e							; Color of the towers is controlled by the background.
+    250  f08e							; TODO make this less gross.
+    251  f08e		       a9 00		      lda	#CONS_COLOR_BLACK
+    252  f090		       85 08		      sta	COLUPF
+    253  f092							; These are ALWAYS the same
+    254  f092		       a9 f0		      lda	#%11110000
+    255  f094		       85 0d		      sta	PF0
+    256  f096		       a9 7f		      lda	#%01111111
+    257  f098		       85 0f		      sta	PF2
+    258  f09a
+    259  f09a		       a2 00		      ldx	#$0
+    260  f09c		       a0 48		      ldy	#$48
+    261  f09e		       85 02		      sta	WSYNC
+    262  f0a0				   Kernal_Tower_Draw
+    263  f0a0		       85 02		      sta	WSYNC
+    264  f0a2		       98		      tya
+    265  f0a3		       c9 40		      cmp	#$40
+    266  f0a5		       30 08		      bmi	Kernal_Tower_WaitASecond
+    267  f0a7		       bd 34 f2 	      lda	PF_Kernal_Tower,x+1
+    268  f0aa		       85 0e		      sta	PF1
+    269  f0ac		       4c b3 f0 	      jmp	Kernal_Tower_Draw_Colorize
+    270  f0af				   Kernal_Tower_WaitASecond
+    271  f0af		       a9 f7		      lda	#%11110111
+    272  f0b1		       85 0e		      sta	PF1
+    273  f0b3				   Kernal_Tower_Draw_Colorize
+    274  f0b3		       a9 40		      lda	#CONS_COLOR_RED
+    275  f0b5		       85 09		      sta	COLUBK
+      0  f0b7					      SLEEP	16	;; as we add more code for playfield, edit this.
+      1  f0b7				   .CYCLES    SET	16
+      2  f0b7
+      3  f0b7				  -	      IF	.CYCLES < 2
+      4  f0b7				  -	      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
+      5  f0b7				  -	      ERR
+      6  f0b7					      ENDIF
+      7  f0b7
+      8  f0b7				  -	      IF	.CYCLES & 1
+      9  f0b7				  -	      IFNCONST	NO_ILLEGAL_OPCODES
+     10  f0b7				  -	      nop	0
+     11  f0b7				  -	      ELSE
+     12  f0b7				  -	      bit	VSYNC
+     13  f0b7				  -	      ENDIF
+     14  f0b7				  -.CYCLES    SET	.CYCLES - 3
+     15  f0b7					      ENDIF
+     16  f0b7
+     17  f0b7					      REPEAT	.CYCLES / 2
      18  f0b7		       ea		      nop
      17  f0b7					      REPEND
      18  f0b8		       ea		      nop
@@ -757,120 +753,121 @@
      18  f0bb		       ea		      nop
      17  f0bb					      REPEND
      18  f0bc		       ea		      nop
-     19  f0bd					      REPEND
-    277  f0bd		       a9 8d		      lda	#CONS_COLOR_TEAL
-    278  f0bf		       85 09		      sta	COLUBK
-      0  f0c1					      SLEEP	8
-      1  f0c1				   .CYCLES    SET	8
-      2  f0c1
-      3  f0c1				  -	      IF	.CYCLES < 2
-      4  f0c1				  -	      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
-      5  f0c1				  -	      ERR
-      6  f0c1					      ENDIF
-      7  f0c1
-      8  f0c1				  -	      IF	.CYCLES & 1
-      9  f0c1				  -	      IFNCONST	NO_ILLEGAL_OPCODES
-     10  f0c1				  -	      nop	0
-     11  f0c1				  -	      ELSE
-     12  f0c1				  -	      bit	VSYNC
-     13  f0c1				  -	      ENDIF
-     14  f0c1				  -.CYCLES    SET	.CYCLES - 3
-     15  f0c1					      ENDIF
-     16  f0c1
-     17  f0c1					      REPEAT	.CYCLES / 2
-     18  f0c1		       ea		      nop
-     17  f0c1					      REPEND
-     18  f0c2		       ea		      nop
-     17  f0c2					      REPEND
+     17  f0bc					      REPEND
+     18  f0bd		       ea		      nop
+     17  f0bd					      REPEND
+     18  f0be		       ea		      nop
+     19  f0bf					      REPEND
+    277  f0bf		       a9 8d		      lda	#CONS_COLOR_TEAL
+    278  f0c1		       85 09		      sta	COLUBK
+      0  f0c3					      SLEEP	8
+      1  f0c3				   .CYCLES    SET	8
+      2  f0c3
+      3  f0c3				  -	      IF	.CYCLES < 2
+      4  f0c3				  -	      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
+      5  f0c3				  -	      ERR
+      6  f0c3					      ENDIF
+      7  f0c3
+      8  f0c3				  -	      IF	.CYCLES & 1
+      9  f0c3				  -	      IFNCONST	NO_ILLEGAL_OPCODES
+     10  f0c3				  -	      nop	0
+     11  f0c3				  -	      ELSE
+     12  f0c3				  -	      bit	VSYNC
+     13  f0c3				  -	      ENDIF
+     14  f0c3				  -.CYCLES    SET	.CYCLES - 3
+     15  f0c3					      ENDIF
+     16  f0c3
+     17  f0c3					      REPEAT	.CYCLES / 2
      18  f0c3		       ea		      nop
      17  f0c3					      REPEND
      18  f0c4		       ea		      nop
-     19  f0c5					      REPEND
-    280  f0c5		       a9 c6		      lda	#CONS_COLOR_GREEN
-    281  f0c7		       85 09		      sta	COLUBK
-    282  f0c9		       e8		      inx
-    283  f0ca		       e8		      inx
-    284  f0cb		       e8		      inx
-    285  f0cc		       88		      dey
-    286  f0cd		       d0 cf		      bne	Kernal_Tower_Draw
-    287  f0cf				   Kernal_Tower_End
-    288  f0cf							;TIMER_SETUP 48
-    289  f0cf							;TIMER_WAIT
-    290  f0cf							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-    291  f0cf		       a9 00		      lda	#CONS_COLOR_BLACK
-    292  f0d1		       85 09		      sta	COLUBK
-      0  f0d3					      CLEAR_PLAYFIELD
-      1  f0d3		       a9 00		      lda	#%00000000
-      2  f0d5		       85 0d		      sta	PF0
-      3  f0d7		       85 0e		      sta	PF1
-      4  f0d9		       85 0f		      sta	PF2
-    294  f0db		       a9 82		      lda	#CONS_COLOR_BLUE	; Make this a define
-    295  f0dd		       85 08		      sta	COLUPF
-    296  f0df		       a2 02		      ldx	#2	; this will always do +1 what you want
-    297  f0e1		       86 83		      stx	loopIntI
-    298  f0e3		       a9 f0		      lda	#%11110000
-    299  f0e5				   Kernal_Stairs
-    300  f0e5							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    301  f0e5							; This draws a nice staircase from our tower
-    302  f0e5							; More background mumbo jumbo
-    303  f0e5							; TODO -- allow drawing of player here
-    304  f0e5		       a2 03		      ldx	#3	; this will always do +1 what you want
-    305  f0e7		       86 84		      stx	loopIntJ
-    306  f0e9				   Kernal_Stairs_J
-    307  f0e9		       85 02		      sta	WSYNC
-    308  f0eb		       85 0f		      sta	PF2
-    309  f0ed		       c6 84		      DEC	loopIntJ
-    310  f0ef		       10 f8		      BPL	Kernal_Stairs_J
-    311  f0f1		       4a		      LSR
-    312  f0f2		       4a		      LSR
-    313  f0f3		       c6 83		      DEC	loopIntI
-    314  f0f5		       10 ee		      BPL	Kernal_Stairs
-    315  f0f7		       85 02		      sta	WSYNC
-    316  f0f9
-    317  f0f9							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    318  f0f9				   Kernal_Gap
-    319  f0f9							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    320  f0f9							; This is just a spacing between the tiles
-    321  f0f9							; we setup the presets for the complex stuff below!
-    322  f0f9							; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
-    323  f0f9
-      0  f0f9					      CLEAR_PLAYFIELD
-      1  f0f9		       a9 00		      lda	#%00000000
-      2  f0fb		       85 0d		      sta	PF0
-      3  f0fd		       85 0e		      sta	PF1
-      4  f0ff		       85 0f		      sta	PF2
-    325  f101		       85 02		      sta	WSYNC
-    326  f103		       a9 00		      lda	#CONS_COLOR_BLACK	; May NEVER need to do this, there may be an inverse for the stairs above.
-    327  f105		       85 08		      sta	COLUPF
-    328  f107
-    329  f107
-    330  f107		       a9 70		      lda	#%01110000
-    331  f109		       85 0d		      sta	PF0
-    332  f10b		       a9 04		      lda	#%000000100
-    333  f10d		       85 0e		      sta	PF1
-    334  f10f		       a9 f0		      lda	#%11110000
-    335  f111		       85 0f		      sta	PF2
-    336  f113
-    337  f113		       a9 00		      lda	#0
-    338  f115		       85 82		      sta	LineIdx
-    339  f117		       a9 03		      lda	#3	; this will always do +1 what you want
-    340  f119		       85 83		      sta	loopIntI
-    341  f11b		       a2 00		      ldx	#0	; uused to change address levels
-    342  f11d
-    343  f11d		       85 02		      sta	WSYNC
-    344  f11f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    345  f11f				   Kernal_CombatField
-    346  f11f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    347  f11f		       a5 0f		      lda	CONS_TILE_HEIGHT
-    348  f121		       85 84		      sta	loopIntJ
-    349  f123				   Kernal_CombatField_startOfDraw
-    350  f123		       85 02		      sta	WSYNC
-    351  f125
-    352  f125				   Kernal_CombatField_DrawPlayfied
-    353  f125
-    354  f125		       b5 86		      lda	p0_TileBooleans,x
-    355  f127		       85 09		      sta	COLUBK
-    356  f129
+     17  f0c4					      REPEND
+     18  f0c5		       ea		      nop
+     17  f0c5					      REPEND
+     18  f0c6		       ea		      nop
+     19  f0c7					      REPEND
+    280  f0c7		       a9 c6		      lda	#CONS_COLOR_GREEN
+    281  f0c9		       85 09		      sta	COLUBK
+    282  f0cb		       e8		      inx
+    283  f0cc		       e8		      inx
+    284  f0cd		       e8		      inx
+    285  f0ce		       88		      dey
+    286  f0cf		       d0 cf		      bne	Kernal_Tower_Draw
+    287  f0d1				   Kernal_Tower_End
+    288  f0d1							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    289  f0d1		       a9 00		      lda	#CONS_COLOR_BLACK
+    290  f0d3		       85 09		      sta	COLUBK
+      0  f0d5					      CLEAR_PLAYFIELD
+      1  f0d5		       a9 00		      lda	#%00000000
+      2  f0d7		       85 0d		      sta	PF0
+      3  f0d9		       85 0e		      sta	PF1
+      4  f0db		       85 0f		      sta	PF2
+    292  f0dd		       a9 82		      lda	#CONS_COLOR_BLUE
+    293  f0df		       85 08		      sta	COLUPF
+    294  f0e1		       a2 02		      ldx	#2	; this will always do +1 what you want
+    295  f0e3		       86 83		      stx	loopIntI
+    296  f0e5		       a9 f0		      lda	#%11110000
+    297  f0e7				   Kernal_Stairs
+    298  f0e7							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    299  f0e7							; This draws a nice staircase from our tower
+    300  f0e7							; More background mumbo jumbo
+    301  f0e7							; TODO -- allow drawing of player here?
+    302  f0e7							;	   this would allow cooler view!
+    303  f0e7		       a2 03		      ldx	#3	; this will always do +1 what you want
+    304  f0e9		       86 84		      stx	loopIntJ
+    305  f0eb				   Kernal_Stairs_J
+    306  f0eb		       85 02		      sta	WSYNC
+    307  f0ed		       85 0f		      sta	PF2
+    308  f0ef		       c6 84		      DEC	loopIntJ
+    309  f0f1		       10 f8		      BPL	Kernal_Stairs_J
+    310  f0f3		       4a		      LSR
+    311  f0f4		       4a		      LSR
+    312  f0f5		       c6 83		      DEC	loopIntI
+    313  f0f7		       10 ee		      BPL	Kernal_Stairs
+    314  f0f9		       85 02		      sta	WSYNC
+    315  f0fb
+    316  f0fb							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    317  f0fb				   Kernal_Gap
+    318  f0fb							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    319  f0fb							; This is just a spacing between the tiles
+    320  f0fb							; we setup the presets for the complex stuff below!
+    321  f0fb							; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
+    322  f0fb
+      0  f0fb					      CLEAR_PLAYFIELD
+      1  f0fb		       a9 00		      lda	#%00000000
+      2  f0fd		       85 0d		      sta	PF0
+      3  f0ff		       85 0e		      sta	PF1
+      4  f101		       85 0f		      sta	PF2
+    324  f103		       a9 00		      lda	#CONS_COLOR_BLACK
+    325  f105		       85 08		      sta	COLUPF
+    326  f107
+    327  f107		       a9 70		      lda	#%01110000
+    328  f109		       85 0d		      sta	PF0
+    329  f10b		       a9 04		      lda	#%000000100
+    330  f10d		       85 0e		      sta	PF1
+    331  f10f		       a9 f0		      lda	#%11110000
+    332  f111		       85 0f		      sta	PF2
+    333  f113
+    334  f113		       a9 00		      lda	#0
+    335  f115		       85 82		      sta	LineIdx
+    336  f117		       a9 03		      lda	#3	; this will always do +1 what you want
+    337  f119		       85 83		      sta	loopIntI
+    338  f11b
+    339  f11b		       a2 00		      ldx	#0	; uused to change address levels
+    340  f11d		       85 02		      sta	WSYNC
+    341  f11f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    342  f11f				   Kernal_CombatField
+    343  f11f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    344  f11f		       a5 0f		      lda	CONS_TILE_HEIGHT
+    345  f121		       85 84		      sta	loopIntJ
+    346  f123				   Kernal_CombatField_startOfDraw
+    347  f123		       85 02		      sta	WSYNC
+    348  f125
+    349  f125				   Kernal_CombatField_DrawPlayfied
+    350  f125
+    351  f125		       b5 86		      lda	p0_TileBooleans,x
+    352  f127		       85 09		      sta	COLUBK
+    353  f129
       0  f129					      SLEEP	21
       1  f129				   .CYCLES    SET	21
       2  f129
@@ -907,11 +904,11 @@
      17  f132					      REPEND
      18  f133		       ea		      nop
      19  f134					      REPEND
-    358  f134
-    359  f134		       b5 87		      lda	p0_TileBooleans,x+1
-    360  f136		       85 09		      sta	COLUBK
-    361  f138
-      0  f138					      SLEEP	5	; minimal. mid is red atm.
+    355  f134
+    356  f134		       b5 87		      lda	p0_TileBooleans,x+1
+    357  f136		       85 09		      sta	COLUBK
+    358  f138
+      0  f138					      SLEEP	5
       1  f138				   .CYCLES    SET	5
       2  f138
       3  f138				  -	      IF	.CYCLES < 2
@@ -931,11 +928,10 @@
      17  f13a					      REPEAT	.CYCLES / 2
      18  f13a		       ea		      nop
      19  f13b					      REPEND
-    363  f13b
-    364  f13b
-    365  f13b		       b5 8c		      lda	p1_TileBooleans,x
-    366  f13d		       85 09		      sta	COLUBK
-    367  f13f
+    360  f13b
+    361  f13b		       b5 8c		      lda	p1_TileBooleans,x
+    362  f13d		       85 09		      sta	COLUBK
+    363  f13f
       0  f13f					      SLEEP	10
       1  f13f				   .CYCLES    SET	10
       2  f13f
@@ -964,11 +960,11 @@
      17  f142					      REPEND
      18  f143		       ea		      nop
      19  f144					      REPEND
-    369  f144
-    370  f144
-    371  f144		       b5 8d		      lda	p1_TileBooleans,x+1
-    372  f146		       85 09		      sta	COLUBK
-    373  f148
+    365  f144
+    366  f144
+    367  f144		       b5 8d		      lda	p1_TileBooleans,x+1
+    368  f146		       85 09		      sta	COLUBK
+    369  f148
       0  f148					      SLEEP	4
       1  f148				   .CYCLES    SET	4
       2  f148
@@ -991,12 +987,12 @@
      17  f148					      REPEND
      18  f149		       ea		      nop
      19  f14a					      REPEND
-    375  f14a
-    376  f14a		       a9 00		      lda	#CONS_COLOR_BLACK
-    377  f14c		       85 09		      sta	COLUBK
-    378  f14e
-    379  f14e				   Kernal_CombatField_DrawPlayers
-    380  f14e
+    371  f14a
+    372  f14a		       a9 00		      lda	#CONS_COLOR_BLACK
+    373  f14c		       85 09		      sta	COLUBK
+    374  f14e
+    375  f14e				   Kernal_CombatField_DrawPlayers
+    376  f14e
       0  f14e					      DRAW_PLAYER	P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
       1  f14e				   .YPOS      SET	P0YPos
       2  f14e				   .HEIGHT    SET	CONS_PLAYER_HEIGHT
@@ -1035,18 +1031,18 @@
      16  f178		       a9 00		      lda	#%0000000
      17  f17a				   .end
      18  f17a		       85 1c		      sta	.PLAYER_REG
-    383  f17c
-    384  f17c				   Kernal_CombatField_EndOfDraw
-    385  f17c		       e6 82		      inc	LineIdx
-    386  f17e		       c6 84		      dec	loopIntJ
-    387  f180		       d0 a1		      bne	Kernal_CombatField_startOfDraw
-    388  f182
-    389  f182		       85 02		      sta	WSYNC
-    390  f184		       e8		      inx
-    391  f185		       e8		      inx
-    392  f186		       c6 83		      dec	loopIntI
-    393  f188		       d0 95		      bne	Kernal_CombatField
-    394  f18a
+    379  f17c
+    380  f17c				   Kernal_CombatField_EndOfDraw
+    381  f17c		       e6 82		      inc	LineIdx
+    382  f17e		       c6 84		      dec	loopIntJ
+    383  f180		       d0 a1		      bne	Kernal_CombatField_startOfDraw
+    384  f182
+    385  f182		       85 02		      sta	WSYNC
+    386  f184		       e8		      inx
+    387  f185		       e8		      inx
+    388  f186		       c6 83		      dec	loopIntI
+    389  f188		       d0 95		      bne	Kernal_CombatField
+    390  f18a
       0  f18a					      MOVE_PLAYER	$0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
       1  f18a				   .PLAYEROFFSET SET	$0
       2  f18a				   .LEFT_BOUNDRY SET	CONS_BOUNDRY_P0_LEFT
@@ -1059,7 +1055,7 @@
       9  f192		       95 92		      sta	horizontalBoundries,x
      10  f194		       a9 80		      lda	#.STARTING_JOYSTICK
      11  f196		       a0 00		      ldy	#.PLAYEROFFSET
-     12  f198		       20 f8 f1 	      jsr	MoveJoystick
+     12  f198		       20 f7 f1 	      jsr	MoveJoystick
       0  f19b					      MOVE_PLAYER	$1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
       1  f19b				   .PLAYEROFFSET SET	$1
       2  f19b				   .LEFT_BOUNDRY SET	CONS_BOUNDRY_P1_LEFT
@@ -1072,40 +1068,40 @@
       9  f1a3		       95 92		      sta	horizontalBoundries,x
      10  f1a5		       a9 08		      lda	#.STARTING_JOYSTICK
      11  f1a7		       a0 01		      ldy	#.PLAYEROFFSET
-     12  f1a9		       20 f8 f1 	      jsr	MoveJoystick
-    397  f1ac							; TODO -- this should be a subroutine, and ought to be better handled!
-    398  f1ac				   ChangeSprites
-    399  f1ac		       a5 9d		      lda	P0FrameCounter
-    400  f1ae		       c9 00		      cmp	#0
-    401  f1b0		       10 21		      bpl	EndOfSprites
-    402  f1b2							;TODO -- can probaby handle this faster!
+     12  f1a9		       20 f7 f1 	      jsr	MoveJoystick
+    393  f1ac							; TODO -- this should be a subroutine, and ought to be better handled!
+    394  f1ac				   ChangeSprites
+    395  f1ac		       a5 9d		      lda	P0FrameCounter
+    396  f1ae		       c9 00		      cmp	#0
+    397  f1b0		       10 21		      bpl	EndOfSprites
+    398  f1b2							;TODO -- can probaby handle this faster!
       0  f1b2					      FLIP_BOOL	P0FrameIdx
       1  f1b2				   .MEMADDR   SET	P0FrameIdx
       2  f1b2		       a5 9c		      lda	.MEMADDR
       3  f1b4		       49 01		      EOR	#$01
       4  f1b6		       85 9c		      sta	.MEMADDR
-    404  f1b8		       c9 01		      cmp	#$01
-    405  f1ba		       f0 0b		      beq	DrawFrameB
-    406  f1bc				   DrawFrameA
-    407  f1bc		       a9 59		      lda	#<P0_Frame_0
-    408  f1be		       85 9e		      sta	P0Ptr
-    409  f1c0		       a9 f2		      lda	#>P0_Frame_0
-    410  f1c2		       85 9f		      sta	P0Ptr+1
-    411  f1c4		       4c cf f1 	      jmp	ResetFrameTimer
-    412  f1c7				   DrawFrameB
-    413  f1c7		       a9 67		      lda	#<P0_Frame_1
-    414  f1c9		       85 9e		      sta	P0Ptr
-    415  f1cb		       a9 f2		      lda	#>P0_Frame_1
-    416  f1cd		       85 9f		      sta	P0Ptr+1
-    417  f1cf				   ResetFrameTimer
-    418  f1cf		       a9 03		      lda	#CONS_FRAME_ANIMATION_COUNTER
-    419  f1d1		       85 9d		      sta	P0FrameCounter
-    420  f1d3				   EndOfSprites
-    421  f1d3		       ea		      nop		;DEBUG! til i fill this out
-    422  f1d4							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    423  f1d4							; 29 lines of overscan
-    424  f1d4				   Overscan
-    425  f1d4							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    400  f1b8		       c9 01		      cmp	#$01
+    401  f1ba		       f0 0b		      beq	DrawFrameB
+    402  f1bc				   DrawFrameA
+    403  f1bc		       a9 58		      lda	#<P0_Frame_0
+    404  f1be		       85 9e		      sta	P0Ptr
+    405  f1c0		       a9 f2		      lda	#>P0_Frame_0
+    406  f1c2		       85 9f		      sta	P0Ptr+1
+    407  f1c4		       4c cf f1 	      jmp	ResetFrameTimer
+    408  f1c7				   DrawFrameB
+    409  f1c7		       a9 66		      lda	#<P0_Frame_1
+    410  f1c9		       85 9e		      sta	P0Ptr
+    411  f1cb		       a9 f2		      lda	#>P0_Frame_1
+    412  f1cd		       85 9f		      sta	P0Ptr+1
+    413  f1cf				   ResetFrameTimer
+    414  f1cf		       a9 03		      lda	#CONS_FRAME_ANIMATION_COUNTER
+    415  f1d1		       85 9d		      sta	P0FrameCounter
+    416  f1d3				   EndOfSprites
+    417  f1d3		       ea		      nop		;DEBUG! til i fill this out
+    418  f1d4							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    419  f1d4							; 29 lines of overscan
+    420  f1d4				   Overscan
+    421  f1d4							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       0  f1d4					      TIMER_SETUP	29
       1  f1d4				   .lines     SET	29
       2  f1d4				   .cycles    SET	((.lines * 76) - 13)
@@ -1124,185 +1120,183 @@
       2  f1db		       ad 84 02 	      lda	INTIM
       3  f1de		       d0 fb		      bne	.waittimer
       4  f1e0		       85 02		      sta	WSYNC
-    428  f1e2		       ea		      nop		; for debugging!
-    429  f1e3							; total = 262 lines, go to next frame
-    430  f1e3		       4c 42 f0 	      jmp	NextFrame
-    431  f1e6							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    432  f1e6							; Subroutines
-    433  f1e6							;;;;;;;;;;;;;;;;;;;;;
-    434  f1e6							; SetHorizPos routine
-    435  f1e6							; A = X coordinate
-    436  f1e6							; X = player number (0 or 1)
-    437  f1e6				   SetHorizPos
-    438  f1e6		       85 02		      sta	WSYNC	; start a new line
-    439  f1e8		       38		      sec		; set carry flag
-    440  f1e9				   DivideLoop
-    441  f1e9		       e9 0f		      sbc	#15	; subtract 15
-    442  f1eb		       b0 fc		      bcs	DivideLoop	; branch until negative
-    443  f1ed		       49 07		      eor	#7	; calculate fine offset
-    444  f1ef		       0a		      asl
-    445  f1f0		       0a		      asl
-    446  f1f1		       0a		      asl
-    447  f1f2		       0a		      asl
-    448  f1f3		       95 10		      sta	RESP0,x	; fix coarse position
-    449  f1f5		       95 20		      sta	HMP0,x	; set fine offset
-    450  f1f7		       60		      rts		; return to caller
-    451  f1f8							;;;;;;;;;;;;;;;;;;;;;
-    452  f1f8							; TODO -- cannot handle double motion!
-    453  f1f8							; Reorganize to be Right Left Up Down
-    454  f1f8							; #%10000000 -- P1 Right
-    455  f1f8							; #%01000000 -- P1 left
-    456  f1f8							; #%00100000 -- P1 down
-    457  f1f8							; #%00010000 -- P1 up
-    458  f1f8							; #%00001000 -- P0 Right
-    459  f1f8							; #%00000100 -- P0 left
-    460  f1f8							; #%00000010 -- P0 down
-    461  f1f8							; #%00000001 -- P0 up
-    462  f1f8							; Y gives us our offsets
-    463  f1f8							; A is our initial starting controller
-    464  f1f8				   MoveJoystick
-    465  f1f8							; Start Horizontal
-    466  f1f8		       b6 94		      ldx	P0XPos,y
-    467  f1fa		       2c 80 02 	      bit	SWCHA
-    468  f1fd		       d0 07		      bne	SkipMoveRight
-    469  f1ff		       e4 92		      cpx	horizontalBoundries	;#CONS_BOUNDRY_P0_RIGHT;TODO -- needs to be in a RAM space i guess
-    470  f201		       b0 03		      bcs	SkipMoveRight
-    471  f203		       e8		      inx
-    472  f204		       c6 9d		      dec	P0FrameCounter
-    473  f206				   SkipMoveRight
-    474  f206		       4a		      LSR		;---- read LEFT
-    475  f207		       2c 80 02 	      bit	SWCHA
-    476  f20a		       d0 07		      bne	SkipMoveLeft
-    477  f20c		       e4 93		      cpx	horizontalBoundries+1	;#CONS_BOUNDRY_P0_LEFT
-    478  f20e		       90 03		      bcc	SkipMoveLeft
-    479  f210		       ca		      dex
-    480  f211		       c6 9d		      dec	P0FrameCounter
-    481  f213				   SkipMoveLeft
-    482  f213		       96 94		      stx	P0XPos,y
-    483  f215							; Now Vertical
-    484  f215		       b6 96		      ldx	P0YPos,y
-    485  f217		       4a		      LSR		;--- read Down
-    486  f218		       2c 80 02 	      bit	SWCHA
-    487  f21b		       d0 07		      bne	SkipMoveDown
-    488  f21d		       e0 1d		      cpx	#CONS_BOUNDRY_BOTTOM
-    489  f21f		       f0 03		      beq	SkipMoveDown
-    490  f221		       e8		      inx
-    491  f222		       c6 9d		      dec	P0FrameCounter
-    492  f224				   SkipMoveDown
-    493  f224		       4a		      LSR		;--- read UP
-    494  f225		       2c 80 02 	      bit	SWCHA
-    495  f228		       d0 07		      bne	SkipMoveUp
-    496  f22a		       e0 00		      cpx	#CONS_BOUNDRY_TOP
-    497  f22c		       f0 03		      beq	SkipMoveUp
-    498  f22e		       ca		      dex
-    499  f22f		       c6 9d		      dec	P0FrameCounter
-    500  f231				   SkipMoveUp
-    501  f231		       96 96		      stx	P0YPos,y
-    502  f233		       60		      rts
-    503  f234							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    504  f234							; Data
-    505  f234							;;;;;;;;;;;;;;;;;;;;;
-    506  f234				   PF_Kernal_Tower
-    507  f234		       f0		      .byte.b	#%11110000
-    508  f235		       f7		      .byte.b	#%11110111
-    509  f236		       7f		      .byte.b	#%01111111
-    510  f237
-    511  f237		       f0		      .byte.b	#%11110000
-    512  f238		       f7		      .byte.b	#%11110111
-    513  f239		       7f		      .byte.b	#%01111111
-    514  f23a
-    515  f23a		       f0		      .byte.b	#%11110000
-    516  f23b		       f7		      .byte.b	#%11110111
-    517  f23c		       7f		      .byte.b	#%01111111
-    518  f23d							;----------------------------
-    519  f23d		       f0		      .byte.b	#%11110000
-    520  f23e		       e3		      .byte.b	#%11100011
-    521  f23f		       7f		      .byte.b	#%01111111
-    522  f240
-    523  f240		       f0		      .byte.b	#%11110000
-    524  f241		       e3		      .byte.b	#%11100011
-    525  f242		       7f		      .byte.b	#%01111111
-    526  f243
-    527  f243		       f0		      .byte.b	#%11110000
-    528  f244		       e3		      .byte.b	#%11100011
-    529  f245		       7f		      .byte.b	#%01111111
-    530  f246							;----------------------------
-    531  f246		       f0		      .byte.b	#%11110000
-    532  f247		       c1		      .byte.b	#%11000001
-    533  f248		       7f		      .byte.b	#%01111111
-    534  f249
-    535  f249		       f0		      .byte.b	#%11110000
-    536  f24a		       c1		      .byte.b	#%11000001
-    537  f24b		       7f		      .byte.b	#%01111111
-    538  f24c
-    539  f24c		       f0		      .byte.b	#%11110000
-    540  f24d		       c1		      .byte.b	#%11000001
-    541  f24e		       7f		      .byte.b	#%01111111
-    542  f24f							;----------------------------
-    543  f24f		       f0		      .byte.b	#%11110000
-    544  f250		       80		      .byte.b	#%10000000
-    545  f251		       7f		      .byte.b	#%01111111
-    546  f252
-    547  f252		       f0		      .byte.b	#%11110000
-    548  f253		       80		      .byte.b	#%10000000
-    549  f254		       7f		      .byte.b	#%01111111
-    550  f255
-    551  f255		       f0		      .byte.b	#%11110000
-    552  f256		       80		      .byte.b	#%10000000
-    553  f257		       7f		      .byte.b	#%01111111
-    554  f258							;----------------------------
-    555  f258		       00		      .byte.b	#0
-    556  f259				   P0_Frame_0
-    557  f259							; draw from top to bottom
-    558  f259		       7c		      .byte.b	#%01111100
-    559  f25a		       7e		      .byte.b	#%01111110
-    560  f25b		       68		      .byte.b	#%01101000
-    561  f25c		       7c		      .byte.b	#%01111100
-    562  f25d		       3c		      .byte.b	#%00111100
-    563  f25e		       00		      .byte.b	#%00000000
-    564  f25f		       78		      .byte.b	#%01111000
-    565  f260		       bd		      .byte.b	#%10111101
-    566  f261		       be		      .byte.b	#%10111110
-    567  f262		       5c		      .byte.b	#%01011100
-    568  f263		       78		      .byte.b	#%01111000
-    569  f264		       00		      .byte.b	#%00000000
-    570  f265		       76		      .byte.b	#%01110110
-    571  f266		       00		      .byte.b	#0
-    572  f267				   P0_Frame_1
-    573  f267							; draw from top to bottom
-    574  f267		       7c		      .byte.b	#%01111100
-    575  f268		       7e		      .byte.b	#%01111110
-    576  f269		       68		      .byte.b	#%01101000
-    577  f26a		       7c		      .byte.b	#%01111100
-    578  f26b		       3c		      .byte.b	#%00111100
-    579  f26c		       00		      .byte.b	#%00000000
-    580  f26d		       78		      .byte.b	#%01111000
-    581  f26e		       bd		      .byte.b	#%10111101
-    582  f26f		       be		      .byte.b	#%10111110
-    583  f270		       5c		      .byte.b	#%01011100
-    584  f271		       78		      .byte.b	#%01111000
-    585  f272		       00		      .byte.b	#%00000000
-    586  f273		       3c		      .byte.b	#%00111100
-    587  f274		       00		      .byte.b	#0
-    588  f275				   P1_Frame_0
-    589  f275							; draw from top to bottom
-    590  f275		       3e		      .byte.b	#%00111110	; 0x3E
-    591  f276		       7e		      .byte.b	#%01111110	; 0x7E
-    592  f277		       16		      .byte.b	#%00010110	; 0x16
-    593  f278		       3e		      .byte.b	#%00111110	; 0x3E
-    594  f279		       3c		      .byte.b	#%00111100	; 0x3C
-    595  f27a		       00		      .byte.b	#%00000000	; 0x00
-    596  f27b		       1e		      .byte.b	#%00011110	; 0x1E
-    597  f27c		       bd		      .byte.b	#%10111101	; 0xBD
-    598  f27d		       7d		      .byte.b	#%01111101	; 0x7D
-    599  f27e		       3a		      .byte.b	#%00111010	; 0x3A
-    600  f27f		       1e		      .byte.b	#%00011110	; 0x1E
-    601  f280		       00		      .byte.b	#%00000000	; 0x00
-    602  f281		       6e		      .byte.b	#%01101110	; 0x6E
-    603  f282		       00		      .byte.b	#0
-    604  f283							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    605  f283							; Epilogue
-    606  f283							;;;;;;;;;;;;;;;;;;;;;
-    607  fffc					      org	$fffc
-    608  fffc		       00 f0		      .word.w	Start	; reset vector
-    609  fffe		       00 f0		      .word.w	Start	; BRK vector
+    424  f1e2							; total = 262 lines, go to next frame
+    425  f1e2		       4c 42 f0 	      jmp	NextFrame
+    426  f1e5							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    427  f1e5							; Subroutines
+    428  f1e5							;;;;;;;;;;;;;;;;;;;;;
+    429  f1e5							; SetHorizPos routine
+    430  f1e5							; A = X coordinate
+    431  f1e5							; X = player number (0 or 1)
+    432  f1e5				   SetHorizPos
+    433  f1e5		       85 02		      sta	WSYNC	; start a new line
+    434  f1e7		       38		      sec		; set carry flag
+    435  f1e8				   DivideLoop
+    436  f1e8		       e9 0f		      sbc	#15	; subtract 15
+    437  f1ea		       b0 fc		      bcs	DivideLoop	; branch until negative
+    438  f1ec		       49 07		      eor	#7	; calculate fine offset
+    439  f1ee		       0a		      asl
+    440  f1ef		       0a		      asl
+    441  f1f0		       0a		      asl
+    442  f1f1		       0a		      asl
+    443  f1f2		       95 10		      sta	RESP0,x	; fix coarse position
+    444  f1f4		       95 20		      sta	HMP0,x	; set fine offset
+    445  f1f6		       60		      rts		; return to caller
+    446  f1f7							;;;;;;;;;;;;;;;;;;;;;
+    447  f1f7							; #%10000000 -- P1 Right
+    448  f1f7							; #%01000000 -- P1 left
+    449  f1f7							; #%00100000 -- P1 down
+    450  f1f7							; #%00010000 -- P1 up
+    451  f1f7							; #%00001000 -- P0 Right
+    452  f1f7							; #%00000100 -- P0 left
+    453  f1f7							; #%00000010 -- P0 down
+    454  f1f7							; #%00000001 -- P0 up
+    455  f1f7							; Y gives us our offsets
+    456  f1f7							; A is our initial starting controller
+    457  f1f7				   MoveJoystick
+    458  f1f7							; ----- Start Horizontal
+    459  f1f7		       b6 94		      ldx	P0XPos,y
+    460  f1f9		       2c 80 02 	      bit	SWCHA
+    461  f1fc		       d0 07		      bne	SkipMoveRight
+    462  f1fe		       e4 92		      cpx	horizontalBoundries
+    463  f200		       b0 03		      bcs	SkipMoveRight
+    464  f202		       e8		      inx
+    465  f203		       c6 9d		      dec	P0FrameCounter
+    466  f205				   SkipMoveRight
+    467  f205		       4a		      LSR		;---- read LEFT
+    468  f206		       2c 80 02 	      bit	SWCHA
+    469  f209		       d0 07		      bne	SkipMoveLeft
+    470  f20b		       e4 93		      cpx	horizontalBoundries+1
+    471  f20d		       90 03		      bcc	SkipMoveLeft
+    472  f20f		       ca		      dex
+    473  f210		       c6 9d		      dec	P0FrameCounter
+    474  f212				   SkipMoveLeft
+    475  f212		       96 94		      stx	P0XPos,y
+    476  f214							; ----- Now Vertical
+    477  f214		       b6 96		      ldx	P0YPos,y
+    478  f216		       4a		      LSR		;--- read Down
+    479  f217		       2c 80 02 	      bit	SWCHA
+    480  f21a		       d0 07		      bne	SkipMoveDown
+    481  f21c		       e0 1d		      cpx	#CONS_BOUNDRY_BOTTOM
+    482  f21e		       f0 03		      beq	SkipMoveDown
+    483  f220		       e8		      inx
+    484  f221		       c6 9d		      dec	P0FrameCounter
+    485  f223				   SkipMoveDown
+    486  f223		       4a		      LSR		;--- read UP
+    487  f224		       2c 80 02 	      bit	SWCHA
+    488  f227		       d0 07		      bne	SkipMoveUp
+    489  f229		       e0 00		      cpx	#CONS_BOUNDRY_TOP
+    490  f22b		       f0 03		      beq	SkipMoveUp
+    491  f22d		       ca		      dex
+    492  f22e		       c6 9d		      dec	P0FrameCounter
+    493  f230				   SkipMoveUp
+    494  f230		       96 96		      stx	P0YPos,y
+    495  f232		       60		      rts
+    496  f233							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    497  f233							; Data
+    498  f233							;;;;;;;;;;;;;;;;;;;;;
+    499  f233				   PF_Kernal_Tower
+    500  f233		       f0		      .byte.b	#%11110000
+    501  f234		       f7		      .byte.b	#%11110111
+    502  f235		       7f		      .byte.b	#%01111111
+    503  f236
+    504  f236		       f0		      .byte.b	#%11110000
+    505  f237		       f7		      .byte.b	#%11110111
+    506  f238		       7f		      .byte.b	#%01111111
+    507  f239
+    508  f239		       f0		      .byte.b	#%11110000
+    509  f23a		       f7		      .byte.b	#%11110111
+    510  f23b		       7f		      .byte.b	#%01111111
+    511  f23c							;----------------------------
+    512  f23c		       f0		      .byte.b	#%11110000
+    513  f23d		       e3		      .byte.b	#%11100011
+    514  f23e		       7f		      .byte.b	#%01111111
+    515  f23f
+    516  f23f		       f0		      .byte.b	#%11110000
+    517  f240		       e3		      .byte.b	#%11100011
+    518  f241		       7f		      .byte.b	#%01111111
+    519  f242
+    520  f242		       f0		      .byte.b	#%11110000
+    521  f243		       e3		      .byte.b	#%11100011
+    522  f244		       7f		      .byte.b	#%01111111
+    523  f245							;----------------------------
+    524  f245		       f0		      .byte.b	#%11110000
+    525  f246		       c1		      .byte.b	#%11000001
+    526  f247		       7f		      .byte.b	#%01111111
+    527  f248
+    528  f248		       f0		      .byte.b	#%11110000
+    529  f249		       c1		      .byte.b	#%11000001
+    530  f24a		       7f		      .byte.b	#%01111111
+    531  f24b
+    532  f24b		       f0		      .byte.b	#%11110000
+    533  f24c		       c1		      .byte.b	#%11000001
+    534  f24d		       7f		      .byte.b	#%01111111
+    535  f24e							;----------------------------
+    536  f24e		       f0		      .byte.b	#%11110000
+    537  f24f		       80		      .byte.b	#%10000000
+    538  f250		       7f		      .byte.b	#%01111111
+    539  f251
+    540  f251		       f0		      .byte.b	#%11110000
+    541  f252		       80		      .byte.b	#%10000000
+    542  f253		       7f		      .byte.b	#%01111111
+    543  f254
+    544  f254		       f0		      .byte.b	#%11110000
+    545  f255		       80		      .byte.b	#%10000000
+    546  f256		       7f		      .byte.b	#%01111111
+    547  f257							;----------------------------
+    548  f257		       00		      .byte.b	#0
+    549  f258				   P0_Frame_0
+    550  f258							; draw from top to bottom
+    551  f258		       7c		      .byte.b	#%01111100
+    552  f259		       7e		      .byte.b	#%01111110
+    553  f25a		       68		      .byte.b	#%01101000
+    554  f25b		       7c		      .byte.b	#%01111100
+    555  f25c		       3c		      .byte.b	#%00111100
+    556  f25d		       00		      .byte.b	#%00000000
+    557  f25e		       78		      .byte.b	#%01111000
+    558  f25f		       bd		      .byte.b	#%10111101
+    559  f260		       be		      .byte.b	#%10111110
+    560  f261		       5c		      .byte.b	#%01011100
+    561  f262		       78		      .byte.b	#%01111000
+    562  f263		       00		      .byte.b	#%00000000
+    563  f264		       76		      .byte.b	#%01110110
+    564  f265		       00		      .byte.b	#0
+    565  f266				   P0_Frame_1
+    566  f266							; draw from top to bottom
+    567  f266		       7c		      .byte.b	#%01111100
+    568  f267		       7e		      .byte.b	#%01111110
+    569  f268		       68		      .byte.b	#%01101000
+    570  f269		       7c		      .byte.b	#%01111100
+    571  f26a		       3c		      .byte.b	#%00111100
+    572  f26b		       00		      .byte.b	#%00000000
+    573  f26c		       78		      .byte.b	#%01111000
+    574  f26d		       bd		      .byte.b	#%10111101
+    575  f26e		       be		      .byte.b	#%10111110
+    576  f26f		       5c		      .byte.b	#%01011100
+    577  f270		       78		      .byte.b	#%01111000
+    578  f271		       00		      .byte.b	#%00000000
+    579  f272		       3c		      .byte.b	#%00111100
+    580  f273		       00		      .byte.b	#0
+    581  f274							; -- TODO there is a way to FLIP sprites, and we ought to just do that.
+    582  f274				   P1_Frame_0
+    583  f274							; draw from top to bottom
+    584  f274		       3e		      .byte.b	#%00111110	; 0x3E
+    585  f275		       7e		      .byte.b	#%01111110	; 0x7E
+    586  f276		       16		      .byte.b	#%00010110	; 0x16
+    587  f277		       3e		      .byte.b	#%00111110	; 0x3E
+    588  f278		       3c		      .byte.b	#%00111100	; 0x3C
+    589  f279		       00		      .byte.b	#%00000000	; 0x00
+    590  f27a		       1e		      .byte.b	#%00011110	; 0x1E
+    591  f27b		       bd		      .byte.b	#%10111101	; 0xBD
+    592  f27c		       7d		      .byte.b	#%01111101	; 0x7D
+    593  f27d		       3a		      .byte.b	#%00111010	; 0x3A
+    594  f27e		       1e		      .byte.b	#%00011110	; 0x1E
+    595  f27f		       00		      .byte.b	#%00000000	; 0x00
+    596  f280		       6e		      .byte.b	#%01101110	; 0x6E
+    597  f281		       00		      .byte.b	#0
+    598  f282							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    599  f282							; Epilogue
+    600  f282							;;;;;;;;;;;;;;;;;;;;;
+    601  fffc					      org	$fffc
+    602  fffc		       00 f0		      .word.w	Start	; reset vector
+    603  fffe		       00 f0		      .word.w	Start	; BRK vector

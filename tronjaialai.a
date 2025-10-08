@@ -221,7 +221,6 @@ Kernal_Screen
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; This is where we do player X logic
-; Set Player 1 x position
         lda P0XPos      ; get X coordinate
         ldx #0          ; player 0
         jsr SetHorizPos ; set coarse offset
@@ -232,7 +231,7 @@ Kernal_Movement
         
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
-        
+       
         lda #0
         sta P0Idx
         sta P1Idx
