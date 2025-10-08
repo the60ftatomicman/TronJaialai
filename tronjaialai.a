@@ -19,11 +19,16 @@ CONS_COLOR_TEAL  EQU $8D
 CONS_COLOR_GREEN EQU $C6
 CONS_COLOR_CHART EQU $CA
 
-CONS_BOUNDRY_P0_LEFT  EQU #7
-CONS_BOUNDRY_P0_RIGHT EQU #6
-CONS_BOUNDRY_P1_LEFT  EQU #6
-CONS_BOUNDRY_P1_RIGHT EQU #156
-CONS_BOUNDRY_BOTTOM   EQU #158
+CONS_FRAME_ANIMATION_COUNTER EQU $03
+
+CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
+CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
+CONS_BOUNDRY_P0_LEFT  EQU #23
+CONS_BOUNDRY_P0_RIGHT EQU #64
+CONS_BOUNDRY_P1_LEFT  EQU #108
+CONS_BOUNDRY_P1_RIGHT EQU #148
+CONS_BOUNDRY_TOP      EQU #00
+CONS_BOUNDRY_BOTTOM   EQU #29
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
 ; TODO add to includes
@@ -69,21 +74,39 @@ CONS_BOUNDRY_BOTTOM   EQU #158
 .YPOS        SET {1}
 .HEIGHT      SET {2}
 .PLAYER_REG  SET {3}
-.PLAYER_DATA SET {4}
+.PLAYER_PTR  SET {4}
 .PLAYER_IDX  SET {5}
+	ldy .PLAYER_IDX
         lda .YPOS
         SBC LineIdx
         BPL .skip
         CMP #.HEIGHT
         BMI .skip
-        lda .PLAYER_DATA,x
-        ;lda (.PLAYER_DATA,x)
+        lda (.PLAYER_PTR),y
         inc .PLAYER_IDX
         jmp .end
 .skip
         lda #%0000000
 .end   
         sta .PLAYER_REG
+        ENDM
+;--------
+; MOVE_PLAYER duration
+; Original author: Andy Garber
+; Moves the player
+        MAC MOVE_PLAYER
+.PLAYEROFFSET      SET {1}
+.LEFT_BOUNDRY      SET {2}
+.RIGHT_BOUNDRY     SET {3}
+.STARTING_JOYSTICK SET {4}
+        ldx $01
+        lda #.RIGHT_BOUNDRY
+        sta horizontalBoundries
+        lda #.LEFT_BOUNDRY
+        sta horizontalBoundries,x
+        lda #.STARTING_JOYSTICK
+        ldy #.PLAYEROFFSET
+	jsr MoveJoystick
         ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -97,7 +120,6 @@ DrawCycle       .byte ;-- what cycle of our draws we are on
 DrawPlayer      .byte ;-- what cycle of our draws we are on
                       ; 1: Draw playfield
                       ; 2: Draw Players
-ReadJoystick    .byte
 
 LineIdx         .byte
 
@@ -105,8 +127,9 @@ loopIntI        .byte
 loopIntJ        .byte
 loopIntK        .byte
 
-p0_TileBooleans .DS 6
-p1_TileBooleans .DS 6
+p0_TileBooleans     .DS 6
+p1_TileBooleans     .DS 6
+horizontalBoundries .DS 2
 
 P0XPos          .byte ;-- X coordinates
 P1XPos          .byte
@@ -119,6 +142,9 @@ P1Idx           .byte
 
 P0CIdx          .byte ;-- color index of our sprite data
 P1CIdx          .byte
+
+P0FrameIdx      .byte ;--- animation frame
+P0FrameCounter  .byte ;--- frame counter
 
 P0Ptr		.DS 2
 P1Ptr		.DS 2
@@ -141,24 +167,31 @@ init_PF_Tiles
         sta CTRLPF
         ;lda #CONS_COLOR_BLACK ; for debug
         ;sta p0_TileBooleans+5
-        ;sta p1_TileBooleans+5
+        ;sta p1_TileBooleans+1
 init_Players        
-        lda #CONS_BOUNDRY_P0_LEFT   ; Max Left
+        lda #CONS_BOUNDRY_P0_LEFT+1  ; Max Left
         sta P0XPos
-        lda #CONS_BOUNDRY_P1_RIGHT ; Max right
+        lda #CONS_BOUNDRY_P1_RIGHT-1 ; Max right
         sta P1XPos
-        lda #1
+        lda #CONS_BOUNDRY_TOP+3
         sta P0YPos
         sta P1YPos
+
         lda #0
         sta P0Idx
         sta P1Idx
-        
-        lda #<(P0_Frame_0)
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+
+        lda #<P0_Frame_0
         sta P0Ptr
-        lda #>(P0_Frame_0)
+        lda #>P0_Frame_0
         sta P0Ptr+1
         
+        lda #<P1_Frame_0
+        sta P1Ptr
+        lda #>P0_Frame_0
+        sta P1Ptr+1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
 NextFrame
@@ -180,11 +213,6 @@ Kernal_Screen
         sta COLUP1
         lda #CONS_COLOR_BLACK
         sta COLUBK
-        lda #255
-        sta LineIdx
-        
-        TIMER_WAIT
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;               Main (192 lines)
 ; What is a Kernal?
@@ -193,22 +221,21 @@ Kernal_Screen
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; This is where we do player X logic
-; Set Player 1 x position
         lda P0XPos      ; get X coordinate
         ldx #0          ; player 0
         jsr SetHorizPos ; set coarse offset
-        sta WSYNC       ; sync w/ scanline
-        sta HMOVE       ; apply fine offsets
 
         lda P1XPos      ; get X coordinate
         ldx #1          ; player 1
         jsr SetHorizPos ; set coarse offset
+        
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
-        
+       
         lda #0
         sta P0Idx
         sta P1Idx
+        TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
         sta WSYNC
 Kernal_Tower
@@ -217,51 +244,49 @@ Kernal_Tower
 ; PF is set to Mirror and we just draw. than wait
 ; The BLACK we see is really the PF mirroed.
 ; Color of the towers is controlled by the background.
-        lda #CONS_COLOR_BLACK ; Make this a define
+; TODO make this less gross.
+        lda #CONS_COLOR_BLACK
         sta COLUPF
+	; These are ALWAYS the same
+        lda #%11110000
+        sta PF0  
+        lda #%01111111 
+       	sta PF2
+        
         ldx #$0
         ldy #$48
         sta WSYNC
 Kernal_Tower_Draw
-	;sta WSYNC
-        ldx #$0
-	cpy #$48
-        bmi Kernal_Tower_Draw_Colorize
-        ;        .byte #%11110000
-        ;.byte #%11110111
-        ;.byte #%01111111
-        ;
-        ;
-        inx
-        lda #%11110000;PF_Kernal_Tower,x
-        sta PF0
-        
-        inx
-        lda #%11110111;PF_Kernal_Tower,x
+	sta WSYNC
+        tya
+        cmp #$40
+        bmi Kernal_Tower_WaitASecond
+        lda PF_Kernal_Tower,x+1
         sta PF1
-        
-        inx
-        lda #%01111111;PF_Kernal_Tower,x;#%01111111
-       	sta PF2
-Kernal_Tower_Draw_Colorize        
+        jmp Kernal_Tower_Draw_Colorize
+Kernal_Tower_WaitASecond
+        lda #%11110111
+        sta PF1
+Kernal_Tower_Draw_Colorize   
         lda #CONS_COLOR_RED
         sta COLUBK
         SLEEP 16 ;; as we add more code for playfield, edit this.
         lda #CONS_COLOR_TEAL
         sta COLUBK      
-        SLEEP 10 
+        SLEEP 8 
         lda #CONS_COLOR_GREEN
         sta COLUBK
         inx
+        inx
+        inx
         dey
-        sta WSYNC
         bne Kernal_Tower_Draw
 Kernal_Tower_End
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         lda #CONS_COLOR_BLACK
         sta COLUBK
 	CLEAR_PLAYFIELD
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-        lda #CONS_COLOR_BLUE ; Make this a define
+        lda #CONS_COLOR_BLUE
         sta COLUPF
         ldx #2 ; this will always do +1 what you want
         stx loopIntI
@@ -270,7 +295,8 @@ Kernal_Stairs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; This draws a nice staircase from our tower
 ; More background mumbo jumbo
-; TODO -- allow drawing of player here
+; TODO -- allow drawing of player here?
+;         this would allow cooler view!
         ldx #3 ; this will always do +1 what you want
         stx loopIntJ
 Kernal_Stairs_J
@@ -292,25 +318,22 @@ Kernal_Gap
 ; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
 
         CLEAR_PLAYFIELD
-        sta WSYNC
-        lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
+        lda #CONS_COLOR_BLACK
         sta COLUPF
-
-
         
-        lda #%00010000
+        lda #%01110000
         sta PF0
-        lda #%00001100
+        lda #%000000100
         sta PF1
-        lda #%11100000
+        lda #%11110000
         sta PF2
         
         lda #0
         sta LineIdx
         lda #3 ; this will always do +1 what you want
         sta loopIntI
-        ldy #0 ; uused to change address levels
         
+        ldx #0 ; uused to change address levels
         sta WSYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_CombatField
@@ -322,49 +345,72 @@ Kernal_CombatField_startOfDraw
         
 Kernal_CombatField_DrawPlayfied
 
-        lda p0_TileBooleans,y
+        lda p0_TileBooleans,x
         sta COLUBK 
         
-        SLEEP 20
+        SLEEP 21
         
-        lda p0_TileBooleans,y+1
+        lda p0_TileBooleans,x+1
         sta COLUBK
         
-        SLEEP 5 ; minimal. mid is red atm.
+        SLEEP 5 
         
-
-        lda p1_TileBooleans,y
+        lda p1_TileBooleans,x
 	sta COLUBK
         
         SLEEP 10
         
 
-       	lda p1_TileBooleans,y+1
+       	lda p1_TileBooleans,x+1
         sta COLUBK
 
-	SLEEP 7
+	SLEEP 4
 
         lda #CONS_COLOR_BLACK
 	sta COLUBK
         
 Kernal_CombatField_DrawPlayers
-	ldx P0Idx
-	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0_Frame_0,P0Idx
-        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
-        ldx P1Idx
-	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1_Frame_0,P1Idx
+	
+        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1Ptr,P1Idx
+        
 Kernal_CombatField_EndOfDraw
         inc LineIdx
         dec loopIntJ
         bne Kernal_CombatField_startOfDraw
         
 	sta WSYNC
-        iny
-        iny
+        inx
+        inx
         dec loopIntI
         bne Kernal_CombatField
-        
-	jsr MoveJoystick
+
+        MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
+        MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
+; TODO -- this should be a subroutine, and ought to be better handled!
+ChangeSprites
+        lda P0FrameCounter
+        cmp #0
+        bpl EndOfSprites
+        ;TODO -- can probaby handle this faster!
+        FLIP_BOOL P0FrameIdx
+        cmp #$01
+        beq DrawFrameB
+DrawFrameA
+        lda #<P0_Frame_0
+        sta P0Ptr
+        lda #>P0_Frame_0
+        sta P0Ptr+1
+        jmp ResetFrameTimer
+DrawFrameB
+        lda #<P0_Frame_1
+        sta P0Ptr
+        lda #>P0_Frame_1
+        sta P0Ptr+1
+ResetFrameTimer
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+EndOfSprites
         nop ;DEBUG! til i fill this out
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -372,7 +418,6 @@ Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         TIMER_SETUP 29
         TIMER_WAIT
-        nop ; for debugging!
         ; total = 262 lines, go to next frame
         jmp NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -396,55 +441,108 @@ DivideLoop
         sta HMP0,x       ; set fine offset
         rts              ; return to caller
 ;;;;;;;;;;;;;;;;;;;;;
+; #%10000000 -- P1 Right
+; #%01000000 -- P1 left
+; #%00100000 -- P1 down
+; #%00010000 -- P1 up
+; #%00001000 -- P0 Right
+; #%00000100 -- P0 left
+; #%00000010 -- P0 down
+; #%00000001 -- P0 up
+; Y gives us our offsets
+; A is our initial starting controller
 MoveJoystick
-; Move vertically
-; (up and down are actually reversed since ypos starts at bottom)
-	ldx P0YPos
-	lda #%00100000	;Up?
+; ----- Start Horizontal
+        ldx P0XPos,y
 	bit SWCHA
-	bne SkipMoveUp
-        cpx #2
-        bcc SkipMoveUp
-        dex
-        ;dex
-SkipMoveUp
-	lda #%00010000	;Down?
-	bit SWCHA 
-	bne SkipMoveDown
-        cpx #183
-        bcs SkipMoveDown
-        inx
-        ;inx
-SkipMoveDown
-	stx P0YPos
-; Move horizontally
-        ldx P0XPos
-	lda #%01000000	;Left?
-	bit SWCHA
-	bne SkipMoveLeft
-        cpx #16
-        bcc SkipMoveLeft
-        dex
-SkipMoveLeft
-	lda #%10000000	;Right?
-	bit SWCHA 
 	bne SkipMoveRight
-        cpx #153
+        cpx horizontalBoundries
         bcs SkipMoveRight
         inx
+        dec P0FrameCounter
 SkipMoveRight
-	stx P0XPos
-	rts
+	LSR ;---- read LEFT
+	bit SWCHA 
+	bne SkipMoveLeft
+        cpx horizontalBoundries+1
+        bcc SkipMoveLeft
+        dex
+        dec P0FrameCounter
+SkipMoveLeft
+	stx P0XPos,y
+; ----- Now Vertical
+        ldx P0YPos,y
+        LSR ;--- read Down
+        bit SWCHA
+	bne SkipMoveDown
+        cpx #CONS_BOUNDRY_BOTTOM
+        beq SkipMoveDown
+        inx
+        dec P0FrameCounter
+SkipMoveDown
+        LSR ;--- read UP
+	bit SWCHA
+	bne SkipMoveUp
+        cpx #CONS_BOUNDRY_TOP
+        beq SkipMoveUp
+        dex
+        dec P0FrameCounter
+SkipMoveUp
+        stx P0YPos,y
+        rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
-
-	; --- line 3
         .byte #%11110000
         .byte #%11110111
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11110111
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11100011
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111  
+   
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111    
+
+        .byte #%11110000
+        .byte #%11000001
+        .byte #%01111111 
+;----------------------------
+        .byte #%11110000
+        .byte #%10000000
         .byte #%01111111
-        
+
+        .byte #%11110000
+        .byte #%10000000
+        .byte #%01111111
+
+        .byte #%11110000
+        .byte #%10000000
+        .byte #%01111111
+;----------------------------
+        .byte #0
 P0_Frame_0
         ; draw from top to bottom
         .byte #%01111100
@@ -460,7 +558,24 @@ P0_Frame_0
         .byte #%01111000
         .byte #%00000000
         .byte #%01110110
-        .byte #0 
+        .byte #0
+P0_Frame_1
+        ; draw from top to bottom
+        .byte #%01111100
+        .byte #%01111110
+        .byte #%01101000
+        .byte #%01111100
+        .byte #%00111100
+        .byte #%00000000
+        .byte #%01111000
+        .byte #%10111101
+        .byte #%10111110
+        .byte #%01011100
+        .byte #%01111000
+        .byte #%00000000
+        .byte #%00111100
+        .byte #0
+; -- TODO there is a way to FLIP sprites, and we ought to just do that.
 P1_Frame_0
         ; draw from top to bottom
         .byte #%00111110   ; 0x3E

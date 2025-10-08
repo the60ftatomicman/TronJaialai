@@ -1,0 +1,192 @@
+--- Symbol List (sorted by symbol)
+0.FREE_BYTES             0000                  
+1.CLEAR_STACK            f006              (R )
+10.CYCLES                0012              (R )
+11.CYCLES                0002              (R )
+12.CYCLES                000a              (R )
+13.CYCLES                0004              (R )
+14.end                   f163              (R )
+14.HEIGHT                00f2              (R )
+14.PLAYER_IDX            0098              (R )
+14.PLAYER_PTR            009e              (R )
+14.PLAYER_REG            001b              (R )
+14.skip                  f161              (R )
+14.YPOS                  0096              (R )
+15.end                   f17a              (R )
+15.HEIGHT                00f2              (R )
+15.PLAYER_IDX            0099              (R )
+15.PLAYER_PTR            00a0              (R )
+15.PLAYER_REG            001c              (R )
+15.skip                  f178              (R )
+15.YPOS                  0097              (R )
+16.LEFT_BOUNDRY          0017              (R )
+16.PLAYEROFFSET          0000              (R )
+16.RIGHT_BOUNDRY         0040              (R )
+16.STARTING_JOYSTICK     0080              (R )
+17.LEFT_BOUNDRY          006c              (R )
+17.PLAYEROFFSET          0001              (R )
+17.RIGHT_BOUNDRY         0094              (R )
+17.STARTING_JOYSTICK     0008              (R )
+18.MEMADDR               009c              (R )
+19.cycles                088f              (R )
+19.lines                 001d              (R )
+2.VSLP1                  f049              (R )
+20.waittimer             f1db              (R )
+3.cycles                 0aef              (R )
+3.lines                  0025              (R )
+5.waittimer              f085              (R )
+6.CYCLES                 0010              (R )
+7.CYCLES                 0008              (R )
+AUDC0                    0015                  
+AUDC1                    0016                  
+AUDF0                    0017                  
+AUDF1                    0018                  
+AUDV0                    0019                  
+AUDV1                    001a                  
+ChangeSprites            f1ac                  
+COLUBK                   0009              (R )
+COLUP0                   0006              (R )
+COLUP1                   0007              (R )
+COLUPF                   0008              (R )
+CONS_BOUNDRY_BOTTOM      001d              (R )
+CONS_BOUNDRY_P0_LEFT     0017              (R )
+CONS_BOUNDRY_P0_RIGHT    0040              (R )
+CONS_BOUNDRY_P1_LEFT     006c              (R )
+CONS_BOUNDRY_P1_RIGHT    0094              (R )
+CONS_BOUNDRY_TOP         0000              (R )
+CONS_COLOR_BLACK         0000              (R )
+CONS_COLOR_BLUE          0082              (R )
+CONS_COLOR_CHART         00ca              (R )
+CONS_COLOR_GREEN         00c6              (R )
+CONS_COLOR_PINK          004a              (R )
+CONS_COLOR_RED           0040              (R )
+CONS_COLOR_TEAL          008d              (R )
+CONS_FRAME_ANIMATION_COUNTER 0003              (R )
+CONS_P0_STARTING_JOYSTICK_BYTE 0080              (R )
+CONS_P1_STARTING_JOYSTICK_BYTE 0008              (R )
+CONS_PLAYER_HEIGHT       00f2              (R )
+CONS_TILE_HEIGHT         000f              (R )
+CONS_TILE_HIDE           0000                  
+CTRLPF                   000a              (R )
+CXBLPF                   0006                  
+CXCLR                    002c                  
+CXM0FB                   0004                  
+CXM0P                    0000                  
+CXM1FB                   0005                  
+CXM1P                    0001                  
+CXP0FB                   0002                  
+CXP1FB                   0003                  
+CXPPMM                   0007                  
+DivideLoop               f1e8              (R )
+DrawCycle                0080                  
+DrawFrameA               f1bc                  
+DrawFrameB               f1c7              (R )
+DrawPlayer               0081                  
+ENABL                    001f                  
+ENAM0                    001d                  
+ENAM1                    001e                  
+EndOfSprites             f1d3              (R )
+GRP0                     001b              (R )
+GRP1                     001c              (R )
+HMBL                     0024                  
+HMCLR                    002b              (R )
+HMM0                     0022                  
+HMM1                     0023                  
+HMOVE                    002a              (R )
+HMP0                     0020              (R )
+HMP1                     0021                  
+horizontalBoundries      0092              (R )
+init_PF_Tiles            f00d              (R )
+init_Players             f01a                  
+INPT0                    0008                  
+INPT1                    0009                  
+INPT2                    000a                  
+INPT3                    000b                  
+INPT4                    000c                  
+INPT5                    000d                  
+INTIM                    0284              (R )
+Kernal_CombatField       f11f              (R )
+Kernal_CombatField_DrawPlayers f14e                  
+Kernal_CombatField_DrawPlayfied f125                  
+Kernal_CombatField_EndOfDraw f17c                  
+Kernal_CombatField_startOfDraw f123              (R )
+Kernal_Gap               f0fb                  
+Kernal_Movement          f06b                  
+Kernal_PreScreen         f047                  
+Kernal_Screen            f057                  
+Kernal_Stairs            f0e7              (R )
+Kernal_Stairs_J          f0eb              (R )
+Kernal_Tower             f08e                  
+Kernal_Tower_Draw        f0a0              (R )
+Kernal_Tower_Draw_Colorize f0b3              (R )
+Kernal_Tower_End         f0d1                  
+Kernal_Tower_WaitASecond f0af              (R )
+LineIdx                  0082              (R )
+loopIntI                 0083              (R )
+loopIntJ                 0084              (R )
+loopIntK                 0085                  
+MoveJoystick             f1f7              (R )
+NextFrame                f042              (R )
+NO_ILLEGAL_OPCODES       0000 ????         (R )
+NUSIZ0                   0004                  
+NUSIZ1                   0005                  
+Overscan                 f1d4                  
+P0_Frame_0               f258              (R )
+P0_Frame_1               f266              (R )
+p0_TileBooleans          0086              (R )
+P0CIdx                   009a                  
+P0FrameCounter           009d              (R )
+P0FrameIdx               009c              (R )
+P0Idx                    0098              (R )
+P0Ptr                    009e              (R )
+P0XPos                   0094              (R )
+P0YPos                   0096              (R )
+P1_Frame_0               f274              (R )
+p1_TileBooleans          008c              (R )
+P1CIdx                   009b                  
+P1Idx                    0099              (R )
+P1Ptr                    00a0              (R )
+P1XPos                   0095              (R )
+P1YPos                   0097              (R )
+PF0                      000d              (R )
+PF1                      000e              (R )
+PF2                      000f              (R )
+PF_Kernal_Tower          f233              (R )
+REFP0                    000b                  
+REFP1                    000c                  
+RESBL                    0014                  
+ResetFrameTimer          f1cf              (R )
+RESM0                    0012                  
+RESM1                    0013                  
+RESMP0                   0028                  
+RESMP1                   0029                  
+RESP0                    0010              (R )
+RESP1                    0011                  
+RSYNC                    0003                  
+SetHorizPos              f1e5              (R )
+SkipMoveDown             f223              (R )
+SkipMoveLeft             f212              (R )
+SkipMoveRight            f205              (R )
+SkipMoveUp               f230              (R )
+Start                    f000              (R )
+SWACNT                   0281                  
+SWBCNT                   0283                  
+SWCHA                    0280              (R )
+SWCHB                    0282              (R )
+T1024T                   0297                  
+TIA_BASE_ADDRESS         0000              (R )
+TIA_BASE_READ_ADDRESS    0000              (R )
+TIA_BASE_WRITE_ADDRESS   0000              (R )
+TIM1T                    0294                  
+TIM64T                   0296              (R )
+TIM8T                    0295                  
+TIMINT                   0285                  
+VBLANK                   0001                  
+VDELBL                   0027                  
+VDELP0                   0025                  
+VDELP1                   0026                  
+VERSION_MACRO            006a                  
+VERSION_VCS              0069                  
+VSYNC                    0000              (R )
+WSYNC                    0002              (R )
+--- End of Symbol List.
