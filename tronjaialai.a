@@ -21,10 +21,12 @@ CONS_COLOR_CHART EQU $CA
 
 CONS_FRAME_ANIMATION_COUNTER EQU $03
 
+CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
+CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
 CONS_BOUNDRY_P0_LEFT  EQU #23
 CONS_BOUNDRY_P0_RIGHT EQU #64
-CONS_BOUNDRY_P1_LEFT  EQU #98
-CONS_BOUNDRY_P1_RIGHT EQU #146
+CONS_BOUNDRY_P1_LEFT  EQU #108
+CONS_BOUNDRY_P1_RIGHT EQU #148
 CONS_BOUNDRY_TOP      EQU #00
 CONS_BOUNDRY_BOTTOM   EQU #29
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -88,6 +90,24 @@ CONS_BOUNDRY_BOTTOM   EQU #29
 .end   
         sta .PLAYER_REG
         ENDM
+;--------
+; MOVE_PLAYER duration
+; Original author: Andy Garber
+; Moves the player
+        MAC MOVE_PLAYER
+.PLAYEROFFSET      SET {1}
+.LEFT_BOUNDRY      SET {2}
+.RIGHT_BOUNDRY     SET {3}
+.STARTING_JOYSTICK SET {4}
+        ldx $01
+        lda #.RIGHT_BOUNDRY
+        sta horizontalBoundries
+        lda #.LEFT_BOUNDRY
+        sta horizontalBoundries,x
+        lda #.STARTING_JOYSTICK
+        ldy #.PLAYEROFFSET
+	jsr MoveJoystick
+        ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Variables segment
@@ -100,7 +120,6 @@ DrawCycle       .byte ;-- what cycle of our draws we are on
 DrawPlayer      .byte ;-- what cycle of our draws we are on
                       ; 1: Draw playfield
                       ; 2: Draw Players
-ReadJoystick    .byte
 
 LineIdx         .byte
 
@@ -108,8 +127,9 @@ loopIntI        .byte
 loopIntJ        .byte
 loopIntK        .byte
 
-p0_TileBooleans .DS 6
-p1_TileBooleans .DS 6
+p0_TileBooleans     .DS 6
+p1_TileBooleans     .DS 6
+horizontalBoundries .DS 2
 
 P0XPos          .byte ;-- X coordinates
 P1XPos          .byte
@@ -149,27 +169,28 @@ init_PF_Tiles
         ;sta p0_TileBooleans+5
         ;sta p1_TileBooleans+1
 init_Players        
-        lda #CONS_BOUNDRY_P0_LEFT  ; Max Left
+        lda #CONS_BOUNDRY_P0_LEFT+1  ; Max Left
         sta P0XPos
-        lda #CONS_BOUNDRY_P1_RIGHT ; Max right
+        lda #CONS_BOUNDRY_P1_RIGHT-1 ; Max right
         sta P1XPos
         lda #CONS_BOUNDRY_TOP+3
         sta P0YPos
         sta P1YPos
+
         lda #0
         sta P0Idx
         sta P1Idx
         lda #CONS_FRAME_ANIMATION_COUNTER
         sta P0FrameCounter
 
-        lda #<P0_Frame_0; I flipped this
+        lda #<P0_Frame_0
         sta P0Ptr
-        lda #>P0_Frame_0; I flipped this
+        lda #>P0_Frame_0
         sta P0Ptr+1
         
-        lda #<P1_Frame_0; I flipped this
+        lda #<P1_Frame_0
         sta P1Ptr
-        lda #>P0_Frame_0; I flipped this
+        lda #>P0_Frame_0
         sta P1Ptr+1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Main
@@ -192,11 +213,6 @@ Kernal_Screen
         sta COLUP1
         lda #CONS_COLOR_BLACK
         sta COLUBK
-        lda #255
-        sta LineIdx
-        
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;               Main (192 lines)
 ; What is a Kernal?
@@ -230,7 +246,7 @@ Kernal_Tower
 ; The BLACK we see is really the PF mirroed.
 ; Color of the towers is controlled by the background.
 ; TODO make this less gross.
-        lda #CONS_COLOR_BLACK ; Make this a define
+        lda #CONS_COLOR_BLACK
         sta COLUPF
 	; These are ALWAYS the same
         lda #%11110000
@@ -267,13 +283,11 @@ Kernal_Tower_Draw_Colorize
         dey
         bne Kernal_Tower_Draw
 Kernal_Tower_End
-	;TIMER_SETUP 48
-        ;TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         lda #CONS_COLOR_BLACK
         sta COLUBK
 	CLEAR_PLAYFIELD
-        lda #CONS_COLOR_BLUE ; Make this a define
+        lda #CONS_COLOR_BLUE
         sta COLUPF
         ldx #2 ; this will always do +1 what you want
         stx loopIntI
@@ -282,7 +296,8 @@ Kernal_Stairs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; This draws a nice staircase from our tower
 ; More background mumbo jumbo
-; TODO -- allow drawing of player here
+; TODO -- allow drawing of player here?
+;         this would allow cooler view!
         ldx #3 ; this will always do +1 what you want
         stx loopIntJ
 Kernal_Stairs_J
@@ -304,10 +319,8 @@ Kernal_Gap
 ; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
 
         CLEAR_PLAYFIELD
-        sta WSYNC
-        lda #CONS_COLOR_BLACK ; May NEVER need to do this, there may be an inverse for the stairs above.
+        lda #CONS_COLOR_BLACK
         sta COLUPF
-
         
         lda #%01110000
         sta PF0
@@ -320,8 +333,8 @@ Kernal_Gap
         sta LineIdx
         lda #3 ; this will always do +1 what you want
         sta loopIntI
-        ldx #0 ; uused to change address levels
         
+        ldx #0 ; uused to change address levels
         sta WSYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_CombatField
@@ -341,9 +354,8 @@ Kernal_CombatField_DrawPlayfied
         lda p0_TileBooleans,x+1
         sta COLUBK
         
-        SLEEP 5 ; minimal. mid is red atm.
+        SLEEP 5 
         
-
         lda p1_TileBooleans,x
 	sta COLUBK
         
@@ -373,8 +385,33 @@ Kernal_CombatField_EndOfDraw
         inx
         dec loopIntI
         bne Kernal_CombatField
-        
-	jsr MoveJoystick
+
+        MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
+        MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
+; TODO -- this should be a subroutine, and ought to be better handled!
+ChangeSprites
+        lda P0FrameCounter
+        cmp #0
+        bpl EndOfSprites
+        ;TODO -- can probaby handle this faster!
+        FLIP_BOOL P0FrameIdx
+        cmp #$01
+        beq DrawFrameB
+DrawFrameA
+        lda #<P0_Frame_0
+        sta P0Ptr
+        lda #>P0_Frame_0
+        sta P0Ptr+1
+        jmp ResetFrameTimer
+DrawFrameB
+        lda #<P0_Frame_1
+        sta P0Ptr
+        lda #>P0_Frame_1
+        sta P0Ptr+1
+ResetFrameTimer
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+EndOfSprites
         nop ;DEBUG! til i fill this out
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -382,7 +419,6 @@ Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         TIMER_SETUP 29
         TIMER_WAIT
-        nop ; for debugging!
         ; total = 262 lines, go to next frame
         jmp NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -406,68 +442,55 @@ DivideLoop
         sta HMP0,x       ; set fine offset
         rts              ; return to caller
 ;;;;;;;;;;;;;;;;;;;;;
-; TODO -- cannot handle double motion!
+; #%10000000 -- P1 Right
+; #%01000000 -- P1 left
+; #%00100000 -- P1 down
+; #%00010000 -- P1 up
+; #%00001000 -- P0 Right
+; #%00000100 -- P0 left
+; #%00000010 -- P0 down
+; #%00000001 -- P0 up
+; Y gives us our offsets
+; A is our initial starting controller
 MoveJoystick
-	ldx P0YPos
-	lda #%00100000	;Down?
+; ----- Start Horizontal
+        ldx P0XPos,y
 	bit SWCHA
+	bne SkipMoveRight
+        cpx horizontalBoundries
+        bcs SkipMoveRight
+        inx
+        dec P0FrameCounter
+SkipMoveRight
+	LSR ;---- read LEFT
+	bit SWCHA 
+	bne SkipMoveLeft
+        cpx horizontalBoundries+1
+        bcc SkipMoveLeft
+        dex
+        dec P0FrameCounter
+SkipMoveLeft
+	stx P0XPos,y
+; ----- Now Vertical
+        ldx P0YPos,y
+        LSR ;--- read Down
+        bit SWCHA
 	bne SkipMoveDown
         cpx #CONS_BOUNDRY_BOTTOM
-        bcs SkipMoveDown
+        beq SkipMoveDown
         inx
         dec P0FrameCounter
 SkipMoveDown
-	lda #%00010000	;Up
-	bit SWCHA 
+        LSR ;--- read UP
+	bit SWCHA
 	bne SkipMoveUp
         cpx #CONS_BOUNDRY_TOP
         beq SkipMoveUp
         dex
         dec P0FrameCounter
 SkipMoveUp
-	stx P0YPos
-; Move horizontally
-        ldx P0XPos
-	lda #%01000000	;Left?
-	bit SWCHA
-	bne SkipMoveLeft
-        cpx #CONS_BOUNDRY_P0_LEFT
-        bcc SkipMoveLeft
-        dex
-        dec P0FrameCounter
-SkipMoveLeft
-	lda #%10000000	;Right?
-	bit SWCHA 
-	bne SkipMoveRight
-        cpx #CONS_BOUNDRY_P0_RIGHT
-        bcs SkipMoveRight
-        inx
-        dec P0FrameCounter
-SkipMoveRight
-	stx P0XPos
-        lda P0FrameCounter
-        cmp #0
-        bpl joystickEnd
-        ;TODO -- can probaby handle this faster!
-        FLIP_BOOL P0FrameIdx
-        cmp #$01
-        beq DrawFrameB
-DrawFrameA
-        lda #<P0_Frame_0
-        sta P0Ptr
-        lda #>P0_Frame_0
-        sta P0Ptr+1
-        jmp ResetFrameTimer
-DrawFrameB
-        lda #<P0_Frame_1
-        sta P0Ptr
-        lda #>P0_Frame_1
-        sta P0Ptr+1
-ResetFrameTimer
-        lda #CONS_FRAME_ANIMATION_COUNTER
-        sta P0FrameCounter
-joystickEnd
-	rts
+        stx P0YPos,y
+        rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;
@@ -553,6 +576,7 @@ P0_Frame_1
         .byte #%00000000
         .byte #%00111100
         .byte #0
+; -- TODO there is a way to FLIP sprites, and we ought to just do that.
 P1_Frame_0
         ; draw from top to bottom
         .byte #%00111110   ; 0x3E
