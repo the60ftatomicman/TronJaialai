@@ -65,7 +65,23 @@ CONS_BOUNDRY_BOTTOM   EQU #29
         sta PF1
         sta PF2
         ENDM
-        
+;--------
+; DRAW_MISSLE 
+; Original author: Andy Garber
+; Draws a missle based on a byte containing it's Y axis.
+        MAC DRAW_MISSLE
+.YPOS        SET {1}
+.MISSLE_REG  SET {2}
+        lda .YPOS
+        SBC LineIdx ; TODO --- this is going to have be be at EVERY location.....
+        BNE .skip
+        lda #%0000010
+        jmp .end
+.skip
+        lda #%0000000
+.end   
+        sta .MISSLE_REG
+        ENDM        
 ;--------
 ; DRAW_PLAYER duration
 ; Original author: Andy Garber
@@ -137,6 +153,8 @@ P1XPos          .byte
 P0YPos          .byte ;-- Y coordinate (offset from the start of the playfield)
 P1YPos          .byte
 
+P0MssleYPos     .byte
+
 P0Idx           .byte ;-- data index of our sprite data
 P1Idx           .byte
 
@@ -176,6 +194,7 @@ init_Players
         lda #CONS_BOUNDRY_TOP+3
         sta P0YPos
         sta P1YPos
+        sta P0MssleYPos
 
         lda #0
         sta P0Idx
@@ -221,6 +240,7 @@ Kernal_Screen
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; This is where we do player X logic
+; Set Player 1 x position
         lda P0XPos      ; get X coordinate
         ldx #0          ; player 0
         jsr SetHorizPos ; set coarse offset
@@ -231,7 +251,7 @@ Kernal_Movement
         
         sta WSYNC       ; sync w/ scanline
         sta HMOVE       ; apply fine offsets
-       
+        
         lda #0
         sta P0Idx
         sta P1Idx
@@ -373,6 +393,7 @@ Kernal_CombatField_DrawPlayers
 	
         DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
 	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1Ptr,P1Idx
+        DRAW_MISSLE P0MssleYPos, ENAM0
         
 Kernal_CombatField_EndOfDraw
         inc LineIdx
@@ -575,7 +596,6 @@ P0_Frame_1
         .byte #%00000000
         .byte #%00111100
         .byte #0
-; -- TODO there is a way to FLIP sprites, and we ought to just do that.
 P1_Frame_0
         ; draw from top to bottom
         .byte #%00111110   ; 0x3E
