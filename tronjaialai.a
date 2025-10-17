@@ -154,6 +154,7 @@ P0YPos          .byte ;-- Y coordinate (offset from the start of the playfield)
 P1YPos          .byte
 
 P0MssleYPos     .byte
+P1MssleYPos     .byte
 
 P0Idx           .byte ;-- data index of our sprite data
 P1Idx           .byte
@@ -195,6 +196,7 @@ init_Players
         sta P0YPos
         sta P1YPos
         sta P0MssleYPos
+        sta P1MssleYPos
 
         lda #0
         sta P0Idx
@@ -362,8 +364,9 @@ Kernal_CombatField
         sta loopIntJ
 Kernal_CombatField_startOfDraw
         sta WSYNC
-        
+
 Kernal_CombatField_DrawPlayfied
+
 
         lda p0_TileBooleans,x
         sta COLUBK 
@@ -390,11 +393,10 @@ Kernal_CombatField_DrawPlayfied
 	sta COLUBK
         
 Kernal_CombatField_DrawPlayers
-	
         DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
 	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1Ptr,P1Idx
         DRAW_MISSLE P0MssleYPos, ENAM0
-        
+        ;DRAW_MISSLE P1MssleYPos, ENAM1
 Kernal_CombatField_EndOfDraw
         inc LineIdx
         dec loopIntJ

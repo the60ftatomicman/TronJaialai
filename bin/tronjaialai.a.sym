@@ -5,40 +5,32 @@
 11.CYCLES                0002              (R )
 12.CYCLES                000a              (R )
 13.CYCLES                0004              (R )
-14.end                   f163              (R )
-14.HEIGHT                00f2              (R )
-14.PLAYER_IDX            0099              (R )
-14.PLAYER_PTR            009f              (R )
+14.end                   f16b              (R )
+14.PLAYER_PTR            00a3              (R )
 14.PLAYER_REG            001b              (R )
-14.skip                  f161              (R )
-14.YPOS                  0096              (R )
-15.end                   f17a              (R )
-15.HEIGHT                00f2              (R )
-15.PLAYER_IDX            009a              (R )
-15.PLAYER_PTR            00a1              (R )
+14.skip                  f169              (R )
+14.YPOS                  0097              (R )
+15.end                   f182              (R )
+15.PLAYER_PTR            00a5              (R )
 15.PLAYER_REG            001c              (R )
-15.skip                  f178              (R )
-15.YPOS                  0097              (R )
-16.end                   f189              (R )
-16.MISSLE_REG            001d              (R )
-16.skip                  f187              (R )
-16.YPOS                  0098              (R )
-17.LEFT_BOUNDRY          0017              (R )
-17.PLAYEROFFSET          0000              (R )
-17.RIGHT_BOUNDRY         0040              (R )
-17.STARTING_JOYSTICK     0080              (R )
-18.LEFT_BOUNDRY          006c              (R )
-18.PLAYEROFFSET          0001              (R )
-18.RIGHT_BOUNDRY         0094              (R )
-18.STARTING_JOYSTICK     0008              (R )
-19.MEMADDR               009d              (R )
-2.VSLP1                  f04b              (R )
-20.cycles                088f              (R )
-20.lines                 001d              (R )
-21.waittimer             f1ea              (R )
+15.skip                  f180              (R )
+15.YPOS                  0099              (R )
+16.LEFT_BOUNDRY          0017              (R )
+16.PLAYEROFFSET          0000              (R )
+16.RIGHT_BOUNDRY         0040              (R )
+16.STARTING_JOYSTICK     0080              (R )
+17.LEFT_BOUNDRY          006c              (R )
+17.PLAYEROFFSET          0002              (R )
+17.RIGHT_BOUNDRY         0094              (R )
+17.STARTING_JOYSTICK     0008              (R )
+18.MEMADDR               00a1              (R )
+19.cycles                088f              (R )
+19.lines                 001d              (R )
+2.VSLP1                  f04d              (R )
+20.waittimer             f1e5              (R )
 3.cycles                 0aef              (R )
 3.lines                  0025              (R )
-5.waittimer              f085              (R )
+5.waittimer              f087              (R )
 6.CYCLES                 0010              (R )
 7.CYCLES                 0008              (R )
 AUDC0                    0015                  
@@ -47,7 +39,7 @@ AUDF0                    0017
 AUDF1                    0018                  
 AUDV0                    0019                  
 AUDV1                    001a                  
-ChangeSprites            f1bb                  
+ChangeSprites            f1b6                  
 COLUBK                   0009              (R )
 COLUP0                   0006              (R )
 COLUP1                   0007              (R )
@@ -68,7 +60,7 @@ CONS_COLOR_TEAL          008d              (R )
 CONS_FRAME_ANIMATION_COUNTER 0003              (R )
 CONS_P0_STARTING_JOYSTICK_BYTE 0080              (R )
 CONS_P1_STARTING_JOYSTICK_BYTE 0008              (R )
-CONS_PLAYER_HEIGHT       00f2              (R )
+CONS_PLAYER_HEIGHT       000d                  
 CONS_TILE_HEIGHT         000f              (R )
 CONS_TILE_HIDE           0000                  
 CTRLPF                   000a              (R )
@@ -81,15 +73,15 @@ CXM1P                    0001
 CXP0FB                   0002                  
 CXP1FB                   0003                  
 CXPPMM                   0007                  
-DivideLoop               f1f7              (R )
+DivideLoop               f1f2              (R )
 DrawCycle                0080                  
-DrawFrameA               f1cb                  
-DrawFrameB               f1d6              (R )
+DrawFrameA               f1c6                  
+DrawFrameB               f1d1              (R )
 DrawPlayer               0081                  
 ENABL                    001f                  
-ENAM0                    001d              (R )
+ENAM0                    001d                  
 ENAM1                    001e                  
-EndOfSprites             f1e2              (R )
+EndOfSprites             f1dd              (R )
 GRP0                     001b              (R )
 GRP1                     001c              (R )
 HMBL                     0024                  
@@ -99,7 +91,7 @@ HMM1                     0023
 HMOVE                    002a              (R )
 HMP0                     0020              (R )
 HMP1                     0021                  
-horizontalBoundries      0092              (R )
+horizontalBoundries      0093              (R )
 init_PF_Tiles            f00d              (R )
 init_Players             f01a                  
 INPT0                    0008                  
@@ -109,58 +101,60 @@ INPT3                    000b
 INPT4                    000c                  
 INPT5                    000d                  
 INTIM                    0284              (R )
-Kernal_CombatField       f11f              (R )
-Kernal_CombatField_DrawPlayers f14e                  
-Kernal_CombatField_DrawPlayfied f125                  
-Kernal_CombatField_EndOfDraw f18b                  
-Kernal_CombatField_startOfDraw f123              (R )
-Kernal_Gap               f0fb                  
-Kernal_Movement          f06d                  
-Kernal_PreScreen         f049                  
-Kernal_Screen            f059                  
-Kernal_Stairs            f0e7              (R )
-Kernal_Stairs_J          f0eb              (R )
-Kernal_Tower             f08e                  
-Kernal_Tower_Draw        f0a0              (R )
-Kernal_Tower_Draw_Colorize f0b3              (R )
-Kernal_Tower_End         f0d1                  
-Kernal_Tower_WaitASecond f0af              (R )
+Kernal_CombatField       f123              (R )
+Kernal_CombatField_DrawPlayers f154                  
+Kernal_CombatField_DrawPlayfied f129                  
+Kernal_CombatField_EndOfDraw f184                  
+Kernal_CombatField_startOfDraw f127              (R )
+Kernal_Gap               f0fd                  
+Kernal_Movement          f06f                  
+Kernal_PreScreen         f04b                  
+Kernal_Screen            f05b                  
+Kernal_Stairs            f0e9              (R )
+Kernal_Stairs_J          f0ed              (R )
+Kernal_Tower             f090                  
+Kernal_Tower_Draw        f0a2              (R )
+Kernal_Tower_Draw_Colorize f0b5              (R )
+Kernal_Tower_End         f0d3                  
+Kernal_Tower_WaitASecond f0b1              (R )
 LineIdx                  0082              (R )
 loopIntI                 0083              (R )
 loopIntJ                 0084              (R )
 loopIntK                 0085                  
-MoveJoystick             f206              (R )
-NextFrame                f044              (R )
+MoveJoystick             f201              (R )
+NextFrame                f046              (R )
 NO_ILLEGAL_OPCODES       0000 ????         (R )
 NUSIZ0                   0004                  
 NUSIZ1                   0005                  
-Overscan                 f1e3                  
-P0_Frame_0               f267              (R )
-P0_Frame_1               f275              (R )
+Overscan                 f1de                  
+P0_Frame_0               f268              (R )
+P0_Frame_1               f276              (R )
 p0_TileBooleans          0086              (R )
-P0CIdx                   009b                  
-P0FrameCounter           009e              (R )
-P0FrameIdx               009d              (R )
-P0Idx                    0099              (R )
-P0MssleYPos              0098              (R )
-P0Ptr                    009f              (R )
-P0XPos                   0094              (R )
-P0YPos                   0096              (R )
-P1_Frame_0               f283              (R )
+P0CIdx                   009f                  
+P0FrameCounter           00a2              (R )
+P0FrameIdx               00a1              (R )
+P0Idx                    009d              (R )
+P0MssleYPos              009b              (R )
+P0Ptr                    00a3              (R )
+p0ShouldDraw             00a7                  
+P0XPos                   0095              (R )
+P0YPos                   0097              (R )
+P1_Frame_0               f284              (R )
 p1_TileBooleans          008c              (R )
-P1CIdx                   009c                  
-P1Idx                    009a              (R )
-P1Ptr                    00a1              (R )
-P1XPos                   0095              (R )
-P1YPos                   0097              (R )
+P1CIdx                   00a0                  
+P1Idx                    009e              (R )
+P1MssleYPos              009c              (R )
+P1Ptr                    00a5              (R )
+P1XPos                   0096              (R )
+P1YPos                   0099              (R )
 PF0                      000d              (R )
 PF1                      000e              (R )
 PF2                      000f              (R )
-PF_Kernal_Tower          f242              (R )
+PF_Kernal_Tower          f243              (R )
 REFP0                    000b                  
 REFP1                    000c                  
 RESBL                    0014                  
-ResetFrameTimer          f1de              (R )
+ResetFrameTimer          f1d9              (R )
 RESM0                    0012                  
 RESM1                    0013                  
 RESMP0                   0028                  
@@ -168,11 +162,11 @@ RESMP1                   0029
 RESP0                    0010              (R )
 RESP1                    0011                  
 RSYNC                    0003                  
-SetHorizPos              f1f4              (R )
-SkipMoveDown             f232              (R )
-SkipMoveLeft             f221              (R )
-SkipMoveRight            f214              (R )
-SkipMoveUp               f23f              (R )
+SetHorizPos              f1ef              (R )
+SkipMoveDown             f22d              (R )
+SkipMoveLeft             f21c              (R )
+SkipMoveRight            f20f              (R )
+SkipMoveUp               f23a              (R )
 Start                    f000              (R )
 SWACNT                   0281                  
 SWBCNT                   0283                  
@@ -182,6 +176,7 @@ T1024T                   0297
 TIA_BASE_ADDRESS         0000              (R )
 TIA_BASE_READ_ADDRESS    0000              (R )
 TIA_BASE_WRITE_ADDRESS   0000              (R )
+tileBooleansRow          0092              (R )
 TIM1T                    0294                  
 TIM64T                   0296              (R )
 TIM8T                    0295                  
