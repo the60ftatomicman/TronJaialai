@@ -1,13 +1,12 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Header
-        processor 6502
+
+	processor 6502
         include "vcs.h"
         include "macro.h"
-        ; include "custom_macro.h" ; -- do so much work online this seems nice but necessary atm
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
 CONS_PLAYER_HEIGHT  EQU  $F2 ; FF-intended height
+CONS_TOWER_HEIGHT   EQU  $30
 CONS_TILE_HEIGHT    EQU  #15
 CONS_TILE_HIDE      EQU  %00000000
 
@@ -126,17 +125,11 @@ CONS_BOUNDRY_BOTTOM   EQU #29
         ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables segment
+
         seg.u Variables
-        org $80
-
-DrawCycle       .byte ;-- what cycle of our draws we are on
-                      ; 1: Draw playfield
-                      ; 2: Draw Players
-DrawPlayer      .byte ;-- what cycle of our draws we are on
-                      ; 1: Draw playfield
-                      ; 2: Draw Players
-
+	org $80
 LineIdx         .byte
 
 loopIntI        .byte
@@ -169,12 +162,10 @@ P0Ptr		.DS 2
 P1Ptr		.DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
-        seg Code
+	seg Code
         org $f000
-
 Start
-        CLEAN_START
-        
+	CLEAN_START
         ldx #05
 init_PF_Tiles
         lda #CONS_COLOR_BLUE
@@ -213,53 +204,27 @@ init_Players
         sta P1Ptr
         lda #>P0_Frame_0
         sta P1Ptr+1
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Main
+        
 NextFrame
-        lsr SWCHB ; test Game Reset switch
-        bcc Start ; reset?
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_PreScreen
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
-        TIMER_SETUP 37 ; 37 lines of underscan
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Screen
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;      
-        CLEAR_PLAYFIELD
-        lda #CONS_COLOR_PINK
-        sta COLUP0
-        lda #CONS_COLOR_CHART
-        sta COLUP1
-        lda #CONS_COLOR_BLACK
-        sta COLUBK
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;               Main (192 lines)
-; What is a Kernal?
-; These are groupings of line sections.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-Kernal_Movement
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-; This is where we do player X logic
-; Set Player 1 x position
-        lda P0XPos      ; get X coordinate
-        ldx #0          ; player 0
-        jsr SetHorizPos ; set coarse offset
-
-        lda P1XPos      ; get X coordinate
-        ldx #1          ; player 1
-        jsr SetHorizPos ; set coarse offset
-        
-        sta WSYNC       ; sync w/ scanline
-        sta HMOVE       ; apply fine offsets
-        
-        lda #0
-        sta P0Idx
-        sta P1Idx
+        lsr SWCHB	; test Game Reset switch
+        bcc Start	; reset?
+; 1 + 3 lines of VSYNC
+	VERTICAL_SYNC
+; 37 lines of underscan
+	TIMER_SETUP 37
+          lda #$01
+          sta CTRLPF 
+          CLEAR_PLAYFIELD
+          lda #CONS_COLOR_PINK
+          sta COLUP0
+          lda #CONS_COLOR_CHART
+          sta COLUP1
+          lda #CONS_COLOR_BLACK
+          sta COLUBK
         TIMER_WAIT
+OnScreen
+	TIMER_SETUP 195
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;         
-        sta WSYNC
 Kernal_Tower
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; Background art for the upper half of the game.
@@ -267,44 +232,54 @@ Kernal_Tower
 ; The BLACK we see is really the PF mirroed.
 ; Color of the towers is controlled by the background.
 ; TODO make this less gross.
+        ; Now setup the next parts
         lda #CONS_COLOR_BLACK
         sta COLUPF
-	; These are ALWAYS the same
         lda #%11110000
         sta PF0  
         lda #%01111111 
-       	sta PF2
-        
+        sta PF2
+
         ldx #$0
-        ldy #$48
-        sta WSYNC
+        ldy #CONS_TOWER_HEIGHT+40 ; this integer controls gap at TOP of the arrow
+        
 Kernal_Tower_Draw
 	sta WSYNC
         tya
-        cmp #$40
-        bmi Kernal_Tower_WaitASecond
-        lda PF_Kernal_Tower,x+1
+        cmp #CONS_TOWER_HEIGHT
+        bmi Kernal_Tower_Draw_All3Columns
+        cmp #CONS_TOWER_HEIGHT+9  ; 9 represents the number of data lines in our Arrow head
+        bmi Kernal_Tower_Draw_ArrowTop
+Kernal_Tower_Draw_MidOnly
+        lda #%11111111
         sta PF1
         jmp Kernal_Tower_Draw_Colorize
-Kernal_Tower_WaitASecond
+Kernal_Tower_Draw_ArrowTop
+        lda PF_Kernal_Tower,x 
+        sta PF1
+        inx
+        jmp Kernal_Tower_Draw_Colorize
+Kernal_Tower_Draw_All3Columns
         lda #%11110111
         sta PF1
+        jmp Kernal_Tower_Draw_Colorize
 Kernal_Tower_Draw_Colorize   
         lda #CONS_COLOR_RED
         sta COLUBK
-        SLEEP 16 ;; as we add more code for playfield, edit this.
+        SLEEP 15
         lda #CONS_COLOR_TEAL
         sta COLUBK      
         SLEEP 8 
         lda #CONS_COLOR_GREEN
         sta COLUBK
-        inx
-        inx
-        inx
         dey
         bne Kernal_Tower_Draw
 Kernal_Tower_End
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Stairs
+; This draws a nice staircase from our tower
+; More background mumbo jumbo
         lda #CONS_COLOR_BLACK
         sta COLUBK
 	CLEAR_PLAYFIELD
@@ -313,12 +288,7 @@ Kernal_Tower_End
         ldx #2 ; this will always do +1 what you want
         stx loopIntI
         lda #%11110000
-Kernal_Stairs
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; This draws a nice staircase from our tower
-; More background mumbo jumbo
-; TODO -- allow drawing of player here?
-;         this would allow cooler view!
+Kernal_Stairs_I
         ldx #3 ; this will always do +1 what you want
         stx loopIntJ
 Kernal_Stairs_J
@@ -329,120 +299,21 @@ Kernal_Stairs_J
         LSR
         LSR
         DEC loopIntI
-        BPL Kernal_Stairs
-        sta WSYNC
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Gap
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; This is just a spacing between the tiles
-; we setup the presets for the complex stuff below!
-; Maybe just make this part of the loop below? make my tile horizontal breaks 2 cycles each?
-
-        CLEAR_PLAYFIELD
+        BPL Kernal_Stairs_I
+	TIMER_WAIT
         lda #CONS_COLOR_BLACK
         sta COLUPF
-        
-        lda #%01110000
-        sta PF0
-        lda #%000000100
-        sta PF1
-        lda #%11110000
-        sta PF2
-        
-        lda #0
-        sta LineIdx
-        lda #3 ; this will always do +1 what you want
-        sta loopIntI
-        
-        ldx #0 ; uused to change address levels
-        sta WSYNC
+Kernal_Stairs_end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_CombatField
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        lda CONS_TILE_HEIGHT
-        sta loopIntJ
-Kernal_CombatField_startOfDraw
-        sta WSYNC
-
-Kernal_CombatField_DrawPlayfied
-
-
-        lda p0_TileBooleans,x
-        sta COLUBK 
-        
-        SLEEP 21
-        
-        lda p0_TileBooleans,x+1
-        sta COLUBK
-        
-        SLEEP 5 
-        
-        lda p1_TileBooleans,x
-	sta COLUBK
-        
-        SLEEP 10
-        
-
-       	lda p1_TileBooleans,x+1
-        sta COLUBK
-
-	SLEEP 4
-
-        lda #CONS_COLOR_BLACK
-	sta COLUBK
-        
-Kernal_CombatField_DrawPlayers
-        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
-	DRAW_PLAYER P1YPos, CONS_PLAYER_HEIGHT, GRP1, P1Ptr,P1Idx
-        DRAW_MISSLE P0MssleYPos, ENAM0
-        ;DRAW_MISSLE P1MssleYPos, ENAM1
-Kernal_CombatField_EndOfDraw
-        inc LineIdx
-        dec loopIntJ
-        bne Kernal_CombatField_startOfDraw
-        
-	sta WSYNC
-        inx
-        inx
-        dec loopIntI
-        bne Kernal_CombatField
-
-        MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
-        MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
-; TODO -- this should be a subroutine, and ought to be better handled!
-ChangeSprites
-        lda P0FrameCounter
-        cmp #0
-        bpl EndOfSprites
-        ;TODO -- can probaby handle this faster!
-        FLIP_BOOL P0FrameIdx
-        cmp #$01
-        beq DrawFrameB
-DrawFrameA
-        lda #<P0_Frame_0
-        sta P0Ptr
-        lda #>P0_Frame_0
-        sta P0Ptr+1
-        jmp ResetFrameTimer
-DrawFrameB
-        lda #<P0_Frame_1
-        sta P0Ptr
-        lda #>P0_Frame_1
-        sta P0Ptr+1
-ResetFrameTimer
-        lda #CONS_FRAME_ANIMATION_COUNTER
-        sta P0FrameCounter
-EndOfSprites
-        nop ;DEBUG! til i fill this out
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Overscan
+;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-Overscan
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        TIMER_SETUP 29
+	TIMER_SETUP 29
         TIMER_WAIT
-        ; total = 262 lines, go to next frame
+        sta WSYNC
+; total = 262 lines, go to next frame
         jmp NextFrame
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 ;;;;;;;;;;;;;;;;;;;;;
@@ -463,107 +334,33 @@ DivideLoop
         sta RESP0,x      ; fix coarse position
         sta HMP0,x       ; set fine offset
         rts              ; return to caller
-;;;;;;;;;;;;;;;;;;;;;
-; #%10000000 -- P1 Right
-; #%01000000 -- P1 left
-; #%00100000 -- P1 down
-; #%00010000 -- P1 up
-; #%00001000 -- P0 Right
-; #%00000100 -- P0 left
-; #%00000010 -- P0 down
-; #%00000001 -- P0 up
-; Y gives us our offsets
-; A is our initial starting controller
-MoveJoystick
-; ----- Start Horizontal
-        ldx P0XPos,y
-	bit SWCHA
-	bne SkipMoveRight
-        cpx horizontalBoundries
-        bcs SkipMoveRight
-        inx
-        dec P0FrameCounter
-SkipMoveRight
-	LSR ;---- read LEFT
-	bit SWCHA 
-	bne SkipMoveLeft
-        cpx horizontalBoundries+1
-        bcc SkipMoveLeft
-        dex
-        dec P0FrameCounter
-SkipMoveLeft
-	stx P0XPos,y
-; ----- Now Vertical
-        ldx P0YPos,y
-        LSR ;--- read Down
-        bit SWCHA
-	bne SkipMoveDown
-        cpx #CONS_BOUNDRY_BOTTOM
-        beq SkipMoveDown
-        inx
-        dec P0FrameCounter
-SkipMoveDown
-        LSR ;--- read UP
-	bit SWCHA
-	bne SkipMoveUp
-        cpx #CONS_BOUNDRY_TOP
-        beq SkipMoveUp
-        dex
-        dec P0FrameCounter
-SkipMoveUp
-        stx P0YPos,y
-        rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
-        .byte #%11110000
         .byte #%11110111
-        .byte #%01111111  
    
-        .byte #%11110000
         .byte #%11110111
-        .byte #%01111111    
 
-        .byte #%11110000
         .byte #%11110111
-        .byte #%01111111 
 ;----------------------------
-        .byte #%11110000
         .byte #%11100011
-        .byte #%01111111  
    
-        .byte #%11110000
         .byte #%11100011
-        .byte #%01111111    
 
-        .byte #%11110000
         .byte #%11100011
-        .byte #%01111111 
 ;----------------------------
-        .byte #%11110000
         .byte #%11000001
-        .byte #%01111111  
    
-        .byte #%11110000
-        .byte #%11000001
-        .byte #%01111111    
+        .byte #%11000001  
 
-        .byte #%11110000
         .byte #%11000001
-        .byte #%01111111 
 ;----------------------------
-        .byte #%11110000
         .byte #%10000000
-        .byte #%01111111
 
-        .byte #%11110000
         .byte #%10000000
-        .byte #%01111111
 
-        .byte #%11110000
         .byte #%10000000
-        .byte #%01111111
 ;----------------------------
         .byte #0
 P0_Frame_0
@@ -616,7 +413,7 @@ P1_Frame_0
         .byte #0 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
-;;;;;;;;;;;;;;;;;;;;;
-        org $fffc
-        .word Start ; reset vector
-        .word Start ; BRK vector
+
+	org $fffc
+        .word Start	; reset vector
+        .word Start	; BRK vector
