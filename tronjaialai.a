@@ -275,9 +275,9 @@ Kernal_Tower_Draw_Colorize
         dey
         bne Kernal_Tower_Draw
 Kernal_Tower_End
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Stairs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; This draws a nice staircase from our tower
 ; More background mumbo jumbo
         lda #CONS_COLOR_BLACK
@@ -300,13 +300,42 @@ Kernal_Stairs_J
         LSR
         DEC loopIntI
         BPL Kernal_Stairs_I
+Kernal_Stairs_end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Gap
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; This is just a spacing between the towers and combat area. sort of a preset for the combat area?
+; we setup the presets for the complex stuff below!
+        CLEAR_PLAYFIELD
+        lda #CONS_COLOR_BLACK
+        sta COLUPF
+        
+        ; TODO we want to fix this to now have a combat area that uses
+        ; Playfield again...possibly
+        ;lda #%01110000
+        ;sta PF0
+        ;lda #%000000100
+        ;sta PF1
+        ;lda #%11110000
+        ;sta PF2
+        
+        lda #0
+        sta LineIdx
+        lda #3 ; this will always do +1 what you want
+        sta loopIntI
+        
+        ldx #0 ; uused to change address levels
+        sta WSYNC
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+OffScreen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	TIMER_WAIT
         lda #CONS_COLOR_BLACK
         sta COLUPF
-Kernal_Stairs_end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 	TIMER_SETUP 29
         TIMER_WAIT
@@ -316,7 +345,7 @@ Kernal_Stairs_end
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; SetHorizPos routine
 ; A = X coordinate
 ; X = player number (0 or 1)
@@ -336,30 +365,22 @@ DivideLoop
         rts              ; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
         .byte #%11110111
-   
         .byte #%11110111
-
         .byte #%11110111
 ;----------------------------
         .byte #%11100011
-   
         .byte #%11100011
-
         .byte #%11100011
 ;----------------------------
         .byte #%11000001
-   
         .byte #%11000001  
-
         .byte #%11000001
 ;----------------------------
         .byte #%10000000
-
         .byte #%10000000
-
         .byte #%10000000
 ;----------------------------
         .byte #0
@@ -413,7 +434,7 @@ P1_Frame_0
         .byte #0 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	org $fffc
         .word Start	; reset vector
         .word Start	; BRK vector
