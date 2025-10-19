@@ -136,8 +136,9 @@ loopIntI        .byte
 loopIntJ        .byte
 loopIntK        .byte
 
-p0_TileBooleans     .DS 6
-p1_TileBooleans     .DS 6
+pf_Index            .byte
+p0_TileBooleans     .DS 9
+p1_TileBooleans     .DS 9
 horizontalBoundries .DS 2
 
 P0XPos          .byte ;-- X coordinates
@@ -166,18 +167,47 @@ P1Ptr		.DS 2
         org $f000
 Start
 	CLEAN_START
-        ldx #05
+        ldx #$00
 init_PF_Tiles
-        lda #CONS_COLOR_BLUE
-        sta p0_TileBooleans,x
-        sta p1_TileBooleans,x
-        dex
-        bpl init_PF_Tiles
-        lda #$01
-        sta CTRLPF
-        ;lda #CONS_COLOR_BLACK ; for debug
-        ;sta p0_TileBooleans+5
-        ;sta p1_TileBooleans+1
+; Loop commented out but lets make it debuggable
+          lda #%11110000
+          sta p0_TileBooleans,x
+          ;lda #%00000000
+          sta p1_TileBooleans,x
+          lda #%11111011
+          sta p0_TileBooleans,x+1
+          sta p1_TileBooleans,x+1    
+          lda #%01111111
+          sta p0_TileBooleans,x+2
+          sta p1_TileBooleans,x+2 
+
+          lda #%11110000
+          sta p0_TileBooleans,x+3
+          sta p1_TileBooleans,x+3
+          lda #%11111011
+          sta p0_TileBooleans,x+4
+          sta p1_TileBooleans,x+4    
+          lda #%01111111
+          sta p0_TileBooleans,x+5
+          sta p1_TileBooleans,x+5 
+
+          lda #%11110000
+          sta p0_TileBooleans,x+6
+          sta p1_TileBooleans,x+6
+          lda #%11111011
+          sta p0_TileBooleans,x+7
+          sta p1_TileBooleans,x+7    
+          lda #%01111111
+          sta p0_TileBooleans,x+8
+          sta p1_TileBooleans,x+8 
+
+;        inx
+;        inx
+;        inx
+;        txa
+;        cmp $09
+;        bne init_PF_Tiles
+        
 init_Players        
         lda #CONS_BOUNDRY_P0_LEFT+1  ; Max Left
         sta P0XPos
@@ -312,34 +342,35 @@ Kernal_Gap
        
         lda #3 
         sta loopIntI
-        ldx #0 ; uused to change address levels
+        lda #0 ; uused to change address levels
+        sta pf_Index
+        
         sta WSYNC
 Kernal_Gap_end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_LoopI
+	
         lda #28 
         sta loopIntJ
 Kernal_Combat_LoopJ
-        sta WSYNC
-        lda #%11110000
-        sta PF0
-        lda #%11111011
-        sta PF1
-        lda #%01111111
-        sta PF2	
-        SLEEP 17 ; 17 seems minimum 40 max
-        lda #%11110000
-        sta PF0
-        lda #%11111011
-        sta PF1
-        lda #%01111111
-        sta PF2	 
+	;Here we draw the PLAYERS :D
+	sta WSYNC
+        
+        ;Sets playfield flags, maybe get rid of this?
+        jsr SetPlayfieldForCombatSection
+        
         dec loopIntJ
         bne Kernal_Combat_LoopJ
-        ; May be 2 lines of change!
+Kernal_Combat_LoopJ_END
 	CLEAR_PLAYFIELD
+        sta WSYNC
+        ldy pf_Index
+        iny
+        iny
+        iny
+        sta pf_Index
         
 	dec loopIntI
         bne Kernal_Combat_LoopI
@@ -364,6 +395,21 @@ OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SetPlayfieldForCombatSection
+        lda p0_TileBooleans,y
+        sta PF0
+        lda p0_TileBooleans,y+1
+        sta PF1
+        lda p0_TileBooleans,y+2
+        sta PF2
+        SLEEP 8 ; 15 seems minimum 40 max
+        lda p1_TileBooleans,y
+        sta PF0
+        lda p1_TileBooleans,y+1
+        sta PF1
+        lda p1_TileBooleans,y+2
+        sta PF2
+        rts
 ; SetHorizPos routine
 ; A = X coordinate
 ; X = player number (0 or 1)
@@ -386,27 +432,19 @@ DivideLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
         .byte #%11110111
-   
         .byte #%11110111
-
         .byte #%11110111
 ;----------------------------
         .byte #%11100011
-   
         .byte #%11100011
-
         .byte #%11100011
 ;----------------------------
         .byte #%11000001
-   
         .byte #%11000001  
-
         .byte #%11000001
 ;----------------------------
         .byte #%10000000
-
         .byte #%10000000
-
         .byte #%10000000
 ;----------------------------
         .byte #0
