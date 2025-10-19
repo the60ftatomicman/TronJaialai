@@ -307,26 +307,44 @@ Kernal_Gap
 ; This is just a spacing between the towers and combat area. sort of a preset for the combat area?
 ; we setup the presets for the complex stuff below!
         CLEAR_PLAYFIELD
-        lda #CONS_COLOR_BLACK
+        lda #CONS_COLOR_BLUE
         sta COLUPF
-        
-        ; TODO we want to fix this to now have a combat area that uses
-        ; Playfield again...possibly
-        ;lda #%01110000
-        ;sta PF0
-        ;lda #%000000100
-        ;sta PF1
-        ;lda #%11110000
-        ;sta PF2
-        
-        lda #0
-        sta LineIdx
-        lda #3 ; this will always do +1 what you want
+       
+        lda #3 
         sta loopIntI
-        
         ldx #0 ; uused to change address levels
         sta WSYNC
-
+Kernal_Gap_end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Combat
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Combat_LoopI
+        lda #28 
+        sta loopIntJ
+Kernal_Combat_LoopJ
+        sta WSYNC
+        lda #%11110000
+        sta PF0
+        lda #%11111011
+        sta PF1
+        lda #%01111111
+        sta PF2	
+        SLEEP 17 ; 17 seems minimum 40 max
+        lda #%11110000
+        sta PF0
+        lda #%11111011
+        sta PF1
+        lda #%01111111
+        sta PF2	 
+        dec loopIntJ
+        bne Kernal_Combat_LoopJ
+        ; May be 2 lines of change!
+	CLEAR_PLAYFIELD
+        
+	dec loopIntI
+        bne Kernal_Combat_LoopI
+Kernal_Combat_End
+	CLEAR_PLAYFIELD
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -368,19 +386,27 @@ DivideLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PF_Kernal_Tower
         .byte #%11110111
+   
         .byte #%11110111
+
         .byte #%11110111
 ;----------------------------
         .byte #%11100011
+   
         .byte #%11100011
+
         .byte #%11100011
 ;----------------------------
         .byte #%11000001
+   
         .byte #%11000001  
+
         .byte #%11000001
 ;----------------------------
         .byte #%10000000
+
         .byte #%10000000
+
         .byte #%10000000
 ;----------------------------
         .byte #0
