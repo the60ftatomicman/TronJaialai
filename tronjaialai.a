@@ -172,10 +172,11 @@ init_PF_Tiles
 ; Loop commented out but lets make it debuggable
           lda #%11110000
           sta p0_TileBooleans,x
-          ;lda #%00000000
+          lda #%11110000
           sta p1_TileBooleans,x
           lda #%11111011
           sta p0_TileBooleans,x+1
+          lda #%11111011
           sta p1_TileBooleans,x+1    
           lda #%01111111
           sta p0_TileBooleans,x+2
@@ -344,7 +345,7 @@ Kernal_Gap
         sta loopIntI
         lda #0 ; uused to change address levels
         sta pf_Index
-        
+        sta LineIdx
         sta WSYNC
 Kernal_Gap_end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -352,16 +353,46 @@ Kernal_Combat
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_LoopI
 	
-        lda #28 
+        lda #10 ; was 25 
         sta loopIntJ
 Kernal_Combat_LoopJ
 	;Here we draw the PLAYERS :D
 	sta WSYNC
         
+	ldy P0Idx
+        lda P0YPos
+        SBC LineIdx
+        BPL .skip
+        CMP #CONS_PLAYER_HEIGHT
+        BMI .skip
+        lda (P0Ptr),y
+        inc P0Idx
+        jmp .end
+.skip
+        lda #%0000000
+.end   
+        sta GRP0        
         ;Sets playfield flags, maybe get rid of this?
-        jsr SetPlayfieldForCombatSection
-        
-        dec loopIntJ
+        ;jsr SetPlayfieldForCombatSection
+        lda p0_TileBooleans,y
+        sta PF0
+        lda p0_TileBooleans,y+1
+        sta PF1
+        lda p0_TileBooleans,y+2
+        sta PF2
+        SLEEP 8 ; 15 seems minimum 40 max
+        lda p1_TileBooleans,y
+        sta PF0
+        lda p1_TileBooleans,y+1
+        sta PF1
+        lda p1_TileBooleans,y+2
+        sta PF2
+        ;nop
+        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+
+       
+       	adc LineIdx
+        dec loopIntJ ;I need to get rid of these things dont I ?
         bne Kernal_Combat_LoopJ
 Kernal_Combat_LoopJ_END
 	CLEAR_PLAYFIELD
