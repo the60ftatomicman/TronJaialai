@@ -139,6 +139,7 @@ loopIntK        .byte
 pf_Index            .byte
 p0_TileBooleans     .DS 9
 p1_TileBooleans     .DS 9
+pf_Temp             .DS 6
 horizontalBoundries .DS 2
 
 P0XPos          .byte ;-- X coordinates
@@ -180,6 +181,7 @@ init_PF_Tiles
           sta p1_TileBooleans,x+1    
           lda #%01111111
           sta p0_TileBooleans,x+2
+          lda #%01111111
           sta p1_TileBooleans,x+2 
 
           lda #%11110000
@@ -252,6 +254,22 @@ NextFrame
           sta COLUP1
           lda #CONS_COLOR_BLACK
           sta COLUBK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+Kernal_Movement
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+; This is where we do player X logic
+	sta WSYNC
+        lda P0XPos      ; get X coordinate
+        ldx #0          ; player 0
+        jsr SetHorizPos ; set coarse offset
+
+        lda P1XPos      ; get X coordinate
+        ldx #1          ; player 1
+        jsr SetHorizPos ; set coarse offset
+        
+        sta WSYNC       ; sync w/ scanline
+        sta HMOVE       ; apply fine offsets
+       
         TIMER_WAIT
 OnScreen
 	TIMER_SETUP 195
@@ -352,55 +370,42 @@ Kernal_Gap_end
 Kernal_Combat
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_LoopI
-	
-        lda #10 ; was 25 
+	;Sets playfield flagst to memory locations for faster load
+        jsr SetPlayfieldForCombatSection
+        lda #25 ; was 25 
         sta loopIntJ
 Kernal_Combat_LoopJ
-	;Here we draw the PLAYERS :D
 	sta WSYNC
+	
+        ;Draw Playfield
+        lda pf_Temp
+        sta PF0
+        lda pf_Temp+1
+        sta PF1
+        lda pf_Temp+2
+        sta PF2
+        SLEEP 7; was working at 7
+        lda pf_Temp+3
+        sta PF0
+        lda pf_Temp+4
+        sta PF1
+        lda pf_Temp+5
+        sta PF2
         
-	ldy P0Idx
-        lda P0YPos
-        SBC LineIdx
-        BPL .skip
-        CMP #CONS_PLAYER_HEIGHT
-        BMI .skip
-        lda (P0Ptr),y
-        inc P0Idx
-        jmp .end
-.skip
-        lda #%0000000
-.end   
-        sta GRP0        
-        ;Sets playfield flags, maybe get rid of this?
-        ;jsr SetPlayfieldForCombatSection
-        lda p0_TileBooleans,y
-        sta PF0
-        lda p0_TileBooleans,y+1
-        sta PF1
-        lda p0_TileBooleans,y+2
-        sta PF2
-        SLEEP 8 ; 15 seems minimum 40 max
-        lda p1_TileBooleans,y
-        sta PF0
-        lda p1_TileBooleans,y+1
-        sta PF1
-        lda p1_TileBooleans,y+2
-        sta PF2
-        ;nop
-        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+        ;Draw Players
+        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
 
        
        	adc LineIdx
-        dec loopIntJ ;I need to get rid of these things dont I ?
+        dec loopIntJ
         bne Kernal_Combat_LoopJ
 Kernal_Combat_LoopJ_END
 	CLEAR_PLAYFIELD
         sta WSYNC
-        ldy pf_Index
-        iny
-        iny
-        iny
+        
+        ;Update pf_Index
+        lda pf_Index
+        adc #3
         sta pf_Index
         
 	dec loopIntI
@@ -411,15 +416,12 @@ Kernal_Combat_End
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	TIMER_WAIT
-        lda #CONS_COLOR_BLACK
-        sta COLUPF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 	TIMER_SETUP 29
         TIMER_WAIT
-        sta WSYNC
 ; total = 262 lines, go to next frame
         jmp NextFrame
         
@@ -427,19 +429,22 @@ OffScreen
 ; Subroutines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SetPlayfieldForCombatSection
+	ldy pf_Index
         lda p0_TileBooleans,y
-        sta PF0
+        sta pf_Temp
         lda p0_TileBooleans,y+1
-        sta PF1
+        sta pf_Temp+1
         lda p0_TileBooleans,y+2
-        sta PF2
-        SLEEP 8 ; 15 seems minimum 40 max
+        sta pf_Temp+2
         lda p1_TileBooleans,y
-        sta PF0
+        sta pf_Temp+3
         lda p1_TileBooleans,y+1
-        sta PF1
+        sta pf_Temp+4
         lda p1_TileBooleans,y+2
-        sta PF2
+        sta pf_Temp+5
+        rts
+DrawPlayfieldForCombatSection
+
         rts
 ; SetHorizPos routine
 ; A = X coordinate
