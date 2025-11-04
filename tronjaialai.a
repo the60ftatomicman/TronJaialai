@@ -130,6 +130,7 @@ CONS_BOUNDRY_BOTTOM   EQU #29
 
         seg.u Variables
 	org $80
+boolDraw        .byte
 LineIdx         .byte
 
 loopIntI        .byte
@@ -173,7 +174,7 @@ init_PF_Tiles
 ; Loop commented out but lets make it debuggable
           lda #%11110000
           sta p0_TileBooleans,x
-          lda #%11110000
+          lda #%10010000
           sta p1_TileBooleans,x
           lda #%11111011
           sta p0_TileBooleans,x+1
@@ -375,8 +376,10 @@ Kernal_Combat_LoopI
         lda #25 ; was 25 
         sta loopIntJ
 Kernal_Combat_LoopJ
+	FLIP_BOOL boolDraw
+        BEQ Kernal_Combat_LoopJ_Players
+Kernal_Combat_LoopJ_Playfield
 	sta WSYNC
-	
         ;Draw Playfield
         lda pf_Temp
         sta PF0
@@ -391,11 +394,13 @@ Kernal_Combat_LoopJ
         sta PF1
         lda pf_Temp+5
         sta PF2
-        
+        SLEEP 27
+        CLEAR_PLAYFIELD
+        jmp Kernal_Combat_LoopJ_Inc
+Kernal_Combat_LoopJ_Players
         ;Draw Players
-        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
-
-       
+        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
+Kernal_Combat_LoopJ_Inc
        	adc LineIdx
         dec loopIntJ
         bne Kernal_Combat_LoopJ
