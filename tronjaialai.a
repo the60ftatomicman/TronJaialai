@@ -106,6 +106,30 @@ CONS_BOUNDRY_BOTTOM   EQU #29
         sta .PLAYER_REG
         ENDM
 ;--------
+; GET_PLAYER_LINE
+; Original author: Andy Garber
+; Draws a player based on the lineIdx var
+        MAC GET_PLAYER_LINE
+.YPOS        SET {1}
+.HEIGHT      SET {2}
+.PLAYER_REG  SET {3}
+.PLAYER_PTR  SET {4}
+.PLAYER_TEMP_LOCATION  SET {5}
+	ldy .PLAYER_IDX
+        lda .YPOS
+        SBC LineIdx
+        BPL .skip
+        CMP #.HEIGHT
+        BMI .skip
+        lda (.PLAYER_PTR),y
+        inc .PLAYER_IDX
+        jmp .end
+.skip
+        lda #%0000000
+.end   
+        sta .PLAYER_REG
+        ENDM
+;--------
 ; MOVE_PLAYER duration
 ; Original author: Andy Garber
 ; Moves the player
@@ -141,6 +165,7 @@ pf_Index            .byte
 p0_TileBooleans     .DS 9
 p1_TileBooleans     .DS 9
 pf_Temp             .DS 6
+player_Temp         .DS 2 ; -- this holds the current line needed for the player to draw
 horizontalBoundries .DS 2
 
 P0XPos          .byte ;-- X coordinates
@@ -174,7 +199,7 @@ init_PF_Tiles
 ; Loop commented out but lets make it debuggable
           lda #%11110000
           sta p0_TileBooleans,x
-          lda #%10010000
+          lda #%11110000
           sta p1_TileBooleans,x
           lda #%11111011
           sta p0_TileBooleans,x+1
@@ -204,13 +229,6 @@ init_PF_Tiles
           lda #%01111111
           sta p0_TileBooleans,x+8
           sta p1_TileBooleans,x+8 
-
-;        inx
-;        inx
-;        inx
-;        txa
-;        cmp $09
-;        bne init_PF_Tiles
         
 init_Players        
         lda #CONS_BOUNDRY_P0_LEFT+1  ; Max Left
@@ -359,27 +377,31 @@ Kernal_Gap
         CLEAR_PLAYFIELD
         lda #CONS_COLOR_BLUE
         sta COLUPF
-       
-        lda #3 
+        ;lda #$01
+        ;sta CTRLPF 
+        lda #2 
         sta loopIntI
         lda #0 ; uused to change address levels
         sta pf_Index
         sta LineIdx
-        sta WSYNC
 Kernal_Gap_end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_LoopI
-	;Sets playfield flagst to memory locations for faster load
         jsr SetPlayfieldForCombatSection
-        lda #25 ; was 25 
+	sta WSYNC
+        ;Sets playfield flagst to memory locations for faster load
+        lda #20 ; was 25 
         sta loopIntJ
 Kernal_Combat_LoopJ
-	FLIP_BOOL boolDraw
-        BEQ Kernal_Combat_LoopJ_Players
-Kernal_Combat_LoopJ_Playfield
+	jsr SetPlayerForSection
 	sta WSYNC
+Kernal_Combat_LoopJ_Playfield
+        lda player_Temp
+        sta GRP0
+  	lda player_Temp+1
+        sta GRP1       
         ;Draw Playfield
         lda pf_Temp
         sta PF0
@@ -387,30 +409,23 @@ Kernal_Combat_LoopJ_Playfield
         sta PF1
         lda pf_Temp+2
         sta PF2
-        SLEEP 7; was working at 7
+        SLEEP 12
         lda pf_Temp+3
         sta PF0
         lda pf_Temp+4
         sta PF1
         lda pf_Temp+5
         sta PF2
-        SLEEP 27
-        CLEAR_PLAYFIELD
-        jmp Kernal_Combat_LoopJ_Inc
-Kernal_Combat_LoopJ_Players
-        ;Draw Players
-        ;DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, GRP0, P0Ptr,P0Idx
 Kernal_Combat_LoopJ_Inc
-       	adc LineIdx
         dec loopIntJ
         bne Kernal_Combat_LoopJ
 Kernal_Combat_LoopJ_END
-	CLEAR_PLAYFIELD
+        lda #CONS_COLOR_BLACK
+        sta COLUPF
         sta WSYNC
-        
         ;Update pf_Index
         lda pf_Index
-        adc #3
+        adc #2
         sta pf_Index
         
 	dec loopIntI
@@ -448,8 +463,10 @@ SetPlayfieldForCombatSection
         lda p1_TileBooleans,y+2
         sta pf_Temp+5
         rts
-DrawPlayfieldForCombatSection
-
+SetPlayerForSection
+	DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, player_Temp, P0Ptr,P0Idx
+        DRAW_PLAYER P0YPos, CONS_PLAYER_HEIGHT, player_Temp+1, P0Ptr,P0Idx
+     	inc LineIdx
         rts
 ; SetHorizPos routine
 ; A = X coordinate
