@@ -1,111 +1,20 @@
-
 	processor 6502
         include "vcs.h"
         include "macro.h"
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
-CONS_PLAYER_HEIGHT  EQU  $0E ; FF-intended height
-CONS_TOWER_HEIGHT   EQU  $30
-CONS_TILE_HEIGHT    EQU  #15
-CONS_TILE_HIDE      EQU  %00000000
-
-CONS_COLOR_BLACK EQU $00
-CONS_COLOR_RED   EQU $40
-CONS_COLOR_PINK  EQU $4A
-CONS_COLOR_BLUE  EQU $82
-CONS_COLOR_TEAL  EQU $8D
-CONS_COLOR_GREEN EQU $C6
-CONS_COLOR_CHART EQU $CA
-
-CONS_FRAME_ANIMATION_COUNTER EQU $03
-
-CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
-CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
-CONS_BOUNDRY_P0_LEFT  EQU #23
-CONS_BOUNDRY_P0_RIGHT EQU #64
-CONS_BOUNDRY_P1_LEFT  EQU #108
-CONS_BOUNDRY_P1_RIGHT EQU #148
-CONS_BOUNDRY_TOP      EQU #00
-CONS_BOUNDRY_BOTTOM   EQU #29
+        include "constants.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
-; TODO add to includes
-;--------
-; FLIP_BOOL
-; Original author: Andy Garber
-; Takes a memory address and flips it's value than stores it
-; Assumes the Memory address value is 1 or 0
-; usage: FLIP_BOOL SomeAddress
-        MAC FLIP_BOOL
-.MEMADDR     SET {1}
-        lda .MEMADDR
-        EOR #$01
-        sta .MEMADDR
-        ENDM
-;--------
-; CLEAR_PLAYFIELD
-; Original author: Andy Garber
-; sets playfield to 0 across the board
-; usage: CLEAR_PLAYFIELD
-        MAC CLEAR_PLAYFIELD
-        lda #%00000000
-        sta PF0
-        sta PF1
-        sta PF2
-        ENDM
-;--------
-; LOAD_POINTER_WITH_DATA
-; Original author: Andy Garber
-; Loads a pointer with low byte than high byte address of data object
-; usage: LOAD_POINTER_WITH_DATA pointer data
-        MAC LOAD_POINTER_WITH_DATA
-.POINTER      SET {1}
-.DATA_BLOB    SET {2}
-          lda #<.DATA_BLOB
-          sta .POINTER
-          lda #>.DATA_BLOB
-          sta .POINTER+1
-        ENDM
+        include "usermacro.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Variables segment
-
+; Variables 
         seg.u Variables
 	org $80
-boolDraw        .byte
-LineIdx         .byte
-
-loopIntI        .byte
-loopIntJ        .byte
-
-pf_Index        .byte
-
-pf_TileData_Left   .DS 9
-pf_TileData_Right  .DS 9
-
-horizontalBoundries .DS 2
-
-P0XPos          .byte ;-- X coordinates
-P1XPos          .byte
-
-P0YPos          .byte ;-- Y coordinate (offset from the start of the playfield)
-P1YPos          .byte
-
-P0MssleYPos     .byte
-P1MssleYPos     .byte
-
-P0Idx           .byte ;-- data index of our sprite data
-P1Idx           .byte
-
-P0FrameIdx      .byte ;--- animation frame
-P0FrameCounter  .byte ;--- frame counter
-
-P0Ptr		.DS 2
-P1Ptr		.DS 2
+	include "variables.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Code segment
+; Code
 	seg Code
         org $f000
 Start
@@ -123,12 +32,13 @@ Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; This is where we do player X logic
 	sta WSYNC
-        lda #30      ; get X coordinate
-        ldx #0          ; player 0
+        ; -- set LEFT player X
+        lda #30         ; get X coordinate
+        ldx #0          ; player 0 (LEFT)
         jsr SetHorizPos ; set coarse offset
-
+        ; -- set Right player X
         lda #140      ; get X coordinate
-        ldx #1          ; player 1
+        ldx #1          ; player 1 (RIGHT)
         jsr SetHorizPos ; set coarse offset
         
         sta WSYNC       ; sync w/ scanline
@@ -150,10 +60,10 @@ Kernal_Combat_Pre
 
         lda #CONS_COLOR_BLACK
         sta COLUBK
-  	;------------------------- vv This is for demo purposes
+        ;------------------------- vv This is for demo purposes
         CLEAR_PLAYFIELD
         ; TODO -- obviously we set this up somewhere ELSE.
-     	ldy #$00
+        ldy #$00
         lda #%11110000
         sta pf_TileData_Left,y
         sta pf_TileData_Right,y
@@ -210,14 +120,6 @@ Kernal_Combat_Pre
         sta P0Idx
         sta P1Idx
         
-        ;lda #<P0_Frame_1
-        ;sta P0Ptr
-        ;lda #>P0_Frame_1
-        ;sta P0Ptr+1
-        ;lda #<P0_Frame_1
-        ;sta P1Ptr
-        ;lda #>P0_Frame_1
-        ;sta P1Ptr+1
         LOAD_POINTER_WITH_DATA P0Ptr,P0_Frame_1
         LOAD_POINTER_WITH_DATA P1Ptr,P0_Frame_1
         ;------------------------- ^^^ This is for demo purposes
@@ -236,13 +138,15 @@ Kernal_Combat
 ;; line 3 calculates indexes and stuff?
         ldx #5
 Kernal_Combat_LoopX
-;; --- Because of the complexities -- we will resize players, draw as 3 lines
+;; --- Because of the complexities -- we will draw as 3 lines
 Kernal_Combat_Objects
 	jsr DrawObjects
 Kernal_Combat_Draw_Playfield_Line
 	sta WSYNC
+        
         lda #CONS_COLOR_BLUE
         sta COLUPF
+
         ldy pf_Index ; TODO -- possible to just use the loop Int?
         ; ---- Draw Playfield Left
         lda pf_TileData_Left,y
@@ -376,40 +280,7 @@ DrawObjects
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-P0_Frame_1
-        ;draw from top to bottom
-        .byte #%00000000 ; pre-amble
-        .byte #%01111100 ;0
-        .byte #%01111110 ;1
-        .byte #%01101000 ;2
-        .byte #%01111100 ;3
-        .byte #%00111100 ;4
-        .byte #%00000000 ;5
-        .byte #%01111000 ;6 
-        .byte #%10111101 ;7
-        .byte #%10111110 ;8
-        .byte #%01011100 ;9
-        .byte #%01111000 ;10
-        .byte #%00000000 ;12
-        .byte #%01110110 ;11
-        .byte #%00000000 ;12
-P0_Color
-        ;draw from top to bottom
-        .byte #CONS_COLOR_PINK ;0
-        .byte #CONS_COLOR_PINK ;0
-        .byte #CONS_COLOR_CHART ;1
-        .byte #CONS_COLOR_CHART ;2
-        .byte #CONS_COLOR_PINK ;3
-        .byte #CONS_COLOR_PINK ;4
-        .byte #CONS_COLOR_PINK ;5
-        .byte #CONS_COLOR_PINK ;6 
-        .byte #CONS_COLOR_PINK ;7
-        .byte #CONS_COLOR_PINK ;8
-        .byte #CONS_COLOR_PINK ;9
-        .byte #CONS_COLOR_PINK ;10
-        .byte #CONS_COLOR_PINK ;12
-        .byte #CONS_COLOR_PINK ;11
-        .byte #CONS_COLOR_PINK ;12
+       include "sprites.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
