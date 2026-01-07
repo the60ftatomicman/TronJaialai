@@ -2,6 +2,7 @@
 ; org $80
 
 boolDraw        .byte
+boolSetupRound  .byte
 LineIdx         .byte
 
 loopIntI        .byte

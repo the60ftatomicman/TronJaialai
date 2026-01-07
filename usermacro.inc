@@ -34,3 +34,22 @@
           lda #>.DATA_BLOB
           sta .POINTER+1
         ENDM
+;--------
+; MOVE_PLAYER
+; Original author: Andy Garber
+; Stores the given horizontal boundries (for our check) than calls moveJoystick 
+; which is our subroutine for interpretting user input
+        MAC MOVE_PLAYER
+.PLAYEROFFSET      SET {1}
+.LEFT_BOUNDRY      SET {2}
+.RIGHT_BOUNDRY     SET {3}
+.STARTING_JOYSTICK SET {4}
+        ldx $01
+        lda #.RIGHT_BOUNDRY
+        sta horizontalBoundries
+        lda #.LEFT_BOUNDRY
+        sta horizontalBoundries,x
+        lda #.STARTING_JOYSTICK
+        ldy #.PLAYEROFFSET
+	jsr MoveJoystick
+        ENDM

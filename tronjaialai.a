@@ -20,6 +20,14 @@
 Start
 	CLEAN_START
         ldx #$00
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+;;;--- Initalize a few
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+	lda #$01
+	sta boolSetupRound
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+;;;--- Initalize a few
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 NextFrame
         lsr SWCHB	; test Game Reset switch
         bcc Start	; reset?
@@ -27,6 +35,18 @@ NextFrame
 	VERTICAL_SYNC
 ; 37 lines of underscan
 	TIMER_SETUP 37
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+Kernal_RoundSetup
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+	lda boolSetupRound
+        cmp #$00
+        beq Kernal_Movement
+        lda #30
+        sta P0XPos
+        lda #140
+        sta P1XPos
+        lda #$00
+        sta boolSetupRound
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -216,6 +236,10 @@ Kernal_Combat_End
         sta GRP1
         sta ENAM0
         sta ENAM1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Input
+        MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
+        MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
         nop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
@@ -223,7 +247,7 @@ OffScreen
 	TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; 29 lines of overscan
 	TIMER_SETUP 29
         TIMER_WAIT
@@ -276,6 +300,56 @@ DrawObjects
         lda (P1Ptr),y
         sta GRP1
         
+        rts
+;;;;;;;;;;;;;;;;;;;;;
+; #%10000000 -- P1 Right
+; #%01000000 -- P1 left
+; #%00100000 -- P1 down
+; #%00010000 -- P1 up
+; #%00001000 -- P0 Right
+; #%00000100 -- P0 left
+; #%00000010 -- P0 down
+; #%00000001 -- P0 up
+; Y gives us our offsets
+; A is our initial starting controller
+MoveJoystick
+; ----- Start Horizontal
+        ldx P0XPos,y
+	bit SWCHA
+	bne SkipMoveRight
+        cpx horizontalBoundries
+        bcs SkipMoveRight
+        inx
+        dec P0FrameCounter
+SkipMoveRight
+	LSR ;---- read LEFT
+	bit SWCHA 
+	bne SkipMoveLeft
+        cpx horizontalBoundries+1
+        bcc SkipMoveLeft
+        dex
+        dec P0FrameCounter
+SkipMoveLeft
+	stx P0XPos,y
+; ----- Now Vertical
+        ldx P0YPos,y
+        LSR ;--- read Down
+        bit SWCHA
+	bne SkipMoveDown
+        ;cpx #CONS_BOUNDRY_BOTTOM
+        ;beq SkipMoveDown
+        inx
+        dec P0FrameCounter
+SkipMoveDown
+        LSR ;--- read UP
+	bit SWCHA
+	bne SkipMoveUp
+        ;cpx #CONS_BOUNDRY_TOP
+        ;beq SkipMoveUp
+        dex
+        dec P0FrameCounter
+SkipMoveUp
+        stx P0YPos,y
         rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
