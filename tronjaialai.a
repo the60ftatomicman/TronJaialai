@@ -21,10 +21,12 @@ Start
 	CLEAN_START
         ldx #$00
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-;;;--- Initalize a few
+;;;--- Initalize a few super static things
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 	lda #$01
 	sta boolSetupRound
+        lda #$08
+        sta REFP1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ;;;--- Initalize a few
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -70,20 +72,46 @@ Kernal_Movement
         TIMER_WAIT
 OnScreen
 	TIMER_SETUP 195
-        ldx #$60
+        
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-Kernal_Test_Delay
+        ldx #$10
+Kernal_Test_Delay_1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC
         dex
-        bne Kernal_Test_Delay
+        bne Kernal_Test_Delay_1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	ldx #$3
+        lda #%11111111
+        sta PF0
+        sta PF1
+        sta PF2
+        lda #02
+        sta ENAM1
+Kernal_Ceiling
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        sta WSYNC
+        lda #CONS_COLOR_BLUE
+        sta COLUPF
+        dex
+        bne Kernal_Ceiling
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+        lda #00
+        sta ENAM1
+        lda #CONS_COLOR_BLACK
+        sta COLUPF
+        ldx #$40
+Kernal_Test_Delay_2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC
+        dex
+        bne Kernal_Test_Delay_2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_Pre
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; This is just a spacing between the towers and combat area. sort of a preset for the combat area?
 ; we setup the presets for the complex stuff below!
-        lda #$08
-        sta REFP1
         lda #$01
         sta CTRLPF 
         lda #CONS_COLOR_BLUE
@@ -154,13 +182,13 @@ Kernal_Combat_Pre
         sta LineIdx
 	ldx #12
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Combat_JustPlayer
+Kernal_Combat_JustObjects
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC
         jsr CalculateObjects
         jsr DrawObjects
 	dex
-        bne Kernal_Combat_JustPlayer
+        bne Kernal_Combat_JustObjects
         
         
         lda #00
@@ -341,7 +369,7 @@ MoveJoystick
         cpx horizontalBoundries
         bcs SkipMoveRight
         inx
-        ;dec P0FrameCounter
+        dec P0FrameCounter
 SkipMoveRight
 	LSR ;---- read LEFT
 	bit SWCHA 
@@ -349,7 +377,7 @@ SkipMoveRight
         cpx horizontalBoundries+1
         bcc SkipMoveLeft
         dex
-        ;dec P0FrameCounter
+        dec P0FrameCounter
 SkipMoveLeft
 	stx P0XPos,y
 ; ----- Now Vertical
@@ -362,17 +390,17 @@ SkipMoveLeft
         inx ;-- need to move the exact amount of lines otherwise we get ghosting!
         inx
         inx
-        ;dec P0FrameCounter
+        dec P0FrameCounter
 SkipMoveDown
         LSR ;--- read UP
 	bit SWCHA
 	bne SkipMoveUp
-        ;cpx #CONS_BOUNDRY_TOP
-        ;beq SkipMoveUp
+        cpx #CONS_BOUNDRY_TOP
+        bmi SkipMoveUp
         dex ;-- need to move the exact amount of lines otherwise we get ghosting!
         dex
         dex
-        ;dec P0FrameCounter
+        dec P0FrameCounter
 SkipMoveUp
         stx P0YPos,y
         rts
