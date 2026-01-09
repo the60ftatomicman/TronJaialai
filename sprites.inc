@@ -1,3 +1,4 @@
+
 P0_Frame_1
         ;draw from top to bottom
         .byte #%00000000 ; pre-amble
@@ -19,10 +20,10 @@ P0_Color
         ;draw from top to bottom
         .byte #CONS_COLOR_PINK ;0
         .byte #CONS_COLOR_PINK ;0
-        .byte #CONS_COLOR_CHART ;1
+        .byte #CONS_COLOR_PINK ;1
         .byte #CONS_COLOR_CHART ;2
-        .byte #CONS_COLOR_PINK ;3
-        .byte #CONS_COLOR_PINK ;4
+        .byte #CONS_COLOR_CHART ;3
+        .byte #CONS_COLOR_CHART ;4
         .byte #CONS_COLOR_PINK ;5
         .byte #CONS_COLOR_PINK ;6 
         .byte #CONS_COLOR_PINK ;7
@@ -30,5 +31,5 @@ P0_Color
         .byte #CONS_COLOR_PINK ;9
         .byte #CONS_COLOR_PINK ;10
         .byte #CONS_COLOR_PINK ;12
-        .byte #CONS_COLOR_PINK ;11
-        .byte #CONS_COLOR_PINK ;12
+        .byte #CONS_COLOR_CHART ;11
+        .byte #CONS_COLOR_CHART ;12

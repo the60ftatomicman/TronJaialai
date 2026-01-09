@@ -47,17 +47,20 @@ Kernal_RoundSetup
         sta P1XPos
         lda #$00
         sta boolSetupRound
+        lda #03
+        sta P0YPos
+        sta P1YPos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 ; This is where we do player X logic
 	sta WSYNC
         ; -- set LEFT player X
-        lda #30         ; get X coordinate
+        lda P0XPos         ; get X coordinate
         ldx #0          ; player 0 (LEFT)
         jsr SetHorizPos ; set coarse offset
         ; -- set Right player X
-        lda #140      ; get X coordinate
+        lda P1XPos      ; get X coordinate
         ldx #1          ; player 1 (RIGHT)
         jsr SetHorizPos ; set coarse offset
         
@@ -67,12 +70,20 @@ Kernal_Movement
         TIMER_WAIT
 OnScreen
 	TIMER_SETUP 195
+        ldx #$60
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+Kernal_Test_Delay
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC
+        dex
+        bne Kernal_Test_Delay
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Combat_Pre
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; This is just a spacing between the towers and combat area. sort of a preset for the combat area?
 ; we setup the presets for the complex stuff below!
-        
+        lda #$08
+        sta REFP1
         lda #$01
         sta CTRLPF 
         lda #CONS_COLOR_BLUE
@@ -132,10 +143,6 @@ Kernal_Combat_Pre
         sta pf_TileData_Right,y
         ldy #$00
         
-        lda #03
-        sta P0YPos
-        lda #06
-        sta P1YPos
         lda #CONS_PLAYER_HEIGHT
         sta P0Idx
         sta P1Idx
@@ -143,10 +150,21 @@ Kernal_Combat_Pre
         LOAD_POINTER_WITH_DATA P0Ptr,P0_Frame_1
         LOAD_POINTER_WITH_DATA P1Ptr,P0_Frame_1
         ;------------------------- ^^^ This is for demo purposes
-        lda #00
+	lda #00
         sta LineIdx
-        sta pf_Index
+	ldx #12
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Combat_JustPlayer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC
+        jsr CalculateObjects
+        jsr DrawObjects
+	dex
+        bne Kernal_Combat_JustPlayer
         
+        
+        lda #00
+        sta pf_Index
         lda #3
         sta loopIntI
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -184,36 +202,7 @@ Kernal_Combat_Draw_Playfield_Line
         lda pf_TileData_Right,y+2
         sta PF2
 Kernal_Combat_Draw_Calculations
-	sta WSYNC
-        lda #CONS_COLOR_BLACK
-        sta COLUPF
-        clc
-        ; -- uodate Line IDX for players
-	lda LineIdx
-        adc #$03
-        sta LineIdx
-        ; -- do player calcs on sprite BEGINNING
-        cmp P0YPos
-        bne .skipLeftBegin
-        ldy #$00
-        sty P0Idx
-.skipLeftBegin
-        cmp P1YPos
-        bne .skipRightBegin
-        ldy #$00
-        sty P1Idx
-.skipRightBegin
-	; -- do player calcs on sprite END
-        lda P0Idx
-        cmp #CONS_PLAYER_HEIGHT
-        bpl .skipLeftEnd
-        inc P0Idx
-.skipLeftEnd
-        lda P1Idx
-        cmp #CONS_PLAYER_HEIGHT
-        bpl .skipRightEnd
-        inc P1Idx
-.skipRightEnd
+	jsr CalculateObjects ; may have to bring this back sadly
         ; -- Dec X to represent a group of 3 lines
         dex
         bne Kernal_Combat_LoopX
@@ -299,8 +288,40 @@ DrawObjects
         sta COLUP1
         lda (P1Ptr),y
         sta GRP1
-        
         rts
+        
+CalculateObjects
+	sta WSYNC
+        lda #CONS_COLOR_BLACK
+        sta COLUPF
+        clc
+        ; -- update Line IDX for players
+	lda LineIdx
+        adc #$03
+        sta LineIdx
+        ; -- do player calcs on sprite BEGINNING
+        cmp P0YPos
+        bne .skipLeftBegin
+        ldy #$00
+        sty P0Idx
+.skipLeftBegin
+        cmp P1YPos
+        bne .skipRightBegin
+        ldy #$00
+        sty P1Idx
+.skipRightBegin
+	; -- do player calcs on sprite END
+        lda P0Idx
+        cmp #CONS_PLAYER_HEIGHT
+        bpl .skipLeftEnd
+        inc P0Idx
+.skipLeftEnd
+        lda P1Idx
+        cmp #CONS_PLAYER_HEIGHT
+        bpl .skipRightEnd
+        inc P1Idx
+.skipRightEnd
+	rts
 ;;;;;;;;;;;;;;;;;;;;;
 ; #%10000000 -- P1 Right
 ; #%01000000 -- P1 left
@@ -320,7 +341,7 @@ MoveJoystick
         cpx horizontalBoundries
         bcs SkipMoveRight
         inx
-        dec P0FrameCounter
+        ;dec P0FrameCounter
 SkipMoveRight
 	LSR ;---- read LEFT
 	bit SWCHA 
@@ -328,7 +349,7 @@ SkipMoveRight
         cpx horizontalBoundries+1
         bcc SkipMoveLeft
         dex
-        dec P0FrameCounter
+        ;dec P0FrameCounter
 SkipMoveLeft
 	stx P0XPos,y
 ; ----- Now Vertical
@@ -336,18 +357,22 @@ SkipMoveLeft
         LSR ;--- read Down
         bit SWCHA
 	bne SkipMoveDown
-        ;cpx #CONS_BOUNDRY_BOTTOM
-        ;beq SkipMoveDown
+        cpx #CONS_BOUNDRY_BOTTOM
+        bpl SkipMoveDown
+        inx ;-- need to move the exact amount of lines otherwise we get ghosting!
         inx
-        dec P0FrameCounter
+        inx
+        ;dec P0FrameCounter
 SkipMoveDown
         LSR ;--- read UP
 	bit SWCHA
 	bne SkipMoveUp
         ;cpx #CONS_BOUNDRY_TOP
         ;beq SkipMoveUp
+        dex ;-- need to move the exact amount of lines otherwise we get ghosting!
         dex
-        dec P0FrameCounter
+        dex
+        ;dec P0FrameCounter
 SkipMoveUp
         stx P0YPos,y
         rts
