@@ -52,6 +52,8 @@ Kernal_RoundSetup
         lda #03
         sta P0YPos
         sta P1YPos
+        lda #$01
+        sta P0MssleYPos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -82,7 +84,9 @@ Kernal_Test_Delay_1
         dex
         bne Kernal_Test_Delay_1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	ldx #$3
+	lda #$00
+        sta MissleCounter
+        ldx #$3
         lda #%11111111
         sta PF0
         sta PF1
@@ -105,6 +109,18 @@ Kernal_Ceiling
 Kernal_Test_Delay_2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC
+        
+        inc MissleCounter
+        lda MissleCounter
+        cmp P0MssleYPos
+        beq .setMissleOn_b
+.setMissleOff_b
+        lda #00
+        jmp .skipMissle_b
+.setMissleOn_b
+        lda #02
+.skipMissle_b
+        sta ENAM0 ; TODO this needs to be like 3 lines long otherwise it looks too small
         dex
         bne Kernal_Test_Delay_2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -297,12 +313,17 @@ DrawObjects
         lda #CONS_COLOR_BLACK
         sta COLUPF
         ; ---- Draw Missles -- this is for EVERY line
-        lda #$01 ; if boolean for draw missle true, do it.
-        cmp #$00
-        beq .skipToPlayers
+        inc MissleCounter
+        lda MissleCounter
+        cmp P0MssleYPos
+        beq .setMissleOn
+.setMissleOff
+        lda #00
+        jmp .skipToPlayers
+.setMissleOn
         lda #02
+.skipToPlayers 
         sta ENAM0
-.skipToPlayers       
         ; ---- Draw Player Left
         ldy P0Idx
         lda P0_Color,y

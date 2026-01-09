@@ -1,3 +1,4 @@
+
 ; seg.u Variables
 ; org $80
 
@@ -22,7 +23,7 @@ P0YPos          .byte ;-- Y coordinate (offset from the start of the playfield)
 P1YPos          .byte
 
 P0MssleYPos     .byte
-P1MssleYPos     .byte
+MissleCounter   .byte
 
 P0Idx           .byte ;-- data index of our sprite data
 P1Idx           .byte
