@@ -29,7 +29,9 @@ P0Idx           .byte ;-- data index of our sprite data
 P1Idx           .byte
 
 P0FrameIdx      .byte ;--- animation frame
+P1FrameIdx      .byte
 P0FrameCounter  .byte ;--- frame counter
+P1FrameCounter  .byte
 
 P0Ptr		.DS 2
 P1Ptr		.DS 2

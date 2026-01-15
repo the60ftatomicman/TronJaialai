@@ -54,6 +54,8 @@ Kernal_RoundSetup
         sta P1YPos
         lda #$01
         sta P0MssleYPos
+        LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_0
+        LOAD_POINTER_WITH_DATA P1Ptr,P_WalK_Frame_0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 Kernal_Movement
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -191,8 +193,6 @@ Kernal_Combat_Pre
         sta P0Idx
         sta P1Idx
         
-        LOAD_POINTER_WITH_DATA P0Ptr,P0_Frame_1
-        LOAD_POINTER_WITH_DATA P1Ptr,P0_Frame_1
         ;------------------------- ^^^ This is for demo purposes
 	lda #00
         sta LineIdx
@@ -273,6 +273,9 @@ Kernal_Combat_End
 ; Input
         MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
         MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
+        jsr ChangeSprites
+        ;LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_0
+        ;LOAD_POINTER_WITH_DATA P1Ptr,P_WalK_Frame_0
         nop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
@@ -424,6 +427,28 @@ SkipMoveDown
         dec P0FrameCounter
 SkipMoveUp
         stx P0YPos,y
+        rts
+;;;;;;;;;;;;;;;;;;;;;
+; Used to determine the sprite to draw
+ChangeSprites
+        clc
+        lda P0FrameCounter
+        cmp #$00
+        bpl EndOfSprites
+        ;TODO -- can probaby handle this faster!
+        FLIP_BOOL P0FrameIdx
+        cmp #$01
+        beq DrawFrameB
+DrawFrameA
+        LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_0
+        jmp ResetFrameTimer
+DrawFrameB
+        LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_1
+ResetFrameTimer
+        lda #CONS_FRAME_ANIMATION_COUNTER
+        sta P0FrameCounter
+EndOfSprites
+        nop ;DEBUG! til i fill this out
         rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
