@@ -4,12 +4,14 @@
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
-CONS_TILE_HEIGHT  EQU  #9
-CONS_TILE_WIDTH   EQU  #10 ; ONLY for collision
-CONS_TILE_ROWS    EQU  #11
-CONS_TILE_COLS    EQU  #5
-CONS_TILE_MAX     EQU  #CONS_TILE_ROWS * #CONS_TILE_COLS
-CONS_PLAYER_HEIGHT EQU #02
+CONS_TILE_HEIGHT    EQU  #9
+CONS_TILE_WIDTH     EQU  #18 ; ONLY for collision
+CONS_TILE_ROWS      EQU  #11
+CONS_TILE_COLS      EQU  #5
+CONS_TILE_MAX       EQU  #CONS_TILE_ROWS * #CONS_TILE_COLS
+CONS_PLAYER_HEIGHT  EQU #02
+CONS_PLAYER_SPEED_Y EQU #01
+CONS_PLAYER_SPEED_X EQU #01
 ; ---- COLORS
 CONS_COLOR_BLACK  EQU $00
 CONS_COLOR_RED    EQU $46
@@ -31,10 +33,10 @@ CONS_COLOR_LAUNCHER_BASE    EQU #CONS_COLOR_TEAL
 ; ---- TIMERS
 CONS_FRAME_ANIMATION_COUNTER EQU $03
 ; ---- BORDERS
-CONS_LEFT_WALL    EQU #$2D
-CONS_RIGHT_WALL   EQU #$7B
+CONS_LEFT_WALL    EQU #$25
+CONS_RIGHT_WALL   EQU #$7A
 CONS_TOP_WALL     EQU #00
-CONS_LAUNCH_START EQU #CONS_LEFT_WALL+(CONS_TILE_WIDTH*4)
+CONS_LAUNCH_START EQU #CONS_LEFT_WALL+(CONS_TILE_WIDTH*3)
 
 CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
 CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
@@ -129,7 +131,7 @@ PF_Ptr	     .DS 2
 
 	;org $90
 PF_BallStates_All     .DS #CONS_TILE_MAX
-PF_BallStates_Current .DS #CONS_TILE_COLS
+PF_BallStates_Current .DS #CONS_TILE_COLS+1
 	;org $E0
 PF_RowIndexes         .DS #CONS_TILE_ROWS
 
@@ -145,15 +147,18 @@ Start
         ldx #$00
 
         ; Set player positions
-        lda #133
+        lda #108
         sta PlayerYPos
-	lda #CONS_LAUNCH_START
+	lda #CONS_LEFT_WALL
+        ;#CONS_LAUNCH_START
 	sta PlayerXPos
-        lda #01
+        lda #CONS_PLAYER_SPEED_X
         sta PlayerDirX
-        lda #00
+        lda #02
         sta Tick_PlayerX_Step
         sta Tick_PlayerX_Step+1 ; TODO -- joystick will update BOTH of these!
+        lda #CONS_PLAYER_SPEED_Y
+        sta PlayerDirY
         lda #01
         sta Tick_PlayerY_Step
         sta Tick_PlayerY_Step+1 ; TODO -- joystick will update BOTH of these!
@@ -233,11 +238,11 @@ OnScreen
         sta CTRLPF
         lda #CONS_COLOR_BLOCK_BACKGROUND
         sta COLUPF
-        lda #%11110000
-        sta PF0
-        lda #%11111000
-        sta PF1
         lda #%00000000
+        sta PF0
+        lda #%11111111
+        sta PF1
+        lda #%11111111
         sta PF2    
         sta LineIdx ; has to count UP
 
@@ -259,25 +264,26 @@ Kernal_DrawBlocks_Col
 	sta GRP0
         jmp .DrawPlayfield
 .TurnOnPlayer
-	lda #$ff
+	lda #%11110000
         sta GRP0
         jmp .nextLine
 .DrawPlayfield
-        REPEAT 4
+        REPEAT 3
         	nop
         REPEND
         lda PF_BallStates_Current+0
-        sta COLUBK
+        sta COLUPF
         lda PF_BallStates_Current+1
-        sta COLUBK
+        sta COLUPF
         lda PF_BallStates_Current+2
-        sta COLUBK       
+        sta COLUPF       
         lda PF_BallStates_Current+3
-        sta COLUBK
+        sta COLUPF
         lda PF_BallStates_Current+4
-        sta COLUBK
-        lda #CONS_COLOR_BLOCK_BACKGROUND
-        sta COLUBK
+        sta COLUPF
+        ; always black but for timing needs to be here!
+        lda PF_BallStates_Current+5 
+        sta COLUPF
 .nextLine
 	inc LineIdx
         dey
@@ -429,18 +435,20 @@ setCurrentRowTileColors
         sta PF_BallStates_Current+3
 	lda PF_BallStates_All,y+4
         sta PF_BallStates_Current+4
-	rts
+	lda #CONS_COLOR_BLACK
+        sta PF_BallStates_Current+5
+        rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 setBallPosition
-	clc
 	dec Tick_PlayerY_Step
         bne .stepXPosTick
         ldy Tick_PlayerY_Step+1
         sty Tick_PlayerY_Step
 .changeYPos
-        ldy PlayerYPos
-        dey
-        sty PlayerYPos
+        lda PlayerYPos
+        sec
+        sbc PlayerDirY
+        sta PlayerYPos
 .stepXPosTick
 	dec Tick_PlayerX_Step
         bne .endBallPosition
@@ -448,18 +456,19 @@ setBallPosition
         sty Tick_PlayerX_Step
 .changeXPos
         lda PlayerXPos
+        clc
         adc PlayerDirX
 .checkLeftBoundry
 	cmp #CONS_LEFT_WALL
         bcs .checkRightBoundry
-        lda #$01
+        lda #CONS_PLAYER_SPEED_X
         sta PlayerDirX
         lda #CONS_LEFT_WALL
         jsr .endXPosition
 .checkRightBoundry
         cmp #CONS_RIGHT_WALL
         bcc .endXPosition
-        lda #$FF
+        lda #$00-CONS_PLAYER_SPEED_X
         sta PlayerDirX
         lda #CONS_RIGHT_WALL
 .endXPosition
