@@ -4,14 +4,17 @@
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants
-CONS_TILE_HEIGHT    EQU  #9
+CONS_TILE_HEIGHT    EQU  #10 ; add +2 for 'true' height in calculating! 
 CONS_TILE_WIDTH     EQU  #18 ; ONLY for collision
 CONS_TILE_ROWS      EQU  #11
 CONS_TILE_COLS      EQU  #5
 CONS_TILE_MAX       EQU  #CONS_TILE_ROWS * #CONS_TILE_COLS
 CONS_PLAYER_HEIGHT  EQU #02
-CONS_PLAYER_SPEED_Y EQU #01
-CONS_PLAYER_SPEED_X EQU #01
+CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
+CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
+CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps
+					                        ; 6 with 6 steps == 3 steps
+
 ; ---- COLORS
 CONS_COLOR_BLACK  EQU $00
 CONS_COLOR_RED    EQU $46
@@ -34,9 +37,10 @@ CONS_COLOR_LAUNCHER_BASE    EQU #CONS_COLOR_TEAL
 CONS_FRAME_ANIMATION_COUNTER EQU $03
 ; ---- BORDERS
 CONS_LEFT_WALL    EQU #$25
-CONS_RIGHT_WALL   EQU #$7A
+CONS_RIGHT_WALL   EQU #$77
 CONS_TOP_WALL     EQU #00
-CONS_LAUNCH_START EQU #CONS_LEFT_WALL+(CONS_TILE_WIDTH*3)
+CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
+CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL
 
 CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
 CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
@@ -79,25 +83,6 @@ CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
           lda #>.DATA_BLOB
           sta .POINTER+1
         ENDM
-;--------
-; MOVE_PLAYER duration
-; Original author: Andy Garber
-; Moves the player
-; useage: MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
-        MAC MOVE_PLAYER
-.PLAYEROFFSET      SET {1}
-.LEFT_BOUNDRY      SET {2}
-.RIGHT_BOUNDRY     SET {3}
-.STARTING_JOYSTICK SET {4}
-        ldx $01
-        lda #.RIGHT_BOUNDRY
-        sta horizontalBoundries
-        lda #.LEFT_BOUNDRY
-        sta horizontalBoundries,x
-        lda #.STARTING_JOYSTICK
-        ldy #.PLAYEROFFSET
-	jsr MoveJoystick
-        ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,7 +97,6 @@ boolBase          .byte
 LineIdx           .byte
 RowIdx            .byte
 
-
 Tick_LauncherAnim .byte
 ; used to determine when we do a step
 Tick_PlayerX_Step .DS 2 ; 0 == current, 1 == max
@@ -120,9 +104,6 @@ Tick_PlayerY_Step .DS 2 ; 0 == current, 1 == max
 
 PlayerXPos   .DS 2; may need to make 1......
 PlayerYPos   .DS 2
-
-PlayerRow    .byte
-PlayerCol    .byte
 
 PlayerDirX   .byte
 PlayerDirY   .byte
@@ -134,6 +115,9 @@ PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1
 	;org $E0
 PF_RowIndexes         .DS #CONS_TILE_ROWS
+PF_Row_Boundries      .DS #CONS_TILE_ROWS
+PF_Col_Boundries      .DS #CONS_TILE_COLS
+PF_TEMP         .DS 2
 
 END_USED_RAM .byte ; for debuggin!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,23 +129,13 @@ END_USED_RAM .byte ; for debuggin!
 Start
 	CLEAN_START
         ldx #$00
-
-        ; Set player positions
-        lda #108
-        sta PlayerYPos
-	lda #CONS_LEFT_WALL
-        ;#CONS_LAUNCH_START
-	sta PlayerXPos
-        lda #CONS_PLAYER_SPEED_X
-        sta PlayerDirX
-        lda #02
-        sta Tick_PlayerX_Step
-        sta Tick_PlayerX_Step+1 ; TODO -- joystick will update BOTH of these!
-        lda #CONS_PLAYER_SPEED_Y
-        sta PlayerDirY
-        lda #01
-        sta Tick_PlayerY_Step
-        sta Tick_PlayerY_Step+1 ; TODO -- joystick will update BOTH of these!
+	jsr spawnBallAtLauncher
+        jsr setBoundaries
+        lda #$FE
+        sta PF_TEMP
+        lda #$FF
+        sta PF_TEMP+1
+        
 NextFrame
         lsr SWCHB	; test Game Reset switch
         bcc Start	; reset?
@@ -221,7 +195,7 @@ Kernal_Movement
         ldx #1           ; player 1
         jsr SetHorizPos  ; set coarse offset
         
-        lda #CONS_LAUNCH_START+4   ; get X coordinate
+        lda #CONS_LAUNCH_START_X+3   ; get X coordinate
         ldx #4
         jsr SetHorizPos
         
@@ -264,7 +238,7 @@ Kernal_DrawBlocks_Col
 	sta GRP0
         jmp .DrawPlayfield
 .TurnOnPlayer
-	lda #%11110000
+	lda #CONS_PLAYER_WIDTH
         sta GRP0
         jmp .nextLine
 .DrawPlayfield
@@ -329,9 +303,10 @@ Kernal_Gap_Under_Blocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	lda #CONS_COLOR_LAUNCHER_BASE
         sta COLUPF
-        lda #%00100001
+        lda #%00100000
         sta CTRLPF
-        ldy #15
+        ldy #CONS_TILE_HEIGHT ; must be this height!
+; THIS IS SOMETHING WE MAY HAVE TO REMOVE!
 Kernal_Launcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC  
@@ -366,10 +341,10 @@ Kernal_Launcher_Base
 	sta WSYNC
         lda (PF_Ptr),y
         sta PF2
-	REPEAT 20
-       		nop
+        REPEAT 18
+            nop
         REPEND
-        lda #%00000000
+        lda #$00
         sta PF2
 	dey
         bne Kernal_Launcher_Base      
@@ -382,7 +357,7 @@ Kernal_End
         sta GRP0
         sta GRP1
         jsr setBallPosition
-        jsr checkCollision
+        jsr getCollision
 	sta WSYNC ;; for DEBUG
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
@@ -439,6 +414,30 @@ setCurrentRowTileColors
         sta PF_BallStates_Current+5
         rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+setBoundaries
+        ldy #$00
+        lda #CONS_TOP_WALL
+        clc
+.setRowBorders
+	adc #CONS_TILE_HEIGHT
+        sta PF_Row_Boundries,y
+        iny
+        cpy #CONS_TILE_ROWS
+        bne .setRowBorders
+;----------
+        ldy #$00
+        lda #CONS_LEFT_WALL
+        clc
+.setColBorders
+	adc #CONS_TILE_WIDTH
+        sta PF_Col_Boundries,y
+        iny
+        cpy #CONS_TILE_COLS
+        bne .setColBorders
+;----------
+        rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 setBallPosition
 	dec Tick_PlayerY_Step
         bne .stepXPosTick
@@ -448,7 +447,8 @@ setBallPosition
         lda PlayerYPos
         sec
         sbc PlayerDirY
-        sta PlayerYPos
+        ;sta PlayerYPos
+;-----------------------------------------
 .stepXPosTick
 	dec Tick_PlayerX_Step
         bne .endBallPosition
@@ -463,39 +463,65 @@ setBallPosition
         bcs .checkRightBoundry
         lda #CONS_PLAYER_SPEED_X
         sta PlayerDirX
-        lda #CONS_LEFT_WALL
+        lda #CONS_LEFT_WALL+#CONS_PLAYER_SPEED_X
         jsr .endXPosition
 .checkRightBoundry
         cmp #CONS_RIGHT_WALL
         bcc .endXPosition
         lda #$00-CONS_PLAYER_SPEED_X
         sta PlayerDirX
-        lda #CONS_RIGHT_WALL
+        lda #CONS_RIGHT_WALL-#CONS_PLAYER_SPEED_X
 .endXPosition
 	sta PlayerXPos
 .endBallPosition
         rts
-        
-checkCollision
-	ldy #$FF
+;-----------------------------------------
+getCollision
+	clc
 	lda PlayerYPos
-.getRowValue
-	iny
-        sec 
-        sbc #CONS_TILE_HEIGHT
-        bpl .getRowValue
-        nop
-        
-	ldx #$FF
-	lda PlayerXPos
-.getColValue
-	inx
+        adc #$00 ;TODO -- make FUTURE steps PlayerDirY
+        ldy #$FF
         sec
-        sbc #CONS_TILE_WIDTH
-        cmp #CONS_LEFT_WALL
-        bpl .getColValue
-        nop
+.findRowIndex
+	iny
+	lda PF_Row_Boundries,y
+        cmp PlayerYPos
+        bmi .findRowIndex
+        
+        clc
+	lda PlayerXPos
+        adc #$00 ;TODO -- make FUTURE steps PlayerDirX
+        ldy #$FF
+        sec
+.findColIndex
+	iny
+	lda PF_Col_Boundries,y
+        cmp PlayerXPos
+        bmi .findColIndex
+.fetchIndexOfNextBlock
+	nop
+	rts 
+;-----------------------------------------
+spawnBallAtLauncher
+        ; Set player positions
+	lda #CONS_LAUNCH_START_X
+	sta PlayerXPos
+        lda #CONS_PLAYER_SPEED_X
+        sta PlayerDirX
+        lda #05
+        sta Tick_PlayerX_Step
+        sta Tick_PlayerX_Step+1    
+	;---------------
+        lda #CONS_LAUNCH_START_Y
+        sta PlayerYPos
+        lda #CONS_PLAYER_SPEED_Y
+        sta PlayerDirY
+        lda #01
+        sta Tick_PlayerY_Step
+        sta Tick_PlayerY_Step+1
 	rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -506,27 +532,28 @@ PF_Level_Colors
         .byte #CONS_COLOR_YELLOW
         .byte #CONS_COLOR_GREEN
         .byte #CONS_COLOR_BLUE
-        .byte #CONS_COLOR_PURPLE  
+        .byte #CONS_COLOR_PURPLE
 PF_Launcher_Base_A
 	.byte #%00000000
 	.byte #%11111111
-        .byte #%11111111
-        .byte #%11011001
-        .byte #%11011001
-        .byte #%11010101
-        .byte #%10010011
-        .byte #%10010011
-        .byte #%10011111
+        .byte #%00011111
+        .byte #%00011001
+        .byte #%00011001
+        .byte #%00010101
+        .byte #%00010011
+        .byte #%00010011
+        .byte #%00011111
 PF_Launcher_Base_B
 	.byte #%00000000
 	.byte #%11111111
-        .byte #%11111111
-        .byte #%11010011
-        .byte #%11010011
-        .byte #%11010101
-        .byte #%10011001
-        .byte #%10011001
-        .byte #%10011111        
+        .byte #%00011111
+        .byte #%00010011
+        .byte #%00010011
+        .byte #%00010101
+        .byte #%00011001
+        .byte #%00011001
+        .byte #%00011111  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 	align $200
 PF_Level_data
 	; Level 1-----------------------------------------------------;

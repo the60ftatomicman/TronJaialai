@@ -273,9 +273,14 @@ Kernal_Combat_End
 ; Input
         MOVE_PLAYER $0,CONS_BOUNDRY_P0_LEFT,CONS_BOUNDRY_P0_RIGHT,CONS_P0_STARTING_JOYSTICK_BYTE
         MOVE_PLAYER $1,CONS_BOUNDRY_P1_LEFT,CONS_BOUNDRY_P1_RIGHT,CONS_P1_STARTING_JOYSTICK_BYTE
+        ldy $00
         jsr ChangeSprites
-        ;LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_0
-        ;LOAD_POINTER_WITH_DATA P1Ptr,P_WalK_Frame_0
+        lda #$00
+        sta REFP1
+        ldy $01
+        jsr ChangeSprites
+        lda #$08
+        sta REFP1
         nop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
@@ -393,7 +398,7 @@ MoveJoystick
         cpx horizontalBoundries
         bcs SkipMoveRight
         inx
-        dec P0FrameCounter
+        UPDATE_FRAME_COUNTER
 SkipMoveRight
 	LSR ;---- read LEFT
 	bit SWCHA 
@@ -401,7 +406,7 @@ SkipMoveRight
         cpx horizontalBoundries+1
         bcc SkipMoveLeft
         dex
-        dec P0FrameCounter
+        UPDATE_FRAME_COUNTER
 SkipMoveLeft
 	stx P0XPos,y
 ; ----- Now Vertical
@@ -414,7 +419,7 @@ SkipMoveLeft
         inx ;-- need to move the exact amount of lines otherwise we get ghosting!
         inx
         inx
-        dec P0FrameCounter
+        UPDATE_FRAME_COUNTER
 SkipMoveDown
         LSR ;--- read UP
 	bit SWCHA
@@ -424,29 +429,27 @@ SkipMoveDown
         dex ;-- need to move the exact amount of lines otherwise we get ghosting!
         dex
         dex
-        dec P0FrameCounter
+        UPDATE_FRAME_COUNTER
 SkipMoveUp
         stx P0YPos,y
         rts
 ;;;;;;;;;;;;;;;;;;;;;
 ; Used to determine the sprite to draw
 ChangeSprites
-        clc
-        lda P0FrameCounter
-        cmp #$00
+        lda P0FrameCounter,y
+        cmp #$00 
         bpl EndOfSprites
-        ;TODO -- can probaby handle this faster!
-        FLIP_BOOL P0FrameIdx
+        FLIP_BOOLY P0FrameIdx
         cmp #$01
         beq DrawFrameB
 DrawFrameA
-        LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_0
+        LOAD_POINTER_WITH_DATA_Y P0Ptr,P_WalK_Frame_0
         jmp ResetFrameTimer
 DrawFrameB
-        LOAD_POINTER_WITH_DATA P0Ptr,P_WalK_Frame_1
+        LOAD_POINTER_WITH_DATA_Y P0Ptr,P_WalK_Frame_1
 ResetFrameTimer
         lda #CONS_FRAME_ANIMATION_COUNTER
-        sta P0FrameCounter
+        sta P0FrameCounter,y
 EndOfSprites
         nop ;DEBUG! til i fill this out
         rts
