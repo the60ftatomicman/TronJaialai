@@ -1,0 +1,707 @@
+	processor 6502
+        include "vcs.h"
+        include "macro.h"
+        include "xmacro.h"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Constants
+CONS_TILE_HEIGHT    EQU  #10
+CONS_TILE_WIDTH     EQU  #18 ; ONLY for collision
+CONS_TILE_ROWS      EQU  #11
+CONS_TILE_COLS      EQU  #5
+CONS_TILE_MAX       EQU  #CONS_TILE_ROWS * #CONS_TILE_COLS
+CONS_PLAYER_HEIGHT  EQU #02
+CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
+CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
+CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps
+					                        ; 6 with 6 steps == 3 steps
+
+; ---- COLORS
+CONS_COLOR_BLACK  EQU $00
+CONS_COLOR_RED    EQU $46
+CONS_COLOR_ORANGE EQU $38
+CONS_COLOR_YELLOW EQU $1E
+CONS_COLOR_GREEN  EQU $C6
+CONS_COLOR_BLUE   EQU $A6
+CONS_COLOR_PURPLE EQU $64
+
+CONS_COLOR_PINK   EQU $3C
+CONS_COLOR_TEAL   EQU $8D
+CONS_COLOR_CHART  EQU $CA
+CONS_COLOR_GREY   EQU $E1
+CONS_COLOR_WHITE  EQU $EF
+; ---- COLORS in Relation to OBJECTS
+CONS_COLOR_BLOCK_BACKGROUND EQU #CONS_COLOR_BLACK
+CONS_COLOR_LAUNCHER_BASE    EQU #CONS_COLOR_TEAL
+CONS_COLOR_BORDERS          EQU #CONS_COLOR_TEAL
+; ---- TIMERS
+CONS_FRAME_ANIMATION_COUNTER EQU $03
+; ---- BORDERS
+CONS_LEFT_WALL    EQU #$26
+CONS_RIGHT_WALL   EQU #$7B
+CONS_TOP_WALL     EQU #00
+CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
+CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+((#CONS_TILE_HEIGHT+1)*#13)
+; ---- Player States
+CONS_PLAYER_STATE_AIMING EQU #$00
+CONS_PLAYER_STATE_MOVING EQU #$01
+CONS_PLAYER_STATE_CHECKING_COLLISION EQU #$02
+CONS_PLAYER_STATE_SETTING_BLOCK      EQU #$03
+
+CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
+CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Macros
+; TODO add to includes
+;--------
+; FLIP_BOOL
+; Original author: Andy Garber
+; Takes a memory address and flips it's value than stores it
+; Assumes the Memory address value is 1 or 0
+; usage: FLIP_BOOL SomeAddress
+        MAC FLIP_BOOL
+.MEMADDR     SET {1}
+        lda .MEMADDR
+        EOR #$01
+        sta .MEMADDR
+        ENDM
+;--------
+; CLEAR_PLAYFIELD
+; Original author: Andy Garber
+; sets playfield to 0 across the board
+; usage: CLEAR_PLAYFIELD
+        MAC CLEAR_PLAYFIELD
+        lda #%00000000
+        sta PF0
+        sta PF1
+        sta PF2
+        ENDM
+;--------
+; LOAD_POINTER_WITH_DATA
+; Original author: Andy Garber
+; Loads a pointer with low byte than high byte address of data object
+; usage: LOAD_POINTER_WITH_DATA pointer data
+        MAC LOAD_POINTER_WITH_DATA
+.POINTER      SET {1}
+.DATA_BLOB    SET {2}
+          lda #<.DATA_BLOB
+          sta .POINTER
+          lda #>.DATA_BLOB
+          sta .POINTER+1
+        ENDM
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Variables segment
+
+        seg.u Variables
+	org $80
+shadowRegisters   .DS 3
+boolDraw          .byte
+boolBase          .byte
+
+LineIdx           .byte
+RowIdx            .byte
+
+Tick_LauncherAnim .byte
+; used to determine when we do a step
+Tick_PlayerX_Step .DS 2 ; 0 == current, 1 == max
+Tick_PlayerY_Step .DS 2 ; 0 == current, 1 == max 
+
+PlayerXPos   .DS 2; may need to make 1......
+PlayerYPos   .DS 2
+PlayerNextRow   .byte
+PlayerNextCol   .byte
+PlayerNextColor .byte
+PlayerDirX   .byte
+PlayerDirY   .byte
+PlayerState  .byte ; 0 == waiting to Launch
+                   ; 1 == moving
+                   ; 2 == checking collisions
+                   ; 3 == setting NEW block
+PF_Ptr	     .DS 2
+
+	;org $90
+PF_BallStates_All     .DS #CONS_TILE_MAX
+PF_BallStates_Current .DS #CONS_TILE_COLS+1
+	;org $E0
+PF_RowIndexes         .DS #CONS_TILE_ROWS ;; THIS is my problem! its overwriting for some odd reason
+PF_Row_Boundries      .DS #CONS_TILE_ROWS
+PF_Col_Boundries      .DS #CONS_TILE_COLS
+PF_TEMP         .DS 2
+
+END_USED_RAM .byte ; for debuggin!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+	seg Code
+        org $f000
+Start
+	CLEAN_START
+        ldx #$00
+        jsr setBoundaries
+        ; These are so I can see where we are writing too
+        lda #$FE
+        sta PF_TEMP
+        lda #$FF
+        sta PF_TEMP+1
+        
+SetupLevel
+	jsr spawnBallAtLauncher
+        ; Set level data
+        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors
+        ;; TODO this should be setup ONCE than forgotten!!
+        
+        ; PF_Level_Color
+        ldy #$04
+        ldx #CONS_TILE_MAX-1
+loadLevelData_Colors
+	lda (PF_Ptr),y
+        sta PF_BallStates_All,x
+        dey
+        bpl .repeatColors
+        ldy #04
+        
+.repeatColors
+	dex
+        bpl loadLevelData_Colors  
+;;;        
+;;; Set ROW indexes for our max tiles for beter writing later.
+	lda #CONS_TILE_MAX
+        sta PF_RowIndexes
+        ldy 0
+        ldx #CONS_TILE_ROWS
+loadRowIndex
+	sec
+        sbc #CONS_TILE_COLS
+        sta PF_RowIndexes,y
+        iny
+        dex
+        bne loadRowIndex
+NextFrame
+        lsr SWCHB	; test Game Reset switch
+        bcc Start	; reset?
+; 1 + 3 lines of VSYNC
+	VERTICAL_SYNC
+; 37 lines of underscan
+	;lda #$FF
+        ;sta END_USED_RAM
+        ;nop
+	; Set player colors
+	lda #CONS_COLOR_BORDERS ; TODO -- set to color of current ball
+        sta COLUP0
+        lda #CONS_COLOR_BORDERS
+        sta COLUP1
+        
+	TIMER_SETUP 37
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+Kernal_Movement
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+; This is where we do player X logic
+        lda PlayerXPos   ; get X coordinate
+        ldx #0           ; player 0
+        jsr SetHorizPos  ; set coarse offset
+
+   
+        lda #CONS_LEFT_WALL-9   ; get X coordinate
+        ldx #1
+        jsr SetHorizPos
+        
+        ;TODO --- cannot use player 0 missle as a border, our color will change!!
+        lda #CONS_RIGHT_WALL+10   ; get X coordinate
+        ldx #3
+        jsr SetHorizPos       
+        
+        lda #CONS_LAUNCH_START_X+3   ; get X coordinate
+        ldx #4
+        jsr SetHorizPos
+        
+        sta WSYNC       ; sync w/ scanline
+        sta HMOVE       ; apply fine offsets
+   	nop    
+        TIMER_WAIT
+OnScreen
+	TIMER_SETUP 214;195 -- include overscan here.
+        lda #CONS_COLOR_BLOCK_BACKGROUND
+        sta COLUBK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        lda #$01
+        sta CTRLPF
+        lda #CONS_COLOR_BLOCK_BACKGROUND
+        sta COLUPF
+        lda #%00000000
+        sta PF0
+        lda #%11111111
+        sta PF1
+        lda #%11111111
+        sta PF2    
+        sta LineIdx ; has to count UP
+        
+        lda #%11111111
+        sta GRP1
+        lda #%01110000
+        sta NUSIZ1 
+        lda #02
+        sta ENAM1
+
+
+        lda #CONS_TILE_ROWS
+        sta RowIdx
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+Kernal_DrawBlocks_Row
+		jsr setCurrentRowTileColors
+        ldy #CONS_TILE_HEIGHT
+Kernal_DrawBlocks_Col
+        sta WSYNC
+        lda LineIdx
+        sec
+        sbc PlayerYPos
+        cmp #CONS_PLAYER_HEIGHT
+        bcc .TurnOnPlayer
+        lda #$00
+	sta GRP0
+        jmp .DrawPlayfield
+.TurnOnPlayer
+	lda #CONS_PLAYER_WIDTH
+        sta GRP0
+        jmp .nextLine
+.DrawPlayfield
+        REPEAT 2 ; max 3
+          lda PF_BallStates_Current+5 ; does nothing but looks "better"
+        REPEND  
+        REPEAT 0 ; max 4
+          nop 
+        REPEND
+        lda PF_BallStates_Current+0
+        sta COLUPF
+        lda PF_BallStates_Current+1
+        sta COLUPF
+        lda PF_BallStates_Current+2
+        sta COLUPF       
+        lda PF_BallStates_Current+3
+        sta COLUPF
+        lda PF_BallStates_Current+4
+        sta COLUPF
+        ; always black but for timing needs to be here!
+        lda PF_BallStates_Current+5 
+        sta COLUPF
+.nextLine
+	inc LineIdx
+        dey
+        bpl Kernal_DrawBlocks_Col
+.nextSection
+	dec RowIdx
+        bpl Kernal_DrawBlocks_Row
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        lda #CONS_COLOR_BLACK
+        sta COLUBK
+        lda #$00
+        sta PF0
+        sta PF1
+        sta PF2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	ldx #$10
+Kernal_Gap_Under_Blocks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC
+        inc LineIdx
+        lda LineIdx
+        sec
+        sbc PlayerYPos
+        cmp #01
+        bcc .TurnOnPlayer_2
+        lda #$00
+        jmp .nextLine_2
+.TurnOnPlayer_2
+	lda #$ff
+.nextLine_2
+        sta GRP0       
+	dex
+        bne Kernal_Gap_Under_Blocks
+        nop
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	lda #CONS_COLOR_LAUNCHER_BASE
+        sta COLUPF
+        lda #%00100001
+        sta CTRLPF
+        ldy #CONS_TILE_HEIGHT ; must be this height!
+; THIS IS SOMETHING WE MAY HAVE TO REMOVE!
+Kernal_Launcher
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC  
+        lda #$02
+        sta ENABL
+	dey
+        bne Kernal_Launcher
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;     
+        lda #$00
+        sta ENABL
+        lda #CONS_COLOR_LAUNCHER_BASE
+        sta COLUPF
+        lda Tick_LauncherAnim
+        cmp #$00
+        bne .pickLauncherFrame
+        FLIP_BOOL boolBase
+        lda #$06
+        sta Tick_LauncherAnim
+.pickLauncherFrame
+	;dec Tick_LauncherAnim 
+        lda boolBase
+        cmp #$00
+        bne .drawA
+        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Launcher_Base_B
+        ldy #$08
+        jmp Kernal_Launcher_Base
+.drawA
+        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Launcher_Base_A
+	ldy #$08
+Kernal_Launcher_Base
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta WSYNC
+        lda (PF_Ptr),y
+        sta PF2
+        REPEAT 10 ; min 11
+          lda boolBase 
+        REPEND
+        REPEAT 3 ; max 4
+          lda #%00000000
+        REPEND
+        sta PF2       
+	dey
+        bne Kernal_Launcher_Base      
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_End
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	lda #CONS_COLOR_BLACK
+        sta COLUPF        
+        lda #$00
+        sta GRP0
+        sta GRP1
+        sta ENAM1
+        
+        lda PlayerState
+        cmp #CONS_PLAYER_STATE_MOVING
+        beq .moveBall
+
+        cmp #CONS_PLAYER_STATE_CHECKING_COLLISION
+        beq .checkCollision
+
+        cmp #CONS_PLAYER_STATE_SETTING_BLOCK
+        beq .checkCollision
+.checkJoystick
+        jsr MoveJoystick
+        jmp OffScreen
+.moveBall
+        jsr setBallPosition
+        lda #CONS_PLAYER_STATE_CHECKING_COLLISION
+        jmp OffScreen
+.checkCollision
+	jsr getCollision
+        ; If we collide, lets DO something, color is in accumulator
+        cmp #CONS_COLOR_BLACK
+        bne .backToMove
+        lda #CONS_PLAYER_STATE_SETTING_BLOCK
+        jmp OffScreen
+.backToMove
+        lda #CONS_PLAYER_STATE_MOVING
+        jmp OffScreen
+.setBlock
+        jsr setCollision
+        lda #CONS_PLAYER_STATE_MOVING
+        ; now do a RESET of the position
+        ;jsr spawnBallAtLauncher
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+OffScreen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	sta PlayerState
+        sta WSYNC
+        ;TIMER_WAIT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Overscan
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 29 lines of overscan
+	;TIMER_SETUP 29
+        ;For demo purposes
+        TIMER_WAIT
+; total = 262 lines, go to next frame
+        jmp NextFrame
+
+; SetHorizPos routine
+; A = X coordinate
+; X = player number (0 or 1)
+SetHorizPos
+        sta WSYNC	; start a new line
+        sec		; set carry flag
+DivideLoop
+	sbc #15		; subtract 15
+	bcs DivideLoop	; branch until negative
+	eor #7		; calculate fine offset
+        asl
+        asl
+        asl
+        asl
+        sta RESP0,x	; fix coarse position
+        sta HMP0,x	; set fine offset
+        sta WSYNC
+        sta HMOVE	; apply the previous fine position(s)
+	sta HMCLR	; reset the old horizontal position(s)
+        rts		; return to caller
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+setCurrentRowTileColors
+        ; get the row we will want to store it in current
+        ldx RowIdx
+        ldy PF_RowIndexes,x
+	lda PF_BallStates_All,y
+        sta PF_BallStates_Current
+	lda PF_BallStates_All,y+1
+        sta PF_BallStates_Current+1
+	lda PF_BallStates_All,y+2
+        sta PF_BallStates_Current+2
+	lda PF_BallStates_All,y+3
+        sta PF_BallStates_Current+3
+	lda PF_BallStates_All,y+4
+        sta PF_BallStates_Current+4
+	lda #CONS_COLOR_BLACK
+        sta PF_BallStates_Current+5
+        rts        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+setBallPosition
+	dec Tick_PlayerY_Step
+        bne .stepXPosTick
+        ldy Tick_PlayerY_Step+1
+        sty Tick_PlayerY_Step
+.changeYPos
+        lda PlayerYPos
+        sec
+        sbc PlayerDirY
+        sta PlayerYPos
+;-----------------------------------------
+.stepXPosTick
+	dec Tick_PlayerX_Step
+        bne .endBallPosition
+        ldy Tick_PlayerX_Step+1
+        sty Tick_PlayerX_Step
+.changeXPos
+        lda PlayerXPos
+        clc
+        adc PlayerDirX
+.checkLeftBoundry
+	cmp #CONS_LEFT_WALL
+        bcs .checkRightBoundry
+        lda #CONS_PLAYER_SPEED_X
+        sta PlayerDirX
+        lda #CONS_LEFT_WALL+#CONS_PLAYER_SPEED_X
+        jmp .endXPosition
+.checkRightBoundry
+        cmp #CONS_RIGHT_WALL
+        bcc .endXPosition
+        lda #$00-CONS_PLAYER_SPEED_X
+        sta PlayerDirX
+        lda #CONS_RIGHT_WALL-#CONS_PLAYER_SPEED_X
+.endXPosition
+	;sta PlayerXPos
+.endBallPosition
+        rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+setBoundaries
+        ldy #$00
+        lda #CONS_TOP_WALL
+        clc
+.setRowBorders
+	adc #CONS_TILE_HEIGHT
+        sta PF_Row_Boundries,y
+        iny
+        cpy #CONS_TILE_ROWS
+        bne .setRowBorders
+;----------
+        ldy #$00
+        lda #CONS_LEFT_WALL
+        clc
+.setColBorders
+	adc #CONS_TILE_WIDTH
+        sta PF_Col_Boundries,y
+        iny
+        cpy #CONS_TILE_COLS
+        bne .setColBorders
+;----------
+        rts
+; Turn these into something more refined when I get time.
+;-----------------------------------------
+getCollision
+	clc
+	lda PlayerYPos
+        adc PlayerDirY
+        ldy #$FF
+        sec
+.findRowIndex
+	iny
+	lda PF_Row_Boundries,y
+        cmp PlayerYPos
+        beq .findRowIndex
+        bmi .findRowIndex
+        sty PlayerNextRow
+        
+        clc
+	lda PlayerXPos
+        adc PlayerDirX
+        ldy #$FF
+        sec
+.findColIndex
+	iny
+	lda PF_Col_Boundries,y
+        cmp PlayerXPos
+        beq .findColIndex
+        bmi .findColIndex
+        sty PlayerNextCol
+.fetchIndexOfNextBlock
+        lda #$00-#CONS_TILE_COLS
+        ldy PlayerNextRow
+.multiplyByRow
+	clc
+	adc #CONS_TILE_COLS
+        dey
+        bpl .multiplyByRow
+        ; Add columns, now at index
+        clc
+        adc PlayerNextCol
+        tay
+        lda PF_BallStates_All,y
+        sta PlayerNextColor
+	rts
+;-----------------------------------------
+setCollision
+	lda PlayerYPos
+        ldy #$FF
+        sec
+.findRowIndex_Set
+	iny
+	lda PF_Row_Boundries,y
+        cmp PlayerYPos
+        beq .findRowIndex_Set
+        bmi .findRowIndex_Set
+        sty PlayerNextRow
+        
+	lda PlayerXPos
+        ldy #$FF
+        sec
+.findColIndex_Set
+	iny
+	lda PF_Col_Boundries,y
+        cmp PlayerXPos
+        beq .findColIndex_Set
+        bmi .findColIndex_Set
+        sty PlayerNextCol
+.fetchIndexOfCurrentBlock
+        lda #$00-#CONS_TILE_COLS
+        ldy PlayerNextRow
+.multiplyByRow_Set
+	clc
+	adc #CONS_TILE_COLS
+        dey
+        bpl .multiplyByRow_Set
+        ; Add columns, now at index
+        clc
+        adc PlayerNextCol
+        tay
+        lda #CONS_COLOR_BLACK;PlayerNextColor
+        sta PF_BallStates_All,y
+	rts 
+;-----------------------------------------
+spawnBallAtLauncher
+        ; Set player positions
+        lda #CONS_PLAYER_STATE_MOVING;#CONS_PLAYER_STATE_AIMING
+        sta PlayerState
+	lda #CONS_LEFT_WALL;#CONS_LAUNCH_START_X
+	sta PlayerXPos
+        lda #CONS_PLAYER_SPEED_X
+        sta PlayerDirX
+        lda #01
+        sta Tick_PlayerX_Step
+        sta Tick_PlayerX_Step+1    
+	;---------------
+        lda #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*1)+2;#CONS_LAUNCH_START_Y-20
+        sta PlayerYPos
+        lda #CONS_PLAYER_SPEED_Y
+        sta PlayerDirY
+        lda #01
+        sta Tick_PlayerY_Step
+        sta Tick_PlayerY_Step+1
+	rts
+;;;;;;;;;;;;;;;;;;;;;
+; SWCHA -- directional register
+; #%10000000 -- P1 Right
+; #%01000000 -- P1 left
+; #%00100000 -- P1 down
+; #%00010000 -- P1 up
+; #%00001000 -- P0 Right
+; #%00000100 -- P0 left
+; #%00000010 -- P0 down
+; #%00000001 -- P0 up
+; 
+MoveJoystick
+      lda #%01000000
+      bit SWCHA           ; Read Joystick directions
+      bne .checkRight         ; If 0, Left is pressed
+      dec Tick_LauncherAnim
+.checkRight    
+      lda #%10000000
+      bit SWCHA      ; Mask for Bit 7
+      bne .checkbutton        ; If 0, Right is pressed
+      dec Tick_LauncherAnim
+.checkbutton
+      lda #%01000000 ; -- should be byte 7, if that is the case we move this to above the direction!
+      bit INPT4           ; Read Fire Button (Bit 7)
+      bne .endJoystickCheck           ; If BIT 7 is 1 (Negative), button is released
+      nop
+.endJoystickCheck
+      rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Data
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	align $100
+PF_Level_Colors
+	.byte #CONS_COLOR_RED
+        .byte #CONS_COLOR_ORANGE
+        .byte #CONS_COLOR_YELLOW
+        .byte #CONS_COLOR_GREEN
+        .byte #CONS_COLOR_PURPLE
+        .byte #CONS_COLOR_BLUE
+PF_Launcher_Base_A
+	.byte #%00000000
+        .byte #%00011111
+        .byte #%00011001
+        .byte #%00011001
+        .byte #%00010001
+        .byte #%00010011
+        .byte #%00010011
+        .byte #%00011111
+	.byte #%11111111
+PF_Launcher_Base_B
+	.byte #%00000000
+        .byte #%00011111
+        .byte #%00010011
+        .byte #%00010011
+        .byte #%00010001
+        .byte #%00011001
+        .byte #%00011001
+        .byte #%00011111
+        .byte #%11111111
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Epilogue
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	org $fffc
+        .word Start	; reset vector
+        .word Start	; BRK vector
