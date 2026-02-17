@@ -36,11 +36,16 @@ CONS_COLOR_BORDERS          EQU #CONS_COLOR_TEAL
 ; ---- TIMERS
 CONS_FRAME_ANIMATION_COUNTER EQU $03
 ; ---- BORDERS
-CONS_LEFT_WALL    EQU #$28
-CONS_RIGHT_WALL   EQU #$7A
+CONS_LEFT_WALL    EQU #$26
+CONS_RIGHT_WALL   EQU #$7B
 CONS_TOP_WALL     EQU #00
 CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
 CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+((#CONS_TILE_HEIGHT+1)*#13)
+; ---- Player States
+CONS_PLAYER_STATE_AIMING EQU #$00
+CONS_PLAYER_STATE_MOVING EQU #$01
+CONS_PLAYER_STATE_CHECKING_COLLISION EQU #$02
+CONS_PLAYER_STATE_SETTING_BLOCK      EQU #$03
 
 CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
 CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
@@ -109,14 +114,17 @@ PlayerNextCol   .byte
 PlayerNextColor .byte
 PlayerDirX   .byte
 PlayerDirY   .byte
-
+PlayerState  .byte ; 0 == waiting to Launch
+                   ; 1 == moving
+                   ; 2 == checking collisions
+                   ; 3 == setting NEW block
 PF_Ptr	     .DS 2
 
 	;org $90
 PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1
 	;org $E0
-PF_RowIndexes         .DS #CONS_TILE_ROWS
+PF_RowIndexes         .DS #CONS_TILE_ROWS ;; THIS is my problem! its overwriting for some odd reason
 PF_Row_Boundries      .DS #CONS_TILE_ROWS
 PF_Col_Boundries      .DS #CONS_TILE_COLS
 PF_TEMP         .DS 2
@@ -143,6 +151,7 @@ SetupLevel
         ; Set level data
         LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors
         ;; TODO this should be setup ONCE than forgotten!!
+        
         ; PF_Level_Color
         ldy #$04
         ldx #CONS_TILE_MAX-1
@@ -160,11 +169,11 @@ loadLevelData_Colors
 ;;; Set ROW indexes for our max tiles for beter writing later.
 	lda #CONS_TILE_MAX
         sta PF_RowIndexes
-        ldy 1
+        ldy 0
         ldx #CONS_TILE_ROWS
 loadRowIndex
-	clc
-        sbc #CONS_TILE_COLS-1
+	sec
+        sbc #CONS_TILE_COLS
         sta PF_RowIndexes,y
         iny
         dex
@@ -378,25 +387,43 @@ Kernal_End
         sta GRP0
         sta GRP1
         sta ENAM1
+        
+        lda PlayerState
+        cmp #CONS_PLAYER_STATE_MOVING
+        beq .moveBall
+
+        cmp #CONS_PLAYER_STATE_CHECKING_COLLISION
+        beq .checkCollision
+
+        cmp #CONS_PLAYER_STATE_SETTING_BLOCK
+        beq .checkCollision
+.checkJoystick
+        jsr MoveJoystick
+        jmp OffScreen
+.moveBall
         jsr setBallPosition
-        lda PlayerYPos
-        cmp #CONS_LAUNCH_START_Y
-        beq .checkJoystick
+        lda #CONS_PLAYER_STATE_CHECKING_COLLISION
+        jmp OffScreen
 .checkCollision
 	jsr getCollision
         ; If we collide, lets DO something, color is in accumulator
         cmp #CONS_COLOR_BLACK
-        beq OffScreen
+        bne .backToMove
+        lda #CONS_PLAYER_STATE_SETTING_BLOCK
+        jmp OffScreen
+.backToMove
+        lda #CONS_PLAYER_STATE_MOVING
+        jmp OffScreen
+.setBlock
         jsr setCollision
+        lda #CONS_PLAYER_STATE_MOVING
         ; now do a RESET of the position
         ;jsr spawnBallAtLauncher
-	jmp OffScreen
-.checkJoystick
-        jsr MoveJoystick
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	sta WSYNC
+	sta PlayerState
+        sta WSYNC
         ;TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
@@ -593,6 +620,8 @@ setCollision
 ;-----------------------------------------
 spawnBallAtLauncher
         ; Set player positions
+        lda #CONS_PLAYER_STATE_MOVING;#CONS_PLAYER_STATE_AIMING
+        sta PlayerState
 	lda #CONS_LEFT_WALL;#CONS_LAUNCH_START_X
 	sta PlayerXPos
         lda #CONS_PLAYER_SPEED_X
@@ -648,8 +677,8 @@ PF_Level_Colors
         .byte #CONS_COLOR_ORANGE
         .byte #CONS_COLOR_YELLOW
         .byte #CONS_COLOR_GREEN
-        .byte #CONS_COLOR_BLUE
         .byte #CONS_COLOR_PURPLE
+        .byte #CONS_COLOR_BLUE
 PF_Launcher_Base_A
 	.byte #%00000000
         .byte #%00011111
@@ -670,18 +699,6 @@ PF_Launcher_Base_B
         .byte #%00011001
         .byte #%00011111
         .byte #%11111111
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
-	align $200
-PF_Level_data
-	; Level 1-----------------------------------------------------;
-	.byte #%00000000 ; 0
-        		 ; Colors total       == second 3 bytes
-        		 ; How many rows down == first  4 bytes
-        .byte #%11110000 ; 1
-        		 ; Probability the connecting randomized blob
-                         ; is the same as it's neighbor == first 4
-                         ; probability modifier == second 4
-        ;------------------------------------------------------------;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
