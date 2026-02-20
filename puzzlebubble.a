@@ -3,17 +3,9 @@
         include "macro.h"
         include "xmacro.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Constants
-CONS_TILE_HEIGHT    EQU  #10
-CONS_TILE_WIDTH     EQU  #18 ; ONLY for collision
-CONS_TILE_ROWS      EQU  #11
-CONS_TILE_COLS      EQU  #5
-CONS_TILE_MAX       EQU  #CONS_TILE_ROWS * #CONS_TILE_COLS
-CONS_PLAYER_HEIGHT  EQU #02
-CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
-CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
-CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps
-					                        ; 6 with 6 steps == 3 steps
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Generic Constants
 
 ; ---- COLORS
 CONS_COLOR_BLACK  EQU $00
@@ -33,23 +25,14 @@ CONS_COLOR_WHITE  EQU $EF
 CONS_COLOR_BLOCK_BACKGROUND EQU #CONS_COLOR_BLACK
 CONS_COLOR_LAUNCHER_BASE    EQU #CONS_COLOR_TEAL
 CONS_COLOR_BORDERS          EQU #CONS_COLOR_TEAL
-; ---- TIMERS
-CONS_FRAME_ANIMATION_COUNTER EQU $03
-; ---- BORDERS
-CONS_LEFT_WALL    EQU #$26
-CONS_RIGHT_WALL   EQU #$7B
-CONS_TOP_WALL     EQU #00
-CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
-CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+((#CONS_TILE_HEIGHT+1)*#13)
-; ---- Player States
-CONS_PLAYER_STATE_AIMING EQU #$00
-CONS_PLAYER_STATE_MOVING EQU #$01
+
 ; ---- Joystick stuff
 CONS_P0_STARTING_JOYSTICK_BYTE EQU %10000000
 CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Macros
-; TODO add to includes
 ;--------
 ; FLIP_BOOL
 ; Original author: Andy Garber
@@ -61,17 +44,6 @@ CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
         lda .MEMADDR
         EOR #$01
         sta .MEMADDR
-        ENDM
-;--------
-; CLEAR_PLAYFIELD
-; Original author: Andy Garber
-; sets playfield to 0 across the board
-; usage: CLEAR_PLAYFIELD
-        MAC CLEAR_PLAYFIELD
-        lda #%00000000
-        sta PF0
-        sta PF1
-        sta PF2
         ENDM
 ;--------
 ; LOAD_POINTER_WITH_DATA
@@ -93,38 +65,58 @@ CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
 
         seg.u Variables
 	org $80
-shadowRegisters   .DS 3 ; may not be necessary
-boolDraw          .byte
-boolBase          .byte
+        
+; ---- Generic        
+boolBase .byte
+LineIdx  .byte
+RowIdx   .byte
+PF_Ptr	 .DS 2
 
-LineIdx           .byte
-RowIdx            .byte
-
-; used to determine when we do a step
-Tick_PlayerX_Step .DS 2 ; 0 == current, 1 == max
-Tick_PlayerY_Step .DS 2 ; 0 == current, 1 == max 
-
-PlayerXPos   .DS 2; may need to make 1......
-PlayerYPos   .DS 2
-PlayerRow    .DS 2
-PlayerCol    .DS 2
-PlayerColor  .DS 2
-PlayerDirX   .byte
-PlayerDirY   .byte
-PlayerState  .byte ; 0 == waiting to Launch
-                   ; 1 == moving
-PF_Ptr	     .DS 2
-
+; ---- Playfield
+CONS_LEFT_WALL         EQU #$26
+CONS_RIGHT_WALL        EQU #$7B
+CONS_TOP_WALL          EQU #00
+CONS_TILE_HEIGHT       EQU #10
+CONS_TILE_WIDTH        EQU #17 ; ONLY for collision
+CONS_TILE_ROWS         EQU #11
+CONS_TILE_COLS         EQU #5
+CONS_TILE_MAX          EQU #CONS_TILE_ROWS * #CONS_TILE_COLS
 	;org $90
 PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1
-	;org $E0
 PF_RowIndexes         .DS #CONS_TILE_ROWS
-PF_Row_Boundries      .DS #CONS_TILE_ROWS
-PF_Col_Boundries      .DS #CONS_TILE_COLS
-PF_TEMP         .DS 2
+;PF_Row_Boundries      .DS #CONS_TILE_ROWS ;- may need to add back for timing, just removing for sake of complexity
+;PF_Col_Boundries      .DS #CONS_TILE_COLS ;- may need to add back for timing but just removed it for sake of complexity.
 
-END_USED_RAM .byte ; for debuggin!
+; ---- Player
+CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
+CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+((#CONS_TILE_HEIGHT+1)*#13)
+CONS_PLAYER_HEIGHT  EQU #02
+CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
+CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
+CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps					                        
+					    ; 6 with 6 steps == 3 steps
+                                            
+CONS_PLAYER_STATE_AIMING EQU #$00
+CONS_PLAYER_STATE_MOVING EQU #$01                                            
+; -- X
+PlayerXPos        .DS 2
+PlayerDirX        .byte
+Tick_PlayerX_Step .DS 2 ; 0 == current, 1 == max
+PlayerRow         .DS 2
+; -- Y
+PlayerYPos        .DS 2
+PlayerDirY        .byte
+Tick_PlayerY_Step .DS 2 ; 0 == current, 1 == max 
+PlayerCol         .DS 2
+; ---- Color
+PlayerColor  .DS 2
+; ---- State (TBD if we need this)
+PlayerState  .byte
+
+
+; -- Debug stuff, used to add 2 bytes at end to see how much we are 
+PF_TEMP         .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -133,7 +125,6 @@ END_USED_RAM .byte ; for debuggin!
         org $f000
 Start
 	CLEAN_START
-        jsr setBoundaries
         ; These are so I can see where we are writing too
         lda #$FE
         sta PF_TEMP
@@ -179,7 +170,6 @@ NextFrame
 	VERTICAL_SYNC
 	TIMER_SETUP 37
 	jsr setXPositionsForObjects ; Does not need to be sub routine, just like the cleanliness
-
         TIMER_WAIT
 OnScreen
 	TIMER_SETUP 195;214 -- include overscan here.
@@ -210,9 +200,16 @@ OnScreen
         lda #02
         sta ENAM1
 
-
         lda #CONS_TILE_ROWS
         sta RowIdx
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+	ldy #02
+Kernal_Delay_Top
+	dey
+        sta WSYNC
+        bne Kernal_Delay_Top
+   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 Kernal_DrawBlocks_Row
@@ -330,7 +327,7 @@ Kernal_End
         sta GRP1
         sta ENAM1
 
-        jsr MoveJoystick
+        ;jsr MoveJoystick
         jsr setBallPosition
 
 	jsr getCollision
@@ -346,14 +343,14 @@ Kernal_End
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        sta WSYNC
+        nop
         TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-	TIMER_SETUP 29
-        sta WSYNC ;;; should always be on line 235!
+	TIMER_SETUP 26; normally 29 but i think we are line heavy......
+        nop
         TIMER_WAIT
 ; total = 262 lines, go to next frame
         jmp NextFrame
@@ -400,7 +397,8 @@ setXPositionsForObjects
         jsr SetHorizPos
         
         sta WSYNC       ; sync w/ scanline
-        sta HMOVE       ; apply fine offsets	
+        sta HMOVE       ; apply fine offsets
+        rts
 setCurrentRowTileColors
         ; get the row we will want to store it in current
         ldx RowIdx
@@ -428,10 +426,12 @@ setBallPosition
         lda PlayerYPos
         sec
         sbc PlayerDirY
-        cmp #CONS_LAUNCH_START_Y
-        bmi .setYPos 
-        lda #CONS_LAUNCH_START_Y
-.setYPos
+        sta PlayerYPos
+        cmp #CONS_TOP_WALL
+	bpl .stepXPosTick
+        ;lda #00
+        ;sta PlayerDirY
+        lda #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0
         sta PlayerYPos
 ;-----------------------------------------
 .stepXPosTick
@@ -460,77 +460,72 @@ setBallPosition
 	sta PlayerXPos
 .endBallPosition
         rts
-;-----------------------------------------
-setBoundaries
-        ldx #$00
-        ldy #$00
-        lda #CONS_TOP_WALL
-        clc
-.setRowBorders
-	adc #CONS_TILE_HEIGHT
-        sta PF_Row_Boundries,y
-        iny
-        cpy #CONS_TILE_ROWS
-        bne .setRowBorders
-        ldy #$00
-        lda #CONS_LEFT_WALL
-        clc
-.setColBorders
-	adc #CONS_TILE_WIDTH
-        sta PF_Col_Boundries,y
-        iny
-        cpy #CONS_TILE_COLS
-        bne .setColBorders
-        rts
-; Turn these into something more refined when I get time.
+; Possibly add BACK set Boundries so we aren't pulling based on the pointer every time?
 ;-----------------------------------------
 getCollision
-	lda PlayerYPos
-        ldy #$00
-.findRowIndex_Current
-	cmp PF_Row_Boundries,y
-        bmi .storeRowIndex_Current
-        iny
-        jmp .findRowIndex_Current
-.storeRowIndex_Current
-        sty PlayerRow
+.checkRowCollision
         clc
-        adc PlayerDirY
-.findRowIndex_Next
-	cmp PF_Row_Boundries,y
-        bmi .storeRowIndex_Next
-        iny
-        jmp .findRowIndex_Next
-.storeRowIndex_Next
-        sty PlayerRow+1
-;--------------------        
-	lda PlayerXPos
+        lda PlayerYPos
         ldy #$00
-.findColIndex_Current
-	cmp PF_Col_Boundries,y
-        bmi .storeColIndex_Current
+.findRowCurrent	
+        sbc #CONS_TILE_HEIGHT
+        bcc .storeRowCurrent
         iny
-        jmp .findColIndex_Current
-.storeColIndex_Current
-        sty PlayerCol
+        jmp .findRowCurrent
+.storeRowCurrent
+	sty PlayerRow
+        lda Tick_PlayerY_Step
+        cmp #01
+        bne .storeNextRow ; otherwise we skip to the COL stuff
         clc
+        lda PlayerYPos
+        sbc PlayerDirY
+        clc
+        ldy #$00
+.findRowNext
+        sbc #CONS_TILE_HEIGHT
+        bcc .storeNextRow
+        iny
+        jmp .findRowNext
+.storeNextRow
+	sty PlayerRow+1 ; -- todo THIS is wrong!
+;-----
+.checkColCollision
+        clc
+        lda PlayerXPos
+        ldy #$00
+.findColCurrent	
+        sbc #CONS_TILE_WIDTH
+        cmp #CONS_LEFT_WALL
+        bcc .storeColCurrent
+        iny
+        jmp .findColCurrent
+.storeColCurrent
+	sty PlayerCol
+        lda Tick_PlayerX_Step
+        cmp #01
+        bne .storeNextCol ; otherwise we skip to the COL stuff
+        clc
+        lda PlayerXPos
         adc PlayerDirX
-.findColIndex_Next
-	cmp PF_Col_Boundries,y
-        bmi .storeColIndex_Next
+        clc
+        ldy #$00
+.findColNext
+        sbc #CONS_TILE_WIDTH
+        cmp #CONS_LEFT_WALL
+        bcc .storeNextCol
         iny
-        jmp .findColIndex_Next
-.storeColIndex_Next
-        sty PlayerCol+1
-;--------------------          
-        tya ; load the static COL first
+        jmp .findColNext
+.storeNextCol
+	sty PlayerCol+1
+.getNextColor
+        clc
+        tya
         ldy PlayerRow+1
 .multiplyByRow
-	cpy #00
+	dey
         beq .storeNextColor
-	clc
 	adc #CONS_TILE_COLS
-        dey
         jmp .multiplyByRow
 .storeNextColor
 	tay
@@ -558,15 +553,15 @@ spawnBallAtLauncher
         ; Set player positions
         lda #CONS_COLOR_GREEN ; TODO -- set to color of current ball
         sta COLUP0
-	lda #CONS_LEFT_WALL;#CONS_LAUNCH_START_X
+	lda #CONS_LEFT_WALL+#71;#CONS_LAUNCH_START_X
 	sta PlayerXPos
-        lda #00;CONS_PLAYER_SPEED_X
+        lda #$00-CONS_PLAYER_SPEED_X
         sta PlayerDirX
         lda #01
         sta Tick_PlayerX_Step
         sta Tick_PlayerX_Step+1    
 	;---------------
-        lda #CONS_LAUNCH_START_Y
+        lda #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0;#CONS_LAUNCH_START_Y-20
         sta PlayerYPos
         lda #CONS_PLAYER_SPEED_Y
         sta PlayerDirY
@@ -615,9 +610,23 @@ PF_Level_Colors
         .byte #CONS_COLOR_BLUE
 ;-----------------------------------------
 PF_Boundries_Row
-	.byte #CONS_COLOR_RED
+	.byte #(CONS_TILE_HEIGHT)*1
+        .byte #(CONS_TILE_HEIGHT)*2
+        .byte #(CONS_TILE_HEIGHT)*3
+        .byte #(CONS_TILE_HEIGHT)*4
+        .byte #(CONS_TILE_HEIGHT)*5
+        .byte #(CONS_TILE_HEIGHT)*6
+        .byte #(CONS_TILE_HEIGHT)*7
+        .byte #(CONS_TILE_HEIGHT)*8
+        .byte #(CONS_TILE_HEIGHT)*9
+        .byte #(CONS_TILE_HEIGHT)*10
+        .byte #(CONS_TILE_HEIGHT)*11
+        .byte #(CONS_TILE_HEIGHT)*12
 PF_Boundries_Col
-	.byte #CONS_COLOR_RED
+	.byte #(CONS_LEFT_WALL+17)
+        .byte #(CONS_LEFT_WALL+35)
+        .byte #(CONS_LEFT_WALL+53)
+        .byte #(CONS_LEFT_WALL+71)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
