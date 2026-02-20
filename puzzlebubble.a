@@ -85,8 +85,6 @@ CONS_TILE_MAX          EQU #CONS_TILE_ROWS * #CONS_TILE_COLS
 PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1
 PF_RowIndexes         .DS #CONS_TILE_ROWS
-;PF_Row_Boundries      .DS #CONS_TILE_ROWS ;- may need to add back for timing, just removing for sake of complexity
-;PF_Col_Boundries      .DS #CONS_TILE_COLS ;- may need to add back for timing but just removed it for sake of complexity.
 
 ; ---- Player
 CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
@@ -97,8 +95,10 @@ CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
 CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps					                        
 					    ; 6 with 6 steps == 3 steps
                                             
-CONS_PLAYER_STATE_AIMING EQU #$00
-CONS_PLAYER_STATE_MOVING EQU #$01                                            
+CONS_PLAYER_STATE_AIMING    EQU #$00
+CONS_PLAYER_STATE_MOVING    EQU #$01
+CONS_PLAYER_STATE_COLLISION_CHECK EQU #$02
+CONS_PLAYER_STATE_COLLISION_SET EQU #$03  
 ; -- X
 PlayerXPos        .DS 2
 PlayerDirX        .byte
@@ -135,9 +135,7 @@ Start
 SetupLevel
 	jsr spawnBallAtLauncher
         ; Set level data
-        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors
-        ;; TODO this should be setup ONCE than forgotten!!
-        
+        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
         ; PF_Level_Color
         ldy #$04
         ldx #CONS_TILE_MAX-1
@@ -163,6 +161,10 @@ loadRowIndex
         iny
         dex
         bne loadRowIndex
+        
+        lda #CONS_PLAYER_STATE_MOVING
+        sta PlayerState
+        
 NextFrame
         lsr SWCHB	; test Game Reset switch
         bcc Start	; reset?
@@ -170,17 +172,8 @@ NextFrame
 	VERTICAL_SYNC
 	TIMER_SETUP 37
 	jsr setXPositionsForObjects ; Does not need to be sub routine, just like the cleanliness
-        TIMER_WAIT
-OnScreen
-	TIMER_SETUP 195;214 -- include overscan here.
+        
         lda #CONS_COLOR_BLOCK_BACKGROUND
-        sta COLUBK
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         lda #$01
         sta CTRLPF
         lda #CONS_COLOR_BLOCK_BACKGROUND
@@ -199,17 +192,26 @@ OnScreen
         sta NUSIZ1 
         lda #02
         sta ENAM1
-
-        lda #CONS_TILE_ROWS
-        sta RowIdx
+        sta COLUBK
+        
+        TIMER_WAIT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+OnScreen
+	TIMER_SETUP 195;214 -- include overscan here.
+;	ldy #02
+;Kernal_Delay_Top
+;	dey
+;        sta WSYNC
+;        bne Kernal_Delay_Top
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-	ldy #02
-Kernal_Delay_Top
-	dey
-        sta WSYNC
-        bne Kernal_Delay_Top
-   
+        lda #CONS_TILE_ROWS-1
+        sta RowIdx
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 Kernal_DrawBlocks_Row
@@ -298,7 +300,6 @@ Kernal_Gap_Under_Blocks
         lda #%00100001
         sta CTRLPF
         ldy #CONS_TILE_HEIGHT ; must be this height!
-
 Kernal_Launcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC  
@@ -327,14 +328,32 @@ Kernal_End
         sta GRP1
         sta ENAM1
 
-        ;jsr MoveJoystick
+	lda PlayerState
+        ;cmp #CONS_PLAYER_STATE_COLLISION_CHECK
+       ; beq .checkCollision
+        ;cmp #CONS_PLAYER_STATE_COLLISION_SET
+        ;beq .setCollision
+        cmp #CONS_PLAYER_STATE_MOVING
+        beq .moveBall
+.readUserImport
+        jsr MoveJoystick
+        jmp OffScreen
+.moveBall
         jsr setBallPosition
-
+        lda #CONS_PLAYER_STATE_COLLISION_CHECK
+        ;jmp OffScreen
+.checkCollision
 	jsr getCollision
+        ;lda #CONS_PLAYER_STATE_COLLISION_SET
+        ;jmp OffScreen
+.setCollision
         lda PlayerColor+1
         cmp #CONS_COLOR_BLACK
-        beq OffScreen
+        beq .skipSetCollision
         jsr setCollision
+.skipSetCollision
+        lda #CONS_PLAYER_STATE_MOVING
+        ;jmp OffScreen ; TODO -- not needed but keeps things clean
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -343,13 +362,14 @@ Kernal_End
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        sta PlayerState
         nop
         TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-	TIMER_SETUP 26; normally 29 but i think we are line heavy......
+	TIMER_SETUP 29;29
         nop
         TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -397,8 +417,7 @@ setXPositionsForObjects
         jsr SetHorizPos
         
         sta WSYNC       ; sync w/ scanline
-        sta HMOVE       ; apply fine offsets
-        rts
+        sta HMOVE       ; apply fine offsets	
 setCurrentRowTileColors
         ; get the row we will want to store it in current
         ldx RowIdx
@@ -422,9 +441,9 @@ setBallPosition
         bne .stepXPosTick
         ldy Tick_PlayerY_Step+1
         sty Tick_PlayerY_Step
+        sec
 .changeYPos
         lda PlayerYPos
-        sec
         sbc PlayerDirY
         sta PlayerYPos
         cmp #CONS_TOP_WALL
@@ -522,13 +541,7 @@ getCollision
         clc
         tya
         ldy PlayerRow+1
-.multiplyByRow
-	dey
-        beq .storeNextColor
-	adc #CONS_TILE_COLS
-        jmp .multiplyByRow
-.storeNextColor
-	tay
+	adc PF_RowIndexes,y
         lda PF_BallStates_All,y
         sta PlayerColor+1
 	rts
@@ -561,7 +574,7 @@ spawnBallAtLauncher
         sta Tick_PlayerX_Step
         sta Tick_PlayerX_Step+1    
 	;---------------
-        lda #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0;#CONS_LAUNCH_START_Y-20
+        lda #CONS_LAUNCH_START_Y
         sta PlayerYPos
         lda #CONS_PLAYER_SPEED_Y
         sta PlayerDirY
