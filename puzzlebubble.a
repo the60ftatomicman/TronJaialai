@@ -360,7 +360,7 @@ Kernal_End
         cmp #CONS_PLAYER_STATE_COLLISION_SET
         beq .setCollision
 .readUserImport
-        jsr MoveJoystick
+        jsr ReadJoystick
         sta PlayerState
         jmp OffScreen
 .moveBall
@@ -482,13 +482,13 @@ setBallPosition
         sta PlayerYPos
         ;TODO -- vv this is actually something we need to REMOVE. just for testing!
         cmp #CONS_TOP_WALL
-	bpl .stepXPosTick
+	bcc .stepXPosTick
         ;lda #00
         ;sta PlayerDirY
-        lda #CONS_LAUNCH_START_Y
-        sta PlayerYPos
-        lda #CONS_PLAYER_STATE_AIMING
-        sta PlayerState
+        ;lda #CONS_LAUNCH_START_Y
+        ;sta PlayerYPos
+        ;lda #CONS_PLAYER_STATE_AIMING
+        ;sta PlayerState
         ;TODO -- ^^ this is actually something we need to REMOVE. just for testing!
 
 ;-----------------------------------------
@@ -647,7 +647,7 @@ setLauncher
 ; #%00000010 -- P0 down
 ; #%00000001 -- P0 up
 ; 
-MoveJoystick
+ReadJoystick
       lda #%01000000
       bit SWCHA           ; Read Joystick directions
       bne .checkRight     ; If 0, Left is pressed
@@ -662,7 +662,7 @@ MoveJoystick
       lda #%10000000              ; Load the state of the P1 button into the accumulator (A)
       bit INPT4       ; Test bit 7 of the accumulator.
       bpl .changeStateOnButton           ; If BIT 7 is 1 (Negative), button is released
-      lda #CONS_PLAYER_STATE_AIMING
+      ;lda #CONS_PLAYER_STATE_AIMING
       jmp .endJoystickCheck
 .changeStateOnButton
       lda #CONS_PLAYER_STATE_MOVING

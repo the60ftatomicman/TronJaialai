@@ -561,8 +561,9 @@
     135  f015		       85 07		      sta	COLUP1
     136  f017							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     137  f017				   SetupLevel
-    138  f017		       20 8c f2 	      jsr	spawnBallAtLauncher
-    139  f01a							; Set level data
+    138  f017		       20 a6 f2 	      jsr	spawnBallAtLauncher
+    139  f01a
+    140  f01a							; Set level data
       0  f01a					      LOAD_POINTER_WITH_DATA	PF_Ptr,PF_Level_Colors	;; TODO this should be setup ONCE than forgotten!!
       1  f01a				   .POINTER   SET	PF_Ptr
       2  f01a				   .DATA_BLOB SET	PF_Level_Colors
@@ -570,623 +571,647 @@
       4  f01c		       85 83		      sta	.POINTER
       5  f01e		       a9 f3		      lda	#>.DATA_BLOB
       6  f020		       85 84		      sta	.POINTER+1
-    141  f022							; PF_Level_Color
-    142  f022		       a0 04		      ldy	#$04
-    143  f024		       a2 36		      ldx	#CONS_TILE_MAX-1
-    144  f026				   loadLevelData_Colors
-    145  f026		       b1 83		      lda	(PF_Ptr),y
-    146  f028		       95 87		      sta	PF_BallStates_All,x
-    147  f02a		       88		      dey
-    148  f02b		       10 02		      bpl	.repeatColors
-    149  f02d		       a0 04		      ldy	#$04
-    150  f02f				   .repeatColors
-    151  f02f		       ca		      dex
-    152  f030		       10 f4		      bpl	loadLevelData_Colors
-    153  f032							;;;	    
-    154  f032							;;; Set ROW indexes for our max tiles for better writing later.
-    155  f032		       a9 37		      lda	#CONS_TILE_MAX
-    156  f034		       85 c4		      sta	PF_RowIndexes
-    157  f036		       a4 00		      ldy	0
-    158  f038		       a2 0b		      ldx	#CONS_TILE_ROWS
-    159  f03a				   loadRowIndex
-    160  f03a		       38		      sec
-    161  f03b		       e9 05		      sbc	#CONS_TILE_COLS
-    162  f03d		       99 c4 00 	      sta	PF_RowIndexes,y
-    163  f040		       c8		      iny
-    164  f041		       ca		      dex
-    165  f042		       d0 f6		      bne	loadRowIndex
-    166  f044							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    167  f044		       a9 01		      lda	#$01
-    168  f046		       85 e1		      sta	PlayerLauncherIdx
-    169  f048							;TODO -- more eligant start up
-    170  f048		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
-    171  f04a		       85 e0		      sta	PlayerState
-    172  f04c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    173  f04c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    174  f04c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-    175  f04c				   NextFrame
-    176  f04c		       4e 82 02 	      lsr	SWCHB	; test Game Reset switch
-    177  f04f		       90 af		      bcc	Start	; reset?
-    178  f051							; 1 + 3 lines of VSYNC
-      0  f051					      VERTICAL_SYNC
-      1  f051		       a9 0e		      lda	#%1110
-      2  f053		       85 02	   .VSLP1     sta	WSYNC
-      3  f055		       85 00		      sta	VSYNC
-      4  f057		       4a		      lsr
-      5  f058		       d0 f9		      bne	.VSLP1
-    180  f05a		       20 99 f1 	      jsr	setXPositionsForObjects	; Does not need to be sub routine, just like the cleanliness
-    181  f05d		       ea		      nop
-      0  f05e					      TIMER_SETUP	37
-      1  f05e				   .lines     SET	37
-      2  f05e				   .cycles    SET	((.lines * 76) - 13)
-      3  f05e
-      4  f05e
-      5  f05e				  -	      if	(.cycles % 64) < 12
-      6  f05e				  -	      lda	#(.cycles / 64) - 1
-      7  f05e				  -	      sta	WSYNC
-      8  f05e					      else
-      9  f05e		       a9 2b		      lda	#(.cycles / 64)
-     10  f060		       85 02		      sta	WSYNC
-     11  f062					      endif
-     12  f062		       8d 96 02 	      sta	TIM64T
-    183  f065		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
-    184  f067		       a9 01		      lda	#$01
-    185  f069		       85 0a		      sta	CTRLPF
-    186  f06b		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
-    187  f06d		       85 08		      sta	COLUPF
-    188  f06f		       a9 00		      lda	#%00000000
-    189  f071		       85 0d		      sta	PF0
-    190  f073		       a9 ff		      lda	#%11111111
-    191  f075		       85 0e		      sta	PF1
-    192  f077		       a9 ff		      lda	#%11111111
-    193  f079		       85 0f		      sta	PF2
-    194  f07b		       85 81		      sta	LineIdx	; has to count UP
-    195  f07d
-    196  f07d		       a9 ff		      lda	#%11111111
-    197  f07f		       85 1c		      sta	GRP1
-    198  f081		       a9 70		      lda	#%01110000
-    199  f083		       85 05		      sta	NUSIZ1
-    200  f085		       a9 02		      lda	#02
-    201  f087		       85 1e		      sta	ENAM1
-    202  f089		       85 09		      sta	COLUBK
-    203  f08b
-      0  f08b					      TIMER_WAIT
-      1  f08b				   .waittimer
-      2  f08b		       ad 84 02 	      lda	INTIM
-      3  f08e		       d0 fb		      bne	.waittimer
-      4  f090		       85 02		      sta	WSYNC
-    205  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-    206  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-    207  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-    208  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    209  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    210  f092							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    211  f092				   OnScreen
-      0  f092					      TIMER_SETUP	195	;214 -- include overscan here.
-      1  f092				   .lines     SET	195
-      2  f092				   .cycles    SET	((.lines * 76) - 13)
-      3  f092
-      4  f092
-      5  f092				  -	      if	(.cycles % 64) < 12
-      6  f092				  -	      lda	#(.cycles / 64) - 1
-      7  f092				  -	      sta	WSYNC
-      8  f092					      else
-      9  f092		       a9 e7		      lda	#(.cycles / 64)
-     10  f094		       85 02		      sta	WSYNC
-     11  f096					      endif
-     12  f096		       8d 96 02 	      sta	TIM64T
-    213  f099							;	ldy #02
-    214  f099							;Kernal_Delay_Top
-    215  f099							;	dey
-    216  f099							;	  sta WSYNC
-    217  f099							;	  bne Kernal_Delay_Top
-    218  f099							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    219  f099							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    220  f099		       a5 dd		      lda	PlayerColor
-    221  f09b		       85 06		      sta	COLUP0
-    222  f09d		       a9 0a		      lda	#CONS_TILE_ROWS-1
-    223  f09f		       85 82		      sta	RowIdx
-    224  f0a1							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    225  f0a1							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-    226  f0a1				   Kernal_DrawBlocks_Row
-    227  f0a1		       20 ba f1 	      jsr	setCurrentRowTileColors
-    228  f0a4		       a0 0a		      ldy	#CONS_TILE_HEIGHT
-    229  f0a6				   Kernal_DrawBlocks_Col
-    230  f0a6		       85 02		      sta	WSYNC
-    231  f0a8		       a5 81		      lda	LineIdx
-    232  f0aa		       38		      sec
-    233  f0ab		       e5 d6		      sbc	PlayerYPos
-    234  f0ad		       c9 02		      cmp	#CONS_PLAYER_HEIGHT
-    235  f0af		       90 07		      bcc	.TurnOnPlayer
-    236  f0b1		       a9 00		      lda	#$00
-    237  f0b3		       85 1b		      sta	GRP0
-    238  f0b5		       4c bf f0 	      jmp	.DrawPlayfield
-    239  f0b8				   .TurnOnPlayer
-    240  f0b8		       a9 ff		      lda	#CONS_PLAYER_WIDTH
-    241  f0ba		       85 1b		      sta	GRP0
-    242  f0bc		       4c db f0 	      jmp	.nextLine
-    243  f0bf				   .DrawPlayfield
-    244  f0bf					      REPEAT	2	; max 3
-    245  f0bf		       a5 c3		      lda	PF_BallStates_Current+5	; does nothing but looks "better"
-    244  f0bf					      REPEND
-    245  f0c1		       a5 c3		      lda	PF_BallStates_Current+5	; does nothing but looks "better"
-    246  f0c3					      REPEND
-    247  f0c3				  -	      REPEAT	0	; max 4
-    248  f0c3				  -	      nop
-    249  f0c3					      REPEND
-    250  f0c3		       a5 be		      lda	PF_BallStates_Current+0
-    251  f0c5		       85 08		      sta	COLUPF
-    252  f0c7		       a5 bf		      lda	PF_BallStates_Current+1
-    253  f0c9		       85 08		      sta	COLUPF
-    254  f0cb		       a5 c0		      lda	PF_BallStates_Current+2
-    255  f0cd		       85 08		      sta	COLUPF
-    256  f0cf		       a5 c1		      lda	PF_BallStates_Current+3
-    257  f0d1		       85 08		      sta	COLUPF
-    258  f0d3		       a5 c2		      lda	PF_BallStates_Current+4
-    259  f0d5		       85 08		      sta	COLUPF
-    260  f0d7							; always black but for timing needs to be here!
-    261  f0d7		       a5 c3		      lda	PF_BallStates_Current+5
-    262  f0d9		       85 08		      sta	COLUPF
-    263  f0db				   .nextLine
-    264  f0db		       e6 81		      inc	LineIdx
-    265  f0dd		       88		      dey
-    266  f0de		       10 c6		      bpl	Kernal_DrawBlocks_Col
-    267  f0e0				   .nextSection
-    268  f0e0		       c6 82		      dec	RowIdx
-    269  f0e2		       10 bd		      bpl	Kernal_DrawBlocks_Row
-    270  f0e4				   ClearForLauncher
-    271  f0e4		       a9 00		      lda	#CONS_COLOR_BLACK
-    272  f0e6		       85 09		      sta	COLUBK
-    273  f0e8		       a9 00		      lda	#$00
-    274  f0ea		       85 0d		      sta	PF0
-    275  f0ec		       85 0e		      sta	PF1
-    276  f0ee		       85 0f		      sta	PF2
-    277  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-    278  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-    279  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-    280  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    281  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    282  f0f0							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    283  f0f0		       a2 10		      ldx	#$10
-    284  f0f2				   Kernal_Gap_Under_Blocks
-    285  f0f2							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    286  f0f2		       85 02		      sta	WSYNC
-    287  f0f4		       e6 81		      inc	LineIdx
-    288  f0f6		       a5 81		      lda	LineIdx
-    289  f0f8		       38		      sec
-    290  f0f9		       e5 d6		      sbc	PlayerYPos
-    291  f0fb		       c9 01		      cmp	#01
-    292  f0fd		       90 05		      bcc	.TurnOnPlayer_2
-    293  f0ff		       a9 00		      lda	#$00
-    294  f101		       4c 06 f1 	      jmp	.nextLine_2
-    295  f104				   .TurnOnPlayer_2
-    296  f104		       a9 ff		      lda	#$ff
-    297  f106				   .nextLine_2
-    298  f106		       85 1b		      sta	GRP0
-    299  f108		       ca		      dex
-    300  f109		       d0 e7		      bne	Kernal_Gap_Under_Blocks
-    301  f10b		       ea		      nop
-    302  f10c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-    303  f10c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-    304  f10c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-    305  f10c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    306  f10c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    307  f10c		       a5 de		      lda	PlayerColor+1
-    308  f10e		       85 08		      sta	COLUPF
-    309  f110		       a9 21		      lda	#%00100001
-    310  f112		       85 0a		      sta	CTRLPF
-    311  f114		       a0 0a		      ldy	#CONS_TILE_HEIGHT	; must be this height!
-    312  f116				   Kernal_Launcher
-    313  f116							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    314  f116		       85 02		      sta	WSYNC
-    315  f118		       a9 02		      lda	#$02
-    316  f11a		       85 1f		      sta	ENABL
-    317  f11c		       88		      dey
-    318  f11d		       d0 f7		      bne	Kernal_Launcher
-    319  f11f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;     
-    320  f11f		       a9 00		      lda	#$00
-    321  f121		       85 1c		      sta	GRP1
-    322  f123		       85 1e		      sta	ENAM1
-    323  f125		       85 1f		      sta	ENABL
-    324  f127
-    325  f127		       a5 de		      lda	PlayerColor+1
-    326  f129		       85 08		      sta	COLUPF
-    327  f12b		       a0 06		      ldy	#$6
-    328  f12d				   Kernal_Launcher_Base
-    329  f12d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    330  f12d		       85 02		      sta	WSYNC
-    331  f12f		       a9 e0		      lda	#$E0
-    332  f131		       85 0f		      sta	PF2
-    333  f133		       88		      dey
-    334  f134		       d0 f7		      bne	Kernal_Launcher_Base
-    335  f136							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    336  f136				   Kernal_End
-    337  f136							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    338  f136		       a9 00		      lda	#CONS_COLOR_BLACK
-    339  f138		       85 08		      sta	COLUPF
-    340  f13a		       a9 00		      lda	#$00
-    341  f13c		       85 1b		      sta	GRP0
-    342  f13e
-    343  f13e		       a5 e0		      lda	PlayerState
-    344  f140							;These will be needed if efficiency dies.
-    345  f140							;cmp #CONS_PLAYER_STATE_COLLISION_CHECK
-    346  f140							;beq .checkCollision
-    347  f140							;cmp #CONS_PLAYER_STATE_COLLISION_SET
-    348  f140							;beq .setCollision
-    349  f140		       c9 01		      cmp	#CONS_PLAYER_STATE_MOVING
-    350  f142							;beq .moveBall
-    351  f142		       4c 4d f1 	      jmp	.moveBall
-    352  f145				   .readUserImport
-    353  f145		       20 c5 f2 	      jsr	MoveJoystick
-    354  f148		       85 e0		      sta	PlayerState
-    355  f14a		       4c 67 f1 	      jmp	OffScreen
-    356  f14d				   .moveBall
-    357  f14d		       20 dc f1 	      jsr	setBallPosition
-    358  f150							;lda #CONS_PLAYER_STATE_COLLISION_CHECK
-    359  f150							;jmp OffScreen
-    360  f150				   .checkCollision
-    361  f150		       20 1e f2 	      jsr	getCollision
-    362  f153							;lda #CONS_PLAYER_STATE_COLLISION_SET
-    363  f153							;jmp OffScreen
-    364  f153				   .setCollision
-    365  f153		       a5 df		      lda	PlayerColor+2
-    366  f155		       c9 00		      cmp	#CONS_COLOR_BLOCK_BACKGROUND
-    367  f157		       f0 0a		      beq	.skipSetCollision
-    368  f159		       20 7d f2 	      jsr	setCollision
-    369  f15c		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
-    370  f15e		       85 e0		      sta	PlayerState
-    371  f160		       4c 67 f1 	      jmp	OffScreen
-    372  f163				   .skipSetCollision
-    373  f163		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING
-    374  f165		       85 e0		      sta	PlayerState
-    375  f167							;jmp OffScreen ; TODO -- not needed but keeps things clean
-    376  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
-    377  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-    378  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-    379  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    380  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    381  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    382  f167				   OffScreen
-    383  f167							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    384  f167		       ea		      nop
-      0  f168					      TIMER_WAIT
-      1  f168				   .waittimer
-      2  f168		       ad 84 02 	      lda	INTIM
-      3  f16b		       d0 fb		      bne	.waittimer
-      4  f16d		       85 02		      sta	WSYNC
-    386  f16f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    387  f16f							; Overscan
-    388  f16f							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    389  f16f							; 29 lines of overscan
-      0  f16f					      TIMER_SETUP	29	;29
-      1  f16f				   .lines     SET	29
-      2  f16f				   .cycles    SET	((.lines * 76) - 13)
-      3  f16f
-      4  f16f
-      5  f16f				  -	      if	(.cycles % 64) < 12
-      6  f16f				  -	      lda	#(.cycles / 64) - 1
-      7  f16f				  -	      sta	WSYNC
-      8  f16f					      else
-      9  f16f		       a9 22		      lda	#(.cycles / 64)
-     10  f171		       85 02		      sta	WSYNC
-     11  f173					      endif
-     12  f173		       8d 96 02 	      sta	TIM64T
-    391  f176		       ea		      nop
-      0  f177					      TIMER_WAIT
-      1  f177				   .waittimer
-      2  f177		       ad 84 02 	      lda	INTIM
-      3  f17a		       d0 fb		      bne	.waittimer
-      4  f17c		       85 02		      sta	WSYNC
-    393  f17e							; total = 262 lines, go to next frame
-    394  f17e		       4c 4c f0 	      jmp	NextFrame
-    395  f181							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    396  f181							; Subroutines
-    397  f181							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    398  f181							; SetHorizPos routine
-    399  f181							; A = X coordinate
-    400  f181							; X = player number (0 or 1)
-    401  f181				   SetHorizPos
-    402  f181		       85 02		      sta	WSYNC	; start a new line
-    403  f183		       38		      sec		; set carry flag
-    404  f184				   DivideLoop
-    405  f184		       e9 0f		      sbc	#15	; subtract 15
-    406  f186		       b0 fc		      bcs	DivideLoop	; branch until negative
-    407  f188		       49 07		      eor	#7	; calculate fine offset
-    408  f18a		       0a		      asl
-    409  f18b		       0a		      asl
-    410  f18c		       0a		      asl
-    411  f18d		       0a		      asl
-    412  f18e		       95 10		      sta	RESP0,x	; fix coarse position
-    413  f190		       95 20		      sta	HMP0,x	; set fine offset
-    414  f192		       85 02		      sta	WSYNC
-    415  f194		       85 2a		      sta	HMOVE	; apply the previous fine position(s)
-    416  f196		       85 2b		      sta	HMCLR	; reset the old horizontal position(s)
-    417  f198		       60		      rts		; return to caller
-    418  f199							;-----------------------------------------	   
-    419  f199				   setXPositionsForObjects
-    420  f199		       a5 cf		      lda	PlayerXPos	; get X coordinate
-    421  f19b		       a2 00		      ldx	#0	; player 0
-    422  f19d		       20 81 f1 	      jsr	SetHorizPos	; set coarse offset
-    423  f1a0
-    424  f1a0
-    425  f1a0		       a9 1d		      lda	#CONS_LEFT_WALL-9	; get X coordinate
-    426  f1a2		       a2 01		      ldx	#1
-    427  f1a4		       20 81 f1 	      jsr	SetHorizPos
-    428  f1a7
-    429  f1a7							;TODO --- cannot use player 0 missle as a border, our color will change!!
-    430  f1a7		       a9 85		      lda	#CONS_RIGHT_WALL+10	; get X coordinate
-    431  f1a9		       a2 03		      ldx	#3
-    432  f1ab		       20 81 f1 	      jsr	SetHorizPos
-    433  f1ae
-    434  f1ae		       a9 50		      lda	#CONS_LAUNCH_START_X+3	; get X coordinate
-    435  f1b0		       a2 04		      ldx	#4
-    436  f1b2		       20 81 f1 	      jsr	SetHorizPos
-    437  f1b5
-    438  f1b5		       85 02		      sta	WSYNC	; sync w/ scanline
-    439  f1b7		       85 2a		      sta	HMOVE	; apply fine offsets
-    440  f1b9		       60		      rts
-    441  f1ba							;-----------------------------------------	   
-    442  f1ba				   setCurrentRowTileColors
-    443  f1ba							; get the row we will want to store it in current
-    444  f1ba		       a6 82		      ldx	RowIdx
-    445  f1bc		       b4 c4		      ldy	PF_RowIndexes,x
-    446  f1be		       b9 87 00 	      lda	PF_BallStates_All,y
-    447  f1c1		       85 be		      sta	PF_BallStates_Current
-    448  f1c3		       b9 88 00 	      lda	PF_BallStates_All,y+1
-    449  f1c6		       85 bf		      sta	PF_BallStates_Current+1
-    450  f1c8		       b9 89 00 	      lda	PF_BallStates_All,y+2
-    451  f1cb		       85 c0		      sta	PF_BallStates_Current+2
-    452  f1cd		       b9 8a 00 	      lda	PF_BallStates_All,y+3
-    453  f1d0		       85 c1		      sta	PF_BallStates_Current+3
-    454  f1d2		       b9 8b 00 	      lda	PF_BallStates_All,y+4
-    455  f1d5		       85 c2		      sta	PF_BallStates_Current+4
-    456  f1d7		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
-    457  f1d9		       85 c3		      sta	PF_BallStates_Current+5
-    458  f1db		       60		      rts
-    459  f1dc							;-----------------------------------------
-    460  f1dc				   setBallPosition
-    461  f1dc		       c6 d9		      dec	Tick_PlayerY_Step
-    462  f1de		       d0 17		      bne	.stepXPosTick
-    463  f1e0		       a4 da		      ldy	Tick_PlayerY_Step+1
-    464  f1e2		       84 d9		      sty	Tick_PlayerY_Step
-    465  f1e4		       38		      sec
-    466  f1e5				   .changeYPos
-    467  f1e5		       a5 d6		      lda	PlayerYPos
-    468  f1e7		       e5 d8		      sbc	PlayerDirY
-    469  f1e9		       85 d6		      sta	PlayerYPos
-    470  f1eb							;TODO -- vv this is actually something we need to REMOVE. just for testing!
-    471  f1eb		       c9 00		      cmp	#CONS_TOP_WALL
-    472  f1ed		       10 08		      bpl	.stepXPosTick
-    473  f1ef							;lda #00
-    474  f1ef							;sta PlayerDirY
-    475  f1ef		       a9 78		      lda	#CONS_LAUNCH_START_Y
-    476  f1f1		       85 d6		      sta	PlayerYPos
-    477  f1f3		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
-    478  f1f5		       85 e0		      sta	PlayerState
-    479  f1f7							;TODO -- ^^ this is actually something we need to REMOVE. just for testing!
-    480  f1f7
-    481  f1f7							;-----------------------------------------
-    482  f1f7				   .stepXPosTick
-    483  f1f7		       c6 d2		      dec	Tick_PlayerX_Step
-    484  f1f9		       d0 22		      bne	.endBallPosition
-    485  f1fb		       a4 d3		      ldy	Tick_PlayerX_Step+1
-    486  f1fd		       84 d2		      sty	Tick_PlayerX_Step
-    487  f1ff				   .changeXPos
-    488  f1ff		       a5 cf		      lda	PlayerXPos
-    489  f201		       18		      clc
-    490  f202		       65 d1		      adc	PlayerDirX
-    491  f204				   .checkLeftBoundry
-    492  f204		       c9 26		      cmp	#CONS_LEFT_WALL
-    493  f206		       b0 09		      bcs	.checkRightBoundry
-    494  f208		       a9 09		      lda	#CONS_PLAYER_SPEED_X
-    495  f20a		       85 d1		      sta	PlayerDirX
-    496  f20c		       a9 2f		      lda	#CONS_LEFT_WALL+#CONS_PLAYER_SPEED_X
-    497  f20e		       4c 1b f2 	      jmp	.endXPosition
-    498  f211				   .checkRightBoundry
-    499  f211		       c9 7b		      cmp	#CONS_RIGHT_WALL
-    500  f213		       90 06		      bcc	.endXPosition
-    501  f215		       a9 f7		      lda	#$00-CONS_PLAYER_SPEED_X
-    502  f217		       85 d1		      sta	PlayerDirX
-    503  f219		       a9 72		      lda	#CONS_RIGHT_WALL-#CONS_PLAYER_SPEED_X
-    504  f21b				   .endXPosition
-    505  f21b		       85 cf		      sta	PlayerXPos
-    506  f21d				   .endBallPosition
-    507  f21d		       60		      rts
-    508  f21e							;-----------------------------------------
-    509  f21e				   getCollision
-    510  f21e				   .checkRowCollision
-    511  f21e		       18		      clc
-    512  f21f		       a5 d6		      lda	PlayerYPos
-    513  f221		       a0 00		      ldy	#$00
-    514  f223				   .findRowCurrent
-    515  f223		       e9 0a		      sbc	#CONS_TILE_HEIGHT
-    516  f225		       90 04		      bcc	.storeRowCurrent
-    517  f227		       c8		      iny
-    518  f228		       4c 23 f2 	      jmp	.findRowCurrent
-    519  f22b				   .storeRowCurrent
-    520  f22b		       84 d4		      sty	PlayerRow
-    521  f22d		       a5 d9		      lda	Tick_PlayerY_Step
-    522  f22f		       c9 01		      cmp	#01
-    523  f231		       d0 10		      bne	.storeNextRow	; otherwise we skip to the COL stuff
-    524  f233		       18		      clc
-    525  f234		       a5 d6		      lda	PlayerYPos
-    526  f236		       e5 d8		      sbc	PlayerDirY
-    527  f238		       18		      clc
-    528  f239		       a0 00		      ldy	#$00
-    529  f23b				   .findRowNext
-    530  f23b		       e9 0a		      sbc	#CONS_TILE_HEIGHT
-    531  f23d		       90 04		      bcc	.storeNextRow
-    532  f23f		       c8		      iny
-    533  f240		       4c 3b f2 	      jmp	.findRowNext
-    534  f243				   .storeNextRow
-    535  f243		       84 d5		      sty	PlayerRow+1
-    536  f245							;-----
-    537  f245				   .checkColCollision
-    538  f245		       18		      clc
-    539  f246		       a5 cf		      lda	PlayerXPos
-    540  f248		       a0 00		      ldy	#$00
-    541  f24a				   .findColCurrent
-    542  f24a		       e9 11		      sbc	#CONS_TILE_WIDTH
-    543  f24c		       c9 26		      cmp	#CONS_LEFT_WALL
-    544  f24e		       90 04		      bcc	.storeColCurrent
-    545  f250		       c8		      iny
-    546  f251		       4c 4a f2 	      jmp	.findColCurrent
-    547  f254				   .storeColCurrent
-    548  f254		       84 db		      sty	PlayerCol
-    549  f256		       a5 d2		      lda	Tick_PlayerX_Step
-    550  f258		       c9 01		      cmp	#01
-    551  f25a		       d0 12		      bne	.storeNextCol	; otherwise we skip to the COL stuff
-    552  f25c		       18		      clc
-    553  f25d		       a5 cf		      lda	PlayerXPos
-    554  f25f		       65 d1		      adc	PlayerDirX
-    555  f261		       18		      clc
-    556  f262		       a0 00		      ldy	#$00
-    557  f264				   .findColNext
-    558  f264		       e9 11		      sbc	#CONS_TILE_WIDTH
-    559  f266		       c9 26		      cmp	#CONS_LEFT_WALL
-    560  f268		       90 04		      bcc	.storeNextCol
-    561  f26a		       c8		      iny
-    562  f26b		       4c 64 f2 	      jmp	.findColNext
-    563  f26e				   .storeNextCol
-    564  f26e		       84 dc		      sty	PlayerCol+1
-    565  f270				   .getNextColor
-    566  f270		       18		      clc
-    567  f271		       98		      tya
-    568  f272		       a4 d5		      ldy	PlayerRow+1
-    569  f274		       79 c4 00 	      adc	PF_RowIndexes,y
-    570  f277		       b9 87 00 	      lda	PF_BallStates_All,y
-    571  f27a		       85 df		      sta	PlayerColor+2
-    572  f27c		       60		      rts
-    573  f27d							;-----------------------------------------
-    574  f27d				   setCollision
-    575  f27d		       18		      clc
-    576  f27e		       a4 d4		      ldy	PlayerRow
-    577  f280		       b9 c4 00 	      lda	PF_RowIndexes,y
-    578  f283		       65 db		      adc	PlayerCol
-    579  f285				   .setColorHere
-    580  f285		       a8		      tay
-    581  f286		       a9 3c		      lda	#CONS_COLOR_PINK	;PlayerColor
-    582  f288		       99 87 00 	      sta	PF_BallStates_All,y
-    583  f28b		       60		      rts
-    584  f28c							;-----------------------------------------
-    585  f28c				   spawnBallAtLauncher
-    586  f28c							; Set player colors
-    587  f28c		       a9 c6		      lda	#CONS_COLOR_GREEN
-    588  f28e		       85 dd		      sta	PlayerColor
-    589  f290		       a9 8d		      lda	#CONS_COLOR_TEAL
-    590  f292		       85 de		      sta	PlayerColor+1
-    591  f294		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
-    592  f296		       85 df		      sta	PlayerColor+2
-    593  f298							; Set player Positions
-    594  f298		       a9 4d		      lda	#CONS_LAUNCH_START_X
-    595  f29a							; Set Player Speeds (only the FIRST time... TODO -- move this!)
-    596  f29a		       85 cf		      sta	PlayerXPos
-    597  f29c							;---------------
-    598  f29c		       a9 78		      lda	#CONS_LAUNCH_START_Y
-    599  f29e		       85 d6		      sta	PlayerYPos
-    600  f2a0		       20 a4 f2 	      jsr	setLauncher
-    601  f2a3		       60		      rts
-    602  f2a4				   setLauncher
-      0  f2a4					      LOAD_POINTER_WITH_DATA	PLAYER_Ptr,Launcher_Positions
-      1  f2a4				   .POINTER   SET	PLAYER_Ptr
-      2  f2a4				   .DATA_BLOB SET	Launcher_Positions
-      3  f2a4		       a9 06		      lda	#<.DATA_BLOB
-      4  f2a6		       85 85		      sta	.POINTER
-      5  f2a8		       a9 f3		      lda	#>.DATA_BLOB
-      6  f2aa		       85 86		      sta	.POINTER+1
-    604  f2ac
-    605  f2ac		       a4 e1		      ldy	PlayerLauncherIdx
-    606  f2ae		       b1 85		      lda	(PLAYER_Ptr),y
-    607  f2b0		       85 d2		      sta	Tick_PlayerX_Step
-    608  f2b2		       85 d3		      sta	Tick_PlayerX_Step+1
-    609  f2b4		       c8		      iny
-    610  f2b5		       b1 85		      lda	(PLAYER_Ptr),y
-    611  f2b7		       85 d1		      sta	PlayerDirX
-    612  f2b9		       c8		      iny
-    613  f2ba		       b1 85		      lda	(PLAYER_Ptr),y
-    614  f2bc		       85 d9		      sta	Tick_PlayerY_Step
-    615  f2be		       85 da		      sta	Tick_PlayerY_Step+1
-    616  f2c0							; TODO not really necessary.....
-    617  f2c0		       a9 02		      lda	#CONS_PLAYER_SPEED_Y
-    618  f2c2		       85 d8		      sta	PlayerDirY
-    619  f2c4		       60		      rts
-    620  f2c5							;-----------------------------------------
-    621  f2c5							; SWCHA -- directional register
-    622  f2c5							; #%10000000 -- P1 Right
-    623  f2c5							; #%01000000 -- P1 left
-    624  f2c5							; #%00100000 -- P1 down
-    625  f2c5							; #%00010000 -- P1 up
-    626  f2c5							; #%00001000 -- P0 Right
-    627  f2c5							; #%00000100 -- P0 left
-    628  f2c5							; #%00000010 -- P0 down
-    629  f2c5							; #%00000001 -- P0 up
-    630  f2c5							; 
-    631  f2c5				   MoveJoystick
-    632  f2c5		       a9 40		      lda	#%01000000
-    633  f2c7		       2c 80 02 	      bit	SWCHA	; Read Joystick directions
-    634  f2ca		       d0 02		      bne	.checkRight	; If 0, Left is pressed
-    635  f2cc		       c6 e1		      dec	PlayerLauncherIdx
-    636  f2ce				   .checkRight
-    637  f2ce		       a9 80		      lda	#%10000000
-    638  f2d0		       2c 80 02 	      bit	SWCHA	; Mask for Bit 7
-    639  f2d3		       d0 02		      bne	.checkbutton	; If 0, Right is pressed
-    640  f2d5		       e6 e1		      inc	PlayerLauncherIdx
-    641  f2d7							;TODO -- add something here where if we are moving, do NOT check button presses but allow aiming?
-    642  f2d7				   .checkbutton
-    643  f2d7		       a9 80		      lda	#%10000000	; Load the state of the P1 button into the accumulator (A)
-    644  f2d9		       24 0c		      bit	INPT4	; Test bit 7 of the accumulator.
-    645  f2db		       10 05		      bpl	.changeStateOnButton	; If BIT 7 is 1 (Negative), button is released
-    646  f2dd		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
-    647  f2df		       4c e4 f2 	      jmp	.endJoystickCheck
-    648  f2e2				   .changeStateOnButton
-    649  f2e2		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING
-    650  f2e4				   .endJoystickCheck
-    651  f2e4		       60		      rts
-    652  f2e5							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    653  f2e5
-    654  f2e5							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    655  f2e5							; Data
-    656  f2e5							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    657  f300		       00 00 00 00*	      align	$100
-    658  f300				   PF_Level_Colors
-    659  f300		       46		      .byte.b	#CONS_COLOR_RED
-    660  f301		       38		      .byte.b	#CONS_COLOR_ORANGE
-    661  f302		       1e		      .byte.b	#CONS_COLOR_YELLOW
-    662  f303		       c6		      .byte.b	#CONS_COLOR_GREEN
-    663  f304		       64		      .byte.b	#CONS_COLOR_PURPLE
-    664  f305		       a6		      .byte.b	#CONS_COLOR_BLUE
-    665  f306				   Launcher_Positions
-    666  f306							; PlayerXTicks | PlayerXSpeed (aka dir) | PlayerYTicks 
-    667  f306		       01 f7 03 	      .byte.b	#$01,#$00-CONS_PLAYER_SPEED_X,#$03	; Left Center 3
-    668  f309		       02 f7 02 	      .byte.b	#$02,#$00-CONS_PLAYER_SPEED_X,#$02	; Left Center 2
-    669  f30c		       03 f7 01 	      .byte.b	#$03,#$00-CONS_PLAYER_SPEED_X,#$01	; Left Center 1
-    670  f30f		       00 00 01 	      .byte.b	#$00,#$00,#$01	; Center
-    671  f312		       03 09 01 	      .byte.b	#$03,#CONS_PLAYER_SPEED_X,#$01	; Right Center 1
-    672  f315		       02 09 02 	      .byte.b	#$02,#CONS_PLAYER_SPEED_X,#$02	; Right Center 2
-    673  f318		       01 09 03 	      .byte.b	#$01,#CONS_PLAYER_SPEED_X,#$03	; Right Center 3
-    674  f31b
-    675  f31b							;-----------------------------------------
-    676  f31b							;PF_Boundries_Row
-    677  f31b							;	.byte #(CONS_TILE_HEIGHT)*1
-    678  f31b							;	  .byte #(CONS_TILE_HEIGHT)*2
-    679  f31b							;	  .byte #(CONS_TILE_HEIGHT)*3
-    680  f31b							;	  .byte #(CONS_TILE_HEIGHT)*4
-    681  f31b							;	  .byte #(CONS_TILE_HEIGHT)*5
-    682  f31b							;	  .byte #(CONS_TILE_HEIGHT)*6
-    683  f31b							;	  .byte #(CONS_TILE_HEIGHT)*7
-    684  f31b							;	  .byte #(CONS_TILE_HEIGHT)*8
-    685  f31b							;	  .byte #(CONS_TILE_HEIGHT)*9
-    686  f31b							;	  .byte #(CONS_TILE_HEIGHT)*10
-    687  f31b							;	  .byte #(CONS_TILE_HEIGHT)*11
-    688  f31b							;	  .byte #(CONS_TILE_HEIGHT)*12
-    689  f31b							;PF_Boundries_Col
-    690  f31b							;	.byte #(CONS_LEFT_WALL+17)
-    691  f31b							;	  .byte #(CONS_LEFT_WALL+35)
-    692  f31b							;	  .byte #(CONS_LEFT_WALL+53)
-    693  f31b							;	  .byte #(CONS_LEFT_WALL+71)
-    694  f31b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    695  f31b							; Epilogue
-    696  f31b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    697  fffc					      org	$fffc
-    698  fffc		       00 f0		      .word.w	Start	; reset vector
-    699  fffe		       00 f0		      .word.w	Start	; BRK vector
+    142  f022							; PF_Level_Color
+    143  f022		       a2 37		      ldx	#CONS_TILE_MAX
+    144  f024				   blankLevelColrs_Colors
+    145  f024		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
+    146  f026		       95 87		      sta	PF_BallStates_All,x
+    147  f028		       ca		      dex
+    148  f029		       d0 f9		      bne	blankLevelColrs_Colors
+    149  f02b
+    150  f02b							; Set level data
+      0  f02b					      LOAD_POINTER_WITH_DATA	PF_Ptr,PF_Level_Colors	;; TODO this should be setup ONCE than forgotten!!
+      1  f02b				   .POINTER   SET	PF_Ptr
+      2  f02b				   .DATA_BLOB SET	PF_Level_Colors
+      3  f02b		       a9 00		      lda	#<.DATA_BLOB
+      4  f02d		       85 83		      sta	.POINTER
+      5  f02f		       a9 f3		      lda	#>.DATA_BLOB
+      6  f031		       85 84		      sta	.POINTER+1
+    152  f033							; PF_Level_Color
+    153  f033		       a0 04		      ldy	#$04
+    154  f035		       a2 18		      ldx	#CONS_TILE_MAX-(#CONS_TILE_COLS*6)-1
+    155  f037				   loadLevelData_Colors
+    156  f037		       b1 83		      lda	(PF_Ptr),y
+    157  f039		       95 87		      sta	PF_BallStates_All,x
+    158  f03b		       88		      dey
+    159  f03c		       10 02		      bpl	.repeatColors
+    160  f03e		       a0 04		      ldy	#$04
+    161  f040				   .repeatColors
+    162  f040		       ca		      dex
+    163  f041		       10 f4		      bpl	loadLevelData_Colors
+    164  f043							;;;	    
+    165  f043							;;; Set ROW indexes for our max tiles for better writing later.
+    166  f043		       a9 37		      lda	#CONS_TILE_MAX
+    167  f045		       85 c4		      sta	PF_RowIndexes
+    168  f047		       a4 00		      ldy	0
+    169  f049		       a2 0b		      ldx	#CONS_TILE_ROWS
+    170  f04b				   loadRowIndex
+    171  f04b		       38		      sec
+    172  f04c		       e9 05		      sbc	#CONS_TILE_COLS
+    173  f04e		       99 c4 00 	      sta	PF_RowIndexes,y
+    174  f051		       c8		      iny
+    175  f052		       ca		      dex
+    176  f053		       d0 f6		      bne	loadRowIndex
+    177  f055							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    178  f055		       a9 01		      lda	#$01
+    179  f057		       85 e1		      sta	PlayerLauncherIdx
+    180  f059							;TODO -- more eligant start up
+    181  f059		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
+    182  f05b		       85 e0		      sta	PlayerState
+    183  f05d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    184  f05d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    185  f05d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+    186  f05d				   NextFrame
+    187  f05d		       4e 82 02 	      lsr	SWCHB	; test Game Reset switch
+    188  f060		       90 9e		      bcc	Start	; reset?
+    189  f062							; 1 + 3 lines of VSYNC
+      0  f062					      VERTICAL_SYNC
+      1  f062		       a9 0e		      lda	#%1110
+      2  f064		       85 02	   .VSLP1     sta	WSYNC
+      3  f066		       85 00		      sta	VSYNC
+      4  f068		       4a		      lsr
+      5  f069		       d0 f9		      bne	.VSLP1
+    191  f06b		       20 b4 f1 	      jsr	setXPositionsForObjects	; Does not need to be sub routine, just like the cleanliness
+    192  f06e		       ea		      nop
+      0  f06f					      TIMER_SETUP	37
+      1  f06f				   .lines     SET	37
+      2  f06f				   .cycles    SET	((.lines * 76) - 13)
+      3  f06f
+      4  f06f
+      5  f06f				  -	      if	(.cycles % 64) < 12
+      6  f06f				  -	      lda	#(.cycles / 64) - 1
+      7  f06f				  -	      sta	WSYNC
+      8  f06f					      else
+      9  f06f		       a9 2b		      lda	#(.cycles / 64)
+     10  f071		       85 02		      sta	WSYNC
+     11  f073					      endif
+     12  f073		       8d 96 02 	      sta	TIM64T
+    194  f076		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
+    195  f078		       a9 01		      lda	#$01
+    196  f07a		       85 0a		      sta	CTRLPF
+    197  f07c		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
+    198  f07e		       85 08		      sta	COLUPF
+    199  f080		       a9 00		      lda	#%00000000
+    200  f082		       85 0d		      sta	PF0
+    201  f084		       a9 ff		      lda	#%11111111
+    202  f086		       85 0e		      sta	PF1
+    203  f088		       a9 ff		      lda	#%11111111
+    204  f08a		       85 0f		      sta	PF2
+    205  f08c		       85 81		      sta	LineIdx	; has to count UP
+    206  f08e
+    207  f08e		       a9 ff		      lda	#%11111111
+    208  f090		       85 1c		      sta	GRP1
+    209  f092		       a9 70		      lda	#%01110000
+    210  f094		       85 05		      sta	NUSIZ1
+    211  f096		       a9 02		      lda	#02
+    212  f098		       85 1e		      sta	ENAM1
+    213  f09a		       85 09		      sta	COLUBK
+    214  f09c
+      0  f09c					      TIMER_WAIT
+      1  f09c				   .waittimer
+      2  f09c		       ad 84 02 	      lda	INTIM
+      3  f09f		       d0 fb		      bne	.waittimer
+      4  f0a1		       85 02		      sta	WSYNC
+    216  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+    217  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+    218  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    219  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    220  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    221  f0a3							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    222  f0a3				   OnScreen
+      0  f0a3					      TIMER_SETUP	195	;214 -- include overscan here.
+      1  f0a3				   .lines     SET	195
+      2  f0a3				   .cycles    SET	((.lines * 76) - 13)
+      3  f0a3
+      4  f0a3
+      5  f0a3				  -	      if	(.cycles % 64) < 12
+      6  f0a3				  -	      lda	#(.cycles / 64) - 1
+      7  f0a3				  -	      sta	WSYNC
+      8  f0a3					      else
+      9  f0a3		       a9 e7		      lda	#(.cycles / 64)
+     10  f0a5		       85 02		      sta	WSYNC
+     11  f0a7					      endif
+     12  f0a7		       8d 96 02 	      sta	TIM64T
+    224  f0aa							;	ldy #02
+    225  f0aa							;Kernal_Delay_Top
+    226  f0aa							;	dey
+    227  f0aa							;	  sta WSYNC
+    228  f0aa							;	  bne Kernal_Delay_Top
+    229  f0aa							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    230  f0aa							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    231  f0aa		       a5 dd		      lda	PlayerColor
+    232  f0ac		       85 06		      sta	COLUP0
+    233  f0ae		       a9 0a		      lda	#CONS_TILE_ROWS-1
+    234  f0b0		       85 82		      sta	RowIdx
+    235  f0b2							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    236  f0b2							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    237  f0b2				   Kernal_DrawBlocks_Row
+    238  f0b2		       20 d5 f1 	      jsr	setCurrentRowTileColors
+    239  f0b5		       a0 0a		      ldy	#CONS_TILE_HEIGHT
+    240  f0b7				   Kernal_DrawBlocks_Col
+    241  f0b7		       85 02		      sta	WSYNC
+    242  f0b9		       a5 81		      lda	LineIdx
+    243  f0bb		       38		      sec
+    244  f0bc		       e5 d6		      sbc	PlayerYPos
+    245  f0be		       c9 02		      cmp	#CONS_PLAYER_HEIGHT
+    246  f0c0		       90 07		      bcc	.TurnOnPlayer
+    247  f0c2		       a9 00		      lda	#$00
+    248  f0c4		       85 1b		      sta	GRP0
+    249  f0c6		       4c d0 f0 	      jmp	.DrawPlayfield
+    250  f0c9				   .TurnOnPlayer
+    251  f0c9		       a9 ff		      lda	#CONS_PLAYER_WIDTH
+    252  f0cb		       85 1b		      sta	GRP0
+    253  f0cd		       4c ec f0 	      jmp	.nextLine
+    254  f0d0				   .DrawPlayfield
+    255  f0d0					      REPEAT	2	; max 3
+    256  f0d0		       a5 c3		      lda	PF_BallStates_Current+5	; does nothing but looks "better"
+    255  f0d0					      REPEND
+    256  f0d2		       a5 c3		      lda	PF_BallStates_Current+5	; does nothing but looks "better"
+    257  f0d4					      REPEND
+    258  f0d4				  -	      REPEAT	0	; max 4
+    259  f0d4				  -	      nop
+    260  f0d4					      REPEND
+    261  f0d4		       a5 be		      lda	PF_BallStates_Current+0
+    262  f0d6		       85 08		      sta	COLUPF
+    263  f0d8		       a5 bf		      lda	PF_BallStates_Current+1
+    264  f0da		       85 08		      sta	COLUPF
+    265  f0dc		       a5 c0		      lda	PF_BallStates_Current+2
+    266  f0de		       85 08		      sta	COLUPF
+    267  f0e0		       a5 c1		      lda	PF_BallStates_Current+3
+    268  f0e2		       85 08		      sta	COLUPF
+    269  f0e4		       a5 c2		      lda	PF_BallStates_Current+4
+    270  f0e6		       85 08		      sta	COLUPF
+    271  f0e8							; always black but for timing needs to be here!
+    272  f0e8		       a5 c3		      lda	PF_BallStates_Current+5
+    273  f0ea		       85 08		      sta	COLUPF
+    274  f0ec				   .nextLine
+    275  f0ec		       e6 81		      inc	LineIdx
+    276  f0ee		       88		      dey
+    277  f0ef		       10 c6		      bpl	Kernal_DrawBlocks_Col
+    278  f0f1				   .nextSection
+    279  f0f1		       c6 82		      dec	RowIdx
+    280  f0f3		       10 bd		      bpl	Kernal_DrawBlocks_Row
+    281  f0f5				   ClearForLauncher
+    282  f0f5		       a9 00		      lda	#CONS_COLOR_BLACK
+    283  f0f7		       85 09		      sta	COLUBK
+    284  f0f9		       a9 00		      lda	#$00
+    285  f0fb		       85 0d		      sta	PF0
+    286  f0fd		       85 0e		      sta	PF1
+    287  f0ff		       85 0f		      sta	PF2
+    288  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+    289  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+    290  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    291  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    292  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    293  f101							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    294  f101		       a2 10		      ldx	#$10
+    295  f103				   Kernal_Gap_Under_Blocks
+    296  f103							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    297  f103		       85 02		      sta	WSYNC
+    298  f105		       e6 81		      inc	LineIdx
+    299  f107		       a5 81		      lda	LineIdx
+    300  f109		       38		      sec
+    301  f10a		       e5 d6		      sbc	PlayerYPos
+    302  f10c		       c9 01		      cmp	#01
+    303  f10e		       90 05		      bcc	.TurnOnPlayer_2
+    304  f110		       a9 00		      lda	#$00
+    305  f112		       4c 17 f1 	      jmp	.nextLine_2
+    306  f115				   .TurnOnPlayer_2
+    307  f115		       a9 ff		      lda	#$ff
+    308  f117				   .nextLine_2
+    309  f117		       85 1b		      sta	GRP0
+    310  f119		       ca		      dex
+    311  f11a		       d0 e7		      bne	Kernal_Gap_Under_Blocks
+    312  f11c		       ea		      nop
+    313  f11d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+    314  f11d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+    315  f11d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    316  f11d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    317  f11d							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    318  f11d		       a5 de		      lda	PlayerColor+1
+    319  f11f		       85 08		      sta	COLUPF
+    320  f121		       a9 21		      lda	#%00100001
+    321  f123		       85 0a		      sta	CTRLPF
+    322  f125		       a0 0a		      ldy	#CONS_TILE_HEIGHT	; must be this height!
+    323  f127				   Kernal_Launcher
+    324  f127							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    325  f127		       85 02		      sta	WSYNC
+    326  f129		       a9 02		      lda	#$02
+    327  f12b		       85 1f		      sta	ENABL
+    328  f12d		       88		      dey
+    329  f12e		       d0 f7		      bne	Kernal_Launcher
+    330  f130							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;     
+    331  f130		       a9 00		      lda	#$00
+    332  f132		       85 1c		      sta	GRP1
+    333  f134		       85 1e		      sta	ENAM1
+    334  f136		       85 1f		      sta	ENABL
+    335  f138
+    336  f138		       a5 de		      lda	PlayerColor+1
+    337  f13a		       85 08		      sta	COLUPF
+    338  f13c		       a0 06		      ldy	#$6
+    339  f13e				   Kernal_Launcher_Base
+    340  f13e							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    341  f13e		       85 02		      sta	WSYNC
+    342  f140		       a9 e0		      lda	#$E0
+    343  f142		       85 0f		      sta	PF2
+    344  f144		       88		      dey
+    345  f145		       d0 f7		      bne	Kernal_Launcher_Base
+    346  f147							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    347  f147				   Kernal_End
+    348  f147							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    349  f147		       a9 00		      lda	#CONS_COLOR_BLACK
+    350  f149		       85 08		      sta	COLUPF
+    351  f14b		       a9 00		      lda	#$00
+    352  f14d		       85 1b		      sta	GRP0
+    353  f14f
+    354  f14f		       a5 e0		      lda	PlayerState
+    355  f151							;These will be needed if efficiency dies.
+    356  f151							;cmp #CONS_PLAYER_STATE_COLLISION_CHECK
+    357  f151							;beq .checkCollision
+    358  f151		       c9 01		      cmp	#CONS_PLAYER_STATE_MOVING
+    359  f153		       f0 0c		      beq	.moveBall
+    360  f155		       c9 03		      cmp	#CONS_PLAYER_STATE_COLLISION_SET
+    361  f157		       f0 22		      beq	.setCollision
+    362  f159				   .readUserImport
+    363  f159		       20 df f2 	      jsr	MoveJoystick
+    364  f15c		       85 e0		      sta	PlayerState
+    365  f15e		       4c 82 f1 	      jmp	OffScreen
+    366  f161				   .moveBall
+    367  f161		       20 f7 f1 	      jsr	setBallPosition
+    368  f164							;lda #CONS_PLAYER_STATE_COLLISION_CHECK
+    369  f164							;jmp OffScreen
+    370  f164				   .checkCollision
+    371  f164		       20 31 f2 	      jsr	getCollision
+    372  f167				   .checkIfNextBlockIsBlank
+    373  f167		       a5 df		      lda	PlayerColor+2
+    374  f169		       c9 00		      cmp	#CONS_COLOR_BLOCK_BACKGROUND
+    375  f16b		       f0 07		      beq	.skipSetCollision
+    376  f16d		       a9 03		      lda	#CONS_PLAYER_STATE_COLLISION_SET
+    377  f16f		       85 e0		      sta	PlayerState
+    378  f171		       4c 82 f1 	      jmp	OffScreen
+    379  f174				   .skipSetCollision
+    380  f174		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING
+    381  f176		       85 e0		      sta	PlayerState
+    382  f178		       4c 82 f1 	      jmp	OffScreen
+    383  f17b				   .setCollision
+    384  f17b		       20 90 f2 	      jsr	setCollision
+    385  f17e							;jsr spawnBallAtLauncher ; should happen!! possible new state?
+    386  f17e		       a9 00		      lda	#CONS_PLAYER_STATE_AIMING
+    387  f180		       85 e0		      sta	PlayerState
+    388  f182							;jmp OffScreen ; TODO -- not needed but keeps things clean
+    389  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+    390  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+    391  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+    392  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    393  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    394  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    395  f182				   OffScreen
+    396  f182							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    397  f182		       ea		      nop
+      0  f183					      TIMER_WAIT
+      1  f183				   .waittimer
+      2  f183		       ad 84 02 	      lda	INTIM
+      3  f186		       d0 fb		      bne	.waittimer
+      4  f188		       85 02		      sta	WSYNC
+    399  f18a							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    400  f18a							; Overscan
+    401  f18a							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    402  f18a							; 29 lines of overscan
+      0  f18a					      TIMER_SETUP	29	;29
+      1  f18a				   .lines     SET	29
+      2  f18a				   .cycles    SET	((.lines * 76) - 13)
+      3  f18a
+      4  f18a
+      5  f18a				  -	      if	(.cycles % 64) < 12
+      6  f18a				  -	      lda	#(.cycles / 64) - 1
+      7  f18a				  -	      sta	WSYNC
+      8  f18a					      else
+      9  f18a		       a9 22		      lda	#(.cycles / 64)
+     10  f18c		       85 02		      sta	WSYNC
+     11  f18e					      endif
+     12  f18e		       8d 96 02 	      sta	TIM64T
+    404  f191		       ea		      nop
+      0  f192					      TIMER_WAIT
+      1  f192				   .waittimer
+      2  f192		       ad 84 02 	      lda	INTIM
+      3  f195		       d0 fb		      bne	.waittimer
+      4  f197		       85 02		      sta	WSYNC
+    406  f199							; total = 262 lines, go to next frame
+    407  f199		       4c 5d f0 	      jmp	NextFrame
+    408  f19c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    409  f19c							; Subroutines
+    410  f19c							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    411  f19c							; SetHorizPos routine
+    412  f19c							; A = X coordinate
+    413  f19c							; X = player number (0 or 1)
+    414  f19c				   SetHorizPos
+    415  f19c		       85 02		      sta	WSYNC	; start a new line
+    416  f19e		       38		      sec		; set carry flag
+    417  f19f				   DivideLoop
+    418  f19f		       e9 0f		      sbc	#15	; subtract 15
+    419  f1a1		       b0 fc		      bcs	DivideLoop	; branch until negative
+    420  f1a3		       49 07		      eor	#7	; calculate fine offset
+    421  f1a5		       0a		      asl
+    422  f1a6		       0a		      asl
+    423  f1a7		       0a		      asl
+    424  f1a8		       0a		      asl
+    425  f1a9		       95 10		      sta	RESP0,x	; fix coarse position
+    426  f1ab		       95 20		      sta	HMP0,x	; set fine offset
+    427  f1ad		       85 02		      sta	WSYNC
+    428  f1af		       85 2a		      sta	HMOVE	; apply the previous fine position(s)
+    429  f1b1		       85 2b		      sta	HMCLR	; reset the old horizontal position(s)
+    430  f1b3		       60		      rts		; return to caller
+    431  f1b4							;-----------------------------------------	   
+    432  f1b4				   setXPositionsForObjects
+    433  f1b4		       a5 cf		      lda	PlayerXPos	; get X coordinate
+    434  f1b6		       a2 00		      ldx	#0	; player 0
+    435  f1b8		       20 9c f1 	      jsr	SetHorizPos	; set coarse offset
+    436  f1bb
+    437  f1bb
+    438  f1bb		       a9 1d		      lda	#CONS_LEFT_WALL-9	; get X coordinate
+    439  f1bd		       a2 01		      ldx	#1
+    440  f1bf		       20 9c f1 	      jsr	SetHorizPos
+    441  f1c2
+    442  f1c2							;TODO --- cannot use player 0 missle as a border, our color will change!!
+    443  f1c2		       a9 85		      lda	#CONS_RIGHT_WALL+10	; get X coordinate
+    444  f1c4		       a2 03		      ldx	#3
+    445  f1c6		       20 9c f1 	      jsr	SetHorizPos
+    446  f1c9
+    447  f1c9		       a9 50		      lda	#CONS_LAUNCH_START_X+3	; get X coordinate
+    448  f1cb		       a2 04		      ldx	#4
+    449  f1cd		       20 9c f1 	      jsr	SetHorizPos
+    450  f1d0
+    451  f1d0		       85 02		      sta	WSYNC	; sync w/ scanline
+    452  f1d2		       85 2a		      sta	HMOVE	; apply fine offsets
+    453  f1d4		       60		      rts
+    454  f1d5							;-----------------------------------------	   
+    455  f1d5				   setCurrentRowTileColors
+    456  f1d5							; get the row we will want to store it in current
+    457  f1d5		       a6 82		      ldx	RowIdx
+    458  f1d7		       b4 c4		      ldy	PF_RowIndexes,x
+    459  f1d9		       b9 87 00 	      lda	PF_BallStates_All,y
+    460  f1dc		       85 be		      sta	PF_BallStates_Current
+    461  f1de		       b9 88 00 	      lda	PF_BallStates_All,y+1
+    462  f1e1		       85 bf		      sta	PF_BallStates_Current+1
+    463  f1e3		       b9 89 00 	      lda	PF_BallStates_All,y+2
+    464  f1e6		       85 c0		      sta	PF_BallStates_Current+2
+    465  f1e8		       b9 8a 00 	      lda	PF_BallStates_All,y+3
+    466  f1eb		       85 c1		      sta	PF_BallStates_Current+3
+    467  f1ed		       b9 8b 00 	      lda	PF_BallStates_All,y+4
+    468  f1f0		       85 c2		      sta	PF_BallStates_Current+4
+    469  f1f2		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
+    470  f1f4		       85 c3		      sta	PF_BallStates_Current+5
+    471  f1f6		       60		      rts
+    472  f1f7							;-----------------------------------------
+    473  f1f7				   setBallPosition
+    474  f1f7		       c6 d9		      dec	Tick_PlayerY_Step
+    475  f1f9		       d0 0f		      bne	.stepXPosTick
+    476  f1fb		       a4 da		      ldy	Tick_PlayerY_Step+1
+    477  f1fd		       84 d9		      sty	Tick_PlayerY_Step
+    478  f1ff		       38		      sec
+    479  f200				   .changeYPos
+    480  f200		       a5 d6		      lda	PlayerYPos
+    481  f202		       e5 d8		      sbc	PlayerDirY
+    482  f204		       85 d6		      sta	PlayerYPos
+    483  f206							;TODO -- vv this is actually something we need to REMOVE. just for testing!
+    484  f206		       c9 00		      cmp	#CONS_TOP_WALL
+    485  f208		       90 00		      bcc	.stepXPosTick
+    486  f20a							;lda #00
+    487  f20a							;sta PlayerDirY
+    488  f20a							;lda #CONS_LAUNCH_START_Y
+    489  f20a							;sta PlayerYPos
+    490  f20a							;lda #CONS_PLAYER_STATE_AIMING
+    491  f20a							;sta PlayerState
+    492  f20a							;TODO -- ^^ this is actually something we need to REMOVE. just for testing!
+    493  f20a
+    494  f20a							;-----------------------------------------
+    495  f20a				   .stepXPosTick
+    496  f20a		       c6 d2		      dec	Tick_PlayerX_Step
+    497  f20c		       d0 22		      bne	.endBallPosition
+    498  f20e		       a4 d3		      ldy	Tick_PlayerX_Step+1
+    499  f210		       84 d2		      sty	Tick_PlayerX_Step
+    500  f212				   .changeXPos
+    501  f212		       a5 cf		      lda	PlayerXPos
+    502  f214		       18		      clc
+    503  f215		       65 d1		      adc	PlayerDirX
+    504  f217				   .checkLeftBoundry
+    505  f217		       c9 26		      cmp	#CONS_LEFT_WALL
+    506  f219		       b0 09		      bcs	.checkRightBoundry
+    507  f21b		       a9 09		      lda	#CONS_PLAYER_SPEED_X
+    508  f21d		       85 d1		      sta	PlayerDirX
+    509  f21f		       a9 2f		      lda	#CONS_LEFT_WALL+#CONS_PLAYER_SPEED_X
+    510  f221		       4c 2e f2 	      jmp	.endXPosition
+    511  f224				   .checkRightBoundry
+    512  f224		       c9 7b		      cmp	#CONS_RIGHT_WALL
+    513  f226		       90 06		      bcc	.endXPosition
+    514  f228		       a9 f7		      lda	#$00-CONS_PLAYER_SPEED_X
+    515  f22a		       85 d1		      sta	PlayerDirX
+    516  f22c		       a9 72		      lda	#CONS_RIGHT_WALL-#CONS_PLAYER_SPEED_X
+    517  f22e				   .endXPosition
+    518  f22e		       85 cf		      sta	PlayerXPos
+    519  f230				   .endBallPosition
+    520  f230		       60		      rts
+    521  f231							;-----------------------------------------
+    522  f231				   getCollision
+    523  f231				   .checkRowCollision
+    524  f231		       18		      clc
+    525  f232		       a5 d6		      lda	PlayerYPos
+    526  f234		       a0 00		      ldy	#$00
+    527  f236				   .findRowCurrent
+    528  f236		       e9 0a		      sbc	#CONS_TILE_HEIGHT
+    529  f238		       90 04		      bcc	.storeRowCurrent
+    530  f23a		       c8		      iny
+    531  f23b		       4c 36 f2 	      jmp	.findRowCurrent
+    532  f23e				   .storeRowCurrent
+    533  f23e		       84 d4		      sty	PlayerRow
+    534  f240		       a5 d9		      lda	Tick_PlayerY_Step
+    535  f242		       c9 01		      cmp	#01
+    536  f244		       d0 10		      bne	.storeNextRow	; otherwise we skip to the COL stuff
+    537  f246		       18		      clc
+    538  f247		       a5 d6		      lda	PlayerYPos
+    539  f249		       e5 d8		      sbc	PlayerDirY
+    540  f24b		       18		      clc
+    541  f24c		       a0 00		      ldy	#$00
+    542  f24e				   .findRowNext
+    543  f24e		       e9 0a		      sbc	#CONS_TILE_HEIGHT
+    544  f250		       90 04		      bcc	.storeNextRow
+    545  f252		       c8		      iny
+    546  f253		       4c 4e f2 	      jmp	.findRowNext
+    547  f256				   .storeNextRow
+    548  f256		       84 d5		      sty	PlayerRow+1
+    549  f258							;-----
+    550  f258				   .checkColCollision
+    551  f258		       18		      clc
+    552  f259		       a5 cf		      lda	PlayerXPos
+    553  f25b		       a0 00		      ldy	#$00
+    554  f25d				   .findColCurrent
+    555  f25d		       e9 11		      sbc	#CONS_TILE_WIDTH
+    556  f25f		       c9 26		      cmp	#CONS_LEFT_WALL
+    557  f261		       90 04		      bcc	.storeColCurrent
+    558  f263		       c8		      iny
+    559  f264		       4c 5d f2 	      jmp	.findColCurrent
+    560  f267				   .storeColCurrent
+    561  f267		       84 db		      sty	PlayerCol
+    562  f269		       a5 d2		      lda	Tick_PlayerX_Step
+    563  f26b		       c9 01		      cmp	#01
+    564  f26d		       d0 12		      bne	.storeNextCol	; otherwise we skip to the COL stuff
+    565  f26f		       18		      clc
+    566  f270		       a5 cf		      lda	PlayerXPos
+    567  f272		       65 d1		      adc	PlayerDirX
+    568  f274		       18		      clc
+    569  f275		       a0 00		      ldy	#$00
+    570  f277				   .findColNext
+    571  f277		       e9 11		      sbc	#CONS_TILE_WIDTH
+    572  f279		       c9 26		      cmp	#CONS_LEFT_WALL
+    573  f27b		       90 04		      bcc	.storeNextCol
+    574  f27d		       c8		      iny
+    575  f27e		       4c 77 f2 	      jmp	.findColNext
+    576  f281				   .storeNextCol
+    577  f281		       84 dc		      sty	PlayerCol+1
+    578  f283				   .getNextColor
+    579  f283		       18		      clc
+    580  f284		       98		      tya
+    581  f285		       a4 d5		      ldy	PlayerRow+1
+    582  f287		       79 c4 00 	      adc	PF_RowIndexes,y
+    583  f28a		       b9 87 00 	      lda	PF_BallStates_All,y
+    584  f28d		       85 df		      sta	PlayerColor+2
+    585  f28f		       60		      rts
+    586  f290							;-----------------------------------------
+    587  f290							;TODO -- i ought to be able to do this faster and IDK why I cant!
+    588  f290				   setCollision
+    589  f290		       a5 db		      lda	PlayerCol
+    590  f292		       a4 d4		      ldy	PlayerRow
+    591  f294				   .multiplyByRow_Set
+    592  f294		       c0 00		      cpy	#00
+    593  f296		       f0 07		      beq	.setColorHere
+    594  f298		       88		      dey
+    595  f299		       18		      clc
+    596  f29a		       69 05		      adc	#CONS_TILE_COLS
+    597  f29c		       4c 94 f2 	      jmp	.multiplyByRow_Set
+    598  f29f				   .setColorHere
+    599  f29f		       a8		      tay
+    600  f2a0		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND	;PlayerColor
+    601  f2a2		       99 87 00 	      sta	PF_BallStates_All,y
+    602  f2a5		       60		      rts
+    603  f2a6							;-----------------------------------------
+    604  f2a6				   spawnBallAtLauncher
+    605  f2a6							; Set player colors
+    606  f2a6		       a9 c6		      lda	#CONS_COLOR_GREEN
+    607  f2a8		       85 dd		      sta	PlayerColor
+    608  f2aa		       a9 8d		      lda	#CONS_COLOR_TEAL
+    609  f2ac		       85 de		      sta	PlayerColor+1
+    610  f2ae		       a9 00		      lda	#CONS_COLOR_BLOCK_BACKGROUND
+    611  f2b0		       85 df		      sta	PlayerColor+2
+    612  f2b2							; Set player Positions
+    613  f2b2		       a9 4d		      lda	#CONS_LAUNCH_START_X
+    614  f2b4							; Set Player Speeds (only the FIRST time... TODO -- move this!)
+    615  f2b4		       85 cf		      sta	PlayerXPos
+    616  f2b6							;---------------
+    617  f2b6		       a9 78		      lda	#CONS_LAUNCH_START_Y
+    618  f2b8		       85 d6		      sta	PlayerYPos
+    619  f2ba		       20 be f2 	      jsr	setLauncher
+    620  f2bd		       60		      rts
+    621  f2be				   setLauncher
+      0  f2be					      LOAD_POINTER_WITH_DATA	PLAYER_Ptr,Launcher_Positions
+      1  f2be				   .POINTER   SET	PLAYER_Ptr
+      2  f2be				   .DATA_BLOB SET	Launcher_Positions
+      3  f2be		       a9 06		      lda	#<.DATA_BLOB
+      4  f2c0		       85 85		      sta	.POINTER
+      5  f2c2		       a9 f3		      lda	#>.DATA_BLOB
+      6  f2c4		       85 86		      sta	.POINTER+1
+    623  f2c6
+    624  f2c6		       a4 e1		      ldy	PlayerLauncherIdx
+    625  f2c8		       b1 85		      lda	(PLAYER_Ptr),y
+    626  f2ca		       85 d2		      sta	Tick_PlayerX_Step
+    627  f2cc		       85 d3		      sta	Tick_PlayerX_Step+1
+    628  f2ce		       c8		      iny
+    629  f2cf		       b1 85		      lda	(PLAYER_Ptr),y
+    630  f2d1		       85 d1		      sta	PlayerDirX
+    631  f2d3		       c8		      iny
+    632  f2d4		       b1 85		      lda	(PLAYER_Ptr),y
+    633  f2d6		       85 d9		      sta	Tick_PlayerY_Step
+    634  f2d8		       85 da		      sta	Tick_PlayerY_Step+1
+    635  f2da							; TODO not really necessary.....
+    636  f2da		       a9 02		      lda	#CONS_PLAYER_SPEED_Y
+    637  f2dc		       85 d8		      sta	PlayerDirY
+    638  f2de		       60		      rts
+    639  f2df							;-----------------------------------------
+    640  f2df							; SWCHA -- directional register
+    641  f2df							; #%10000000 -- P1 Right
+    642  f2df							; #%01000000 -- P1 left
+    643  f2df							; #%00100000 -- P1 down
+    644  f2df							; #%00010000 -- P1 up
+    645  f2df							; #%00001000 -- P0 Right
+    646  f2df							; #%00000100 -- P0 left
+    647  f2df							; #%00000010 -- P0 down
+    648  f2df							; #%00000001 -- P0 up
+    649  f2df							; 
+    650  f2df				   MoveJoystick
+    651  f2df		       a9 40		      lda	#%01000000
+    652  f2e1		       2c 80 02 	      bit	SWCHA	; Read Joystick directions
+    653  f2e4		       d0 02		      bne	.checkRight	; If 0, Left is pressed
+    654  f2e6		       c6 e1		      dec	PlayerLauncherIdx
+    655  f2e8				   .checkRight
+    656  f2e8		       a9 80		      lda	#%10000000
+    657  f2ea		       2c 80 02 	      bit	SWCHA	; Mask for Bit 7
+    658  f2ed		       d0 02		      bne	.checkbutton	; If 0, Right is pressed
+    659  f2ef		       e6 e1		      inc	PlayerLauncherIdx
+    660  f2f1							;TODO -- add something here where if we are moving, do NOT check button presses but allow aiming?
+    661  f2f1				   .checkbutton
+    662  f2f1		       a9 80		      lda	#%10000000	; Load the state of the P1 button into the accumulator (A)
+    663  f2f3		       24 0c		      bit	INPT4	; Test bit 7 of the accumulator.
+    664  f2f5		       10 03		      bpl	.changeStateOnButton	; If BIT 7 is 1 (Negative), button is released
+    665  f2f7							;lda #CONS_PLAYER_STATE_AIMING
+    666  f2f7		       4c fc f2 	      jmp	.endJoystickCheck
+    667  f2fa				   .changeStateOnButton
+    668  f2fa		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING
+    669  f2fc				   .endJoystickCheck
+    670  f2fc		       60		      rts
+    671  f2fd							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    672  f2fd
+    673  f2fd							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    674  f2fd							; Data
+    675  f2fd							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    676  f300		       00 00 00 	      align	$100
+    677  f300				   PF_Level_Colors
+    678  f300		       46		      .byte.b	#CONS_COLOR_RED
+    679  f301		       38		      .byte.b	#CONS_COLOR_ORANGE
+    680  f302		       1e		      .byte.b	#CONS_COLOR_YELLOW
+    681  f303		       c6		      .byte.b	#CONS_COLOR_GREEN
+    682  f304		       64		      .byte.b	#CONS_COLOR_PURPLE
+    683  f305		       a6		      .byte.b	#CONS_COLOR_BLUE
+    684  f306				   Launcher_Positions
+    685  f306							; PlayerXTicks | PlayerXSpeed (aka dir) | PlayerYTicks 
+    686  f306		       01 f7 03 	      .byte.b	#$01,#$00-CONS_PLAYER_SPEED_X,#$03	; Left Center 3
+    687  f309		       02 f7 02 	      .byte.b	#$02,#$00-CONS_PLAYER_SPEED_X,#$02	; Left Center 2
+    688  f30c		       03 f7 01 	      .byte.b	#$03,#$00-CONS_PLAYER_SPEED_X,#$01	; Left Center 1
+    689  f30f		       00 00 01 	      .byte.b	#$00,#$00,#$01	; Center
+    690  f312		       03 09 01 	      .byte.b	#$03,#CONS_PLAYER_SPEED_X,#$01	; Right Center 1
+    691  f315		       02 09 02 	      .byte.b	#$02,#CONS_PLAYER_SPEED_X,#$02	; Right Center 2
+    692  f318		       01 09 03 	      .byte.b	#$01,#CONS_PLAYER_SPEED_X,#$03	; Right Center 3
+    693  f31b
+    694  f31b							;-----------------------------------------
+    695  f31b							;PF_Boundries_Row
+    696  f31b							;	.byte #(CONS_TILE_HEIGHT)*1
+    697  f31b							;	  .byte #(CONS_TILE_HEIGHT)*2
+    698  f31b							;	  .byte #(CONS_TILE_HEIGHT)*3
+    699  f31b							;	  .byte #(CONS_TILE_HEIGHT)*4
+    700  f31b							;	  .byte #(CONS_TILE_HEIGHT)*5
+    701  f31b							;	  .byte #(CONS_TILE_HEIGHT)*6
+    702  f31b							;	  .byte #(CONS_TILE_HEIGHT)*7
+    703  f31b							;	  .byte #(CONS_TILE_HEIGHT)*8
+    704  f31b							;	  .byte #(CONS_TILE_HEIGHT)*9
+    705  f31b							;	  .byte #(CONS_TILE_HEIGHT)*10
+    706  f31b							;	  .byte #(CONS_TILE_HEIGHT)*11
+    707  f31b							;	  .byte #(CONS_TILE_HEIGHT)*12
+    708  f31b							;PF_Boundries_Col
+    709  f31b							;	.byte #(CONS_LEFT_WALL+17)
+    710  f31b							;	  .byte #(CONS_LEFT_WALL+35)
+    711  f31b							;	  .byte #(CONS_LEFT_WALL+53)
+    712  f31b							;	  .byte #(CONS_LEFT_WALL+71)
+    713  f31b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    714  f31b							; Epilogue
+    715  f31b							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    716  fffc					      org	$fffc
+    717  fffc		       00 f0		      .word.w	Start	; reset vector
+    718  fffe		       00 f0		      .word.w	Start	; BRK vector
