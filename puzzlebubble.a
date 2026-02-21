@@ -136,11 +136,22 @@ Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SetupLevel
 	jsr spawnBallAtLauncher
+        
+        ; Set level data
+        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
+        ; PF_Level_Color
+        ldx #CONS_TILE_MAX
+blankLevelColrs_Colors
+	lda #CONS_COLOR_BLOCK_BACKGROUND
+        sta PF_BallStates_All,x
+	dex
+        bne blankLevelColrs_Colors  
+        
         ; Set level data
         LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
         ; PF_Level_Color
         ldy #$04
-        ldx #CONS_TILE_MAX-1
+        ldx #CONS_TILE_MAX-(#CONS_TILE_COLS*6)-1
 loadLevelData_Colors
 	lda (PF_Ptr),y
         sta PF_BallStates_All,x
