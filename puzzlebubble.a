@@ -111,6 +111,7 @@ PlayerCol         .DS 2
 ; ---- Color
 PlayerColor       .DS 3 ; 0 == current, 1 == next player, aka launcher color, 2 == next block for check
 ; ---- State
+        org $F0
 PlayerState  .byte
 ; ---- Misc
 PlayerLauncherIdx .byte
