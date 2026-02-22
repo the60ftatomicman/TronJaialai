@@ -221,7 +221,7 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OnScreen
-	TIMER_SETUP 195;214 -- include overscan here.
+	TIMER_SETUP 212;195;214 -- include overscan here.
 ;	ldy #02
 ;Kernal_Delay_Top
 ;	dey
@@ -362,7 +362,6 @@ Kernal_End
         beq .setCollision
 .readUserImport
         jsr ReadJoystick
-        sta PlayerState
         jmp OffScreen
 .moveBall
         jsr setBallPosition
@@ -374,16 +373,16 @@ Kernal_End
         lda PlayerColor+2
         cmp #CONS_COLOR_BLOCK_BACKGROUND
         beq .skipSetCollision
-        lda #CONS_PLAYER_STATE_COLLISION_SET
+        lda #CONS_PLAYER_STATE_MOVING
         sta PlayerState
         jmp OffScreen
 .skipSetCollision
-	lda #CONS_PLAYER_STATE_MOVING
+	lda #CONS_PLAYER_STATE_COLLISION_SET
         sta PlayerState
 	jmp OffScreen
 .setCollision
 	jsr setCollision
-        ;jsr spawnBallAtLauncher ; should happen!! possible new state?
+        jsr spawnBallAtLauncher ; should happen!! possible new state?
 	lda #CONS_PLAYER_STATE_AIMING
         sta PlayerState
         ;jmp OffScreen ; TODO -- not needed but keeps things clean
@@ -395,13 +394,13 @@ Kernal_End
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        nop
-        TIMER_WAIT
+        ;nop
+        ;TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-	TIMER_SETUP 29;29
+	;TIMER_SETUP 29;29
         nop
         TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -650,15 +649,21 @@ setLauncher
 ; 
 ReadJoystick
       lda #%01000000
-      bit SWCHA           ; Read Joystick directions
+      bit SWCHA           ; Read Joystick directions`
       bne .checkRight     ; If 0, Left is pressed
       dec PlayerLauncherIdx
+      bcs .checkRight
+      lda #00
+      sta PlayerLauncherIdx
 .checkRight    
       lda #%10000000
       bit SWCHA      ; Mask for Bit 7
       bne .checkbutton        ; If 0, Right is pressed
       inc PlayerLauncherIdx
-      ;TODO -- add something here where if we are moving, do NOT check button presses but allow aiming?
+      cmp #06
+      bcc .checkbutton
+      lda #06
+      sta PlayerLauncherIdx
 .checkbutton
       lda #%10000000              ; Load the state of the P1 button into the accumulator (A)
       bit INPT4       ; Test bit 7 of the accumulator.
@@ -667,6 +672,7 @@ ReadJoystick
       jmp .endJoystickCheck
 .changeStateOnButton
       lda #CONS_PLAYER_STATE_MOVING
+      sta PlayerState
 .endJoystickCheck
       rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
