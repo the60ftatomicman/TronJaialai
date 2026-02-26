@@ -1,0 +1,23 @@
+{
+    //C:\Program Files\Stella
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "Launch Puzzle Bubble",
+            "target": "Stella -gdb E:/EMU/ATARI/dev/TronJaialai/bin/puzzlebubble.a.bin",
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "name": "Debug Puzzle Bubble",
+            "type": "gdb",
+            "request": "attach",
+            "executable": "${workspaceRoot}/bin/puzzlebubble.a.bin",
+            //"target": "./bin/executable",
+            "target": "localhost:2345",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        }
+    ]
+}

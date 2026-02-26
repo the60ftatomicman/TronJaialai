@@ -115,6 +115,7 @@ PlayerColor       .DS 3 ; 0 == current, 1 == next player, aka launcher color, 2 
 PlayerState  .byte
 ; ---- Misc
 PlayerLauncherIdx .byte
+PlayerInputSettings .DS 2 ; 0 == current, 1 == previous
 
 
 ; -- Debug stuff, used to add 2 bytes at end to see how much we are 
@@ -176,7 +177,7 @@ loadRowIndex
         dex
         bne loadRowIndex
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        lda #$01
+        lda #$0C
         sta PlayerLauncherIdx        
         ;TODO -- more eligant start up
         lda #CONS_PLAYER_STATE_AIMING
@@ -189,9 +190,9 @@ NextFrame
         bcc Start	; reset?
 ; 1 + 3 lines of VSYNC
 	VERTICAL_SYNC
-	jsr setXPositionsForObjects ; Does not need to be sub routine, just like the cleanliness
-        nop
         TIMER_SETUP 37
+	jsr setXPositionsForObjects ; Does not need to be sub routine, just like the cleanliness
+ 
         lda #CONS_COLOR_BLOCK_BACKGROUND
         lda #$01
         sta CTRLPF
@@ -221,7 +222,7 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OnScreen
-	TIMER_SETUP 212;195;214 -- include overscan here.
+	TIMER_SETUP 215;195;214 -- include overscan here.
 ;	ldy #02
 ;Kernal_Delay_Top
 ;	dey
@@ -292,7 +293,7 @@ ClearForLauncher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	ldx #$10
+	ldx #$01
 Kernal_Gap_Under_Blocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	sta WSYNC
@@ -316,23 +317,38 @@ Kernal_Gap_Under_Blocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	lda PlayerColor+1
+	lda #$00
+        sta GRP1  ; turn off wall
+	sta ENAM1 ; turn off wall
+        
+	lda PlayerColor+1 ; sets launcher color
         sta COLUPF
-        lda #%00100001
+
+        ;;; AMG -- we are going to need to get rid of the funky loops....
+        LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Drawing
+        ldy PlayerLauncherIdx
+	; Set SIZE
+	iny
+        lda (PLAYER_Ptr),y ; sets ball size
         sta CTRLPF
-        ldy #CONS_TILE_HEIGHT ; must be this height!
-Kernal_Launcher
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	sta WSYNC  
+        ; Turn on Ball
         lda #$02
         sta ENABL
-	dey
+        ; Nudge loop
+        iny
+        lda (PLAYER_Ptr),y
+        ldx #CONS_TILE_HEIGHT ; must be this height!
+Kernal_Launcher
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+    	sta HMBL
+	sta HMOVE
+        sta WSYNC
+        dex 
         bne Kernal_Launcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;     
+
         lda #$00
-        sta GRP1
-	sta ENAM1
-        sta ENABL
+        sta ENABL ; turn off ball
         
         lda PlayerColor+1
         sta COLUPF
@@ -394,13 +410,13 @@ Kernal_End
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 OffScreen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;nop
-        ;TIMER_WAIT
+        nop
+        TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-	;TIMER_SETUP 29;29
+	TIMER_SETUP 8
         nop
         TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -442,9 +458,12 @@ setXPositionsForObjects
         ;TODO --- cannot use player 0 missle as a border, our color will change!!
         lda #CONS_RIGHT_WALL+10   ; get X coordinate
         ldx #3
-        jsr SetHorizPos       
+        jsr SetHorizPos   
         
-        lda #CONS_LAUNCH_START_X+3   ; get X coordinate
+        ;;; AMG -- we are going to need to get rid of the funky loops....
+        LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Drawing
+        ldy PlayerLauncherIdx
+        lda (PLAYER_Ptr),y
         ldx #4
         jsr SetHorizPos
         
@@ -521,81 +540,79 @@ setBallPosition
 ;-----------------------------------------
 getCollision
 .checkRowCollision
-        clc
         lda PlayerYPos
-        ldy #$00
-.findRowCurrent	
-        sbc #CONS_TILE_HEIGHT
-        bcc .storeRowCurrent
-        iny
-        jmp .findRowCurrent
-.storeRowCurrent
-	sty PlayerRow
+        lsr
+        lsr
+        lsr
+        lsr
+	sta PlayerRow
+        sta PlayerRow+1
         lda Tick_PlayerY_Step
         cmp #01
-        bne .storeNextRow ; otherwise we skip to the COL stuff
-        clc
+        bne .checkColCollision ; otherwise we skip to the COL stuff
         lda PlayerYPos
+        sec
         sbc PlayerDirY
-        clc
-        ldy #$00
-.findRowNext
-        sbc #CONS_TILE_HEIGHT
-        bcc .storeNextRow
-        iny
-        jmp .findRowNext
-.storeNextRow
-	sty PlayerRow+1
+        lsr
+        lsr
+        lsr
+        lsr
+	sta PlayerRow+1
 ;-----
 .checkColCollision
-        clc
         lda PlayerXPos
-        ldy #$00
-.findColCurrent	 
-        sbc #CONS_TILE_WIDTH
-        cmp #CONS_LEFT_WALL
-        bcc .storeColCurrent
-        iny
-        jmp .findColCurrent
-.storeColCurrent
+        jsr getColFromX
 	sty PlayerCol
+        sty PlayerCol+1
         lda Tick_PlayerX_Step
         cmp #01
-        bne .storeNextCol ; otherwise we skip to the COL stuff
-        clc
+        bne .getNextColor ; otherwise we skip to the COL stuff
         lda PlayerXPos
-        adc PlayerDirX
         clc
-        ldy #$00
-.findColNext
-        sbc #CONS_TILE_WIDTH
-        cmp #CONS_LEFT_WALL
-        bcc .storeNextCol
-        iny
-        jmp .findColNext
-.storeNextCol
+        adc PlayerDirX
+        jsr getColFromX
 	sty PlayerCol+1
 .getNextColor
-        clc
-        tya
         ldy PlayerRow+1
-	adc PF_RowIndexes,y
+	lda PF_RowIndexes,y
+        clc
+        adc PlayerCol+1
+        tay
         lda PF_BallStates_All,y
         sta PlayerColor+2
 	rts
 ;-----------------------------------------
+; A = X position, Y = column index (0-4)
+getColFromX
+        cmp #CONS_LEFT_WALL+#CONS_TILE_WIDTH
+        bcc .col0
+        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*2)
+        bcc .col1
+        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*3)
+        bcc .col2
+        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*4)
+        bcc .col3
+        ldy #$04
+        rts
+.col0
+        ldy #$00
+        rts
+.col1
+        ldy #$01
+        rts
+.col2
+        ldy #$02
+        rts
+.col3
+        ldy #$03
+        rts
+;-----------------------------------------
 ;TODO -- i ought to be able to do this faster and IDK why I cant!
 setCollision
-        lda PlayerCol
         ldy PlayerRow
-.multiplyByRow_Set
-        cpy #00
-        beq .setColorHere
-        dey
+        lda PF_RowIndexes,y
         clc
-	adc #CONS_TILE_COLS
-        jmp .multiplyByRow_Set
-.setColorHere        
+        adc PlayerCol
         tay
 	lda #CONS_COLOR_BLOCK_BACKGROUND;PlayerColor
         sta PF_BallStates_All,y
@@ -616,10 +633,7 @@ spawnBallAtLauncher
 	;---------------
         lda #CONS_LAUNCH_START_Y
         sta PlayerYPos
-        jsr setLauncher
-	rts
-setLauncher
-	LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Positions
+        ;------------
         
         ldy PlayerLauncherIdx
         lda (PLAYER_Ptr),y
@@ -635,7 +649,9 @@ setLauncher
         ; TODO not really necessary.....
         lda #CONS_PLAYER_SPEED_Y
         sta PlayerDirY
-        rts
+        ;------------
+	rts
+ 
 ;-----------------------------------------
 ; SWCHA -- directional register
 ; #%10000000 -- P1 Right
@@ -648,31 +664,92 @@ setLauncher
 ; #%00000001 -- P0 up
 ; TODO -- add ticker for reads similar to ball movement. atm it's TOO fast.
 ReadJoystick
+      lda #%00000000
+      sta PlayerInputSettings  ; Set current input state to 0
+      
+.checkLeft
       lda #%01000000
       bit SWCHA           ; Read Joystick directions`
       bne .checkRight     ; If 0, Left is pressed
-      dec PlayerLauncherIdx
-      bcs .checkRight
-      lda #00
-      sta PlayerLauncherIdx
+      
+      lda PlayerInputSettings
+      ora #%00000001      ; Left bit
+      sta PlayerInputSettings
+      
+      ;clc
+      ;lda PlayerLauncherIdx
+      ;sbc #$03
+      ;bpl .storeLeftChange
+      ;lda #00
+;.storeLeftChange
+;      sta PlayerLauncherIdx
+      
 .checkRight    
       lda #%10000000
       bit SWCHA      ; Mask for Bit 7
       bne .checkbutton        ; If 0, Right is pressed
-      inc PlayerLauncherIdx
-      cmp #06
-      bcc .checkbutton
-      lda #06
-      sta PlayerLauncherIdx
+     
+      lda PlayerInputSettings
+      ora #%00000010      ; Right bit
+      sta PlayerInputSettings
+      
 .checkbutton
       lda #%10000000              ; Load the state of the P1 button into the accumulator (A)
       bit INPT4       ; Test bit 7 of the accumulator.
-      bpl .changeStateOnButton           ; If BIT 7 is 1 (Negative), button is released
-      ;lda #CONS_PLAYER_STATE_AIMING
-      jmp .endJoystickCheck
-.changeStateOnButton
-      lda #CONS_PLAYER_STATE_MOVING
-      sta PlayerState
+      bcc .determineJoystickAction       ; If BIT 7 is 1 (Negative), button is released
+      				         ; i think our tick delay is needed!!
+                                         ; Button may need it's OWN however
+      lda PlayerInputSettings
+      ora #%00000100
+      sta PlayerInputSettings
+      
+.determineJoystickAction
+        lda PlayerInputSettings
+        bne .storeCurrentInput
+        lda PlayerInputSettings+1
+        beq .storeCurrentInput
+
+        ; Fire on release
+        and #%00000100
+        bne .fireOnRelease
+
+        lda PlayerInputSettings+1
+        and #%00000001
+        bne .leftOnRelease
+
+        lda PlayerInputSettings+1
+        and #%00000010
+        bne .rightOnRelease
+        jmp .storeCurrentInput
+
+.leftOnRelease
+        sec
+        lda PlayerLauncherIdx
+        sbc #$03
+        bpl .storeLeftIdx
+        lda #$00
+.storeLeftIdx
+        sta PlayerLauncherIdx
+        jmp .storeCurrentInput
+
+.rightOnRelease
+        clc
+        lda PlayerLauncherIdx
+        adc #$03
+        cmp #$15
+        bcc .storeRightIdx
+        lda #$12
+.storeRightIdx
+        sta PlayerLauncherIdx
+        jmp .storeCurrentInput
+
+.fireOnRelease
+        lda #CONS_PLAYER_STATE_MOVING
+        sta PlayerState
+
+.storeCurrentInput
+        lda PlayerInputSettings
+        sta PlayerInputSettings+1
 .endJoystickCheck
       rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -697,7 +774,20 @@ Launcher_Positions
         .byte #$03,#CONS_PLAYER_SPEED_X,#$01     ; Right Center 1
         .byte #$02,#CONS_PLAYER_SPEED_X,#$02     ; Right Center 2
         .byte #$01,#CONS_PLAYER_SPEED_X,#$03     ; Right Center 3
-        
+Launcher_Drawing 
+	; X start | Ball size (only LEFT aka HIGH nibble as well!)| HMOVE (only high nibble)
+        ; Ball size chart
+        ; 0000xxxx = 1 px
+        ; 0001xxxx = 2 px
+        ; 0010xxxx = 4 px
+        ; 0011xxxx = 8 px
+        .byte #CONS_LAUNCH_START_X-15,#%00110001,#$E0, ; Left Center 3
+        .byte #CONS_LAUNCH_START_X+5 ,#%00100001,#$00, ; Left Center 2
+        .byte #CONS_LAUNCH_START_X-5 ,#%00010001,#$F0, ; Left Center 1
+        .byte #CONS_LAUNCH_START_X+5 ,#%00000001,#$00, ; Center
+        .byte #CONS_LAUNCH_START_X+5 ,#%00010001,#$00, ; Right Center 1
+        .byte #CONS_LAUNCH_START_X+5 ,#%00100001,#$00, ; Right Center 2
+        .byte #CONS_LAUNCH_START_X+5 ,#%00110001,#$00, ; Right Center 3
 ;-----------------------------------------
 ;PF_Boundries_Row
 ;	.byte #(CONS_TILE_HEIGHT)*1
