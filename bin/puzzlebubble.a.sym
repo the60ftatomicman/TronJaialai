@@ -1,87 +1,93 @@
 --- Symbol List (sorted by symbol)
-0.checkbutton            f346              (R )
-0.checkColCollision      f253              (R )
-0.checkCollision         f15f                  
-0.checkIfNextBlockIsBlank f162                  
-0.checkLeft              f32c                  
-0.checkLeftBoundry       f21a                  
-0.checkRight             f339              (R )
-0.checkRightBoundry      f227              (R )
-0.checkRowCollision      f238                  
-0.col0                   f2d8              (R )
-0.col0A                  f26a              (R )
-0.col0B                  f2a0              (R )
-0.col1                   f2db              (R )
-0.col1A                  f26f              (R )
-0.col1B                  f2a5              (R )
-0.col2                   f2de              (R )
-0.col2A                  f274              (R )
-0.col2B                  f2aa              (R )
-0.col3                   f2e1              (R )
-0.col3A                  f279              (R )
-0.col3B                  f2af              (R )
-0.col4A                  f267                  
-0.col4B                  f29d                  
-0.determineJoystickAction f350              (R )
-0.DrawPlayfield          f0c5              (R )
-0.endBallPosition        f237              (R )
-0.endJoystickCheck       f390                  
-0.endOfColFetchA         f27e              (R )
-0.endOfColFetchB         f2b4              (R )
-0.endXPosition           f231              (R )
-0.fireOnRelease          f388              (R )
+0.checkbutton            f372              (R )
+0.checkColCollision      f26d              (R )
+0.checkCollision         f177                  
+0.checkIfNextBlockIsBlank f17a                  
+0.checkLeft              f358                  
+0.checkLeftBoundry       f234                  
+0.checkRight             f365              (R )
+0.checkRightBoundry      f241              (R )
+0.checkRowCollision      f252                  
+0.col0                   f2f4              (R )
+0.col0A                  f286              (R )
+0.col0B                  f2bc              (R )
+0.col1                   f2f7              (R )
+0.col1A                  f28b              (R )
+0.col1B                  f2c1              (R )
+0.col2                   f2fa              (R )
+0.col2A                  f290              (R )
+0.col2B                  f2c6              (R )
+0.col3                   f2fd              (R )
+0.col3A                  f295              (R )
+0.col3B                  f2cb              (R )
+0.col4A                  f283                  
+0.col4B                  f2b9                  
+0.determineJoystickAction f37c              (R )
+0.DrawPlayfield          f0c9              (R )
+0.endBallPosition        f251              (R )
+0.endJoystickCheck       f3bc                  
+0.endOfColFetchA         f29a              (R )
+0.endOfColFetchB         f2d0              (R )
+0.endXPosition           f24b              (R )
+0.fireOnRelease          f3b4              (R )
 0.FREE_BYTES             0000                  
-0.getNextColor           f2b6              (R )
-0.getNextColumn          f286                  
-0.keepMoving             f16c              (R )
-0.leftOnRelease          f36a              (R )
-0.moveBall               f15c              (R )
-0.moveX                  f215                  
-0.moveY                  f202                  
-0.nextLine               f0e1              (R )
-0.nextLine_2             f10c              (R )
-0.nextSection            f0e6                  
-0.readUserImport         f156                  
-0.reloadXTickOnly        f233              (R )
-0.reloadYTickOnly        f209              (R )
-0.repeatColors           f038              (R )
-0.rightOnRelease         f378              (R )
-0.setCollision           f173              (R )
-0.stepXPosTick           f20d              (R )
-0.storeCurrentInput      f38c              (R )
-0.storeLeftIdx           f373              (R )
-0.storeMoveState         f16e              (R )
-0.storeRightIdx          f383              (R )
-0.TurnOnPlayer           f0be              (R )
-0.TurnOnPlayer_2         f10a              (R )
+0.getNextColor           f2d2              (R )
+0.getNextColumn          f2a2                  
+0.keepMoving             f184              (R )
+0.leftOnRelease          f396              (R )
+0.moveBall               f174              (R )
+0.moveX                  f22f                  
+0.moveY                  f21c                  
+0.nextLine               f0e5              (R )
+0.nextLine_2             f110              (R )
+0.nextSection            f0ea                  
+0.readUserImport         f16e                  
+0.reloadXTickOnly        f24d              (R )
+0.reloadYTickOnly        f223              (R )
+0.repeatColors           f03c              (R )
+0.rightOnRelease         f3a4              (R )
+0.setCollision           f18b              (R )
+0.stepXPosTick           f227              (R )
+0.storeCurrentInput      f3b8              (R )
+0.storeLeftIdx           f39f              (R )
+0.storeMoveState         f186              (R )
+0.storeRightIdx          f3af              (R )
+0.TurnOnPlayer           f0c2              (R )
+0.TurnOnPlayer_2         f10e              (R )
 1.CLEAR_STACK            f006              (R )
-10.waittimer             f18d              (R )
-11.DATA_BLOB             f41b              (R )
-11.POINTER               0085              (R )
-12.DATA_BLOB             f406              (R )
-12.POINTER               0085              (R )
+10.cycles                01bb              (R )
+10.lines                 0006              (R )
+11.waittimer             f1a5              (R )
+12.DATA_BLOB             f422              (R )
+12.POINTER               0083              (R )
+13.DATA_BLOB             f40d              (R )
+13.POINTER               0083              (R )
+14.DATA_BLOB             f406              (R )
+14.POINTER               0085              (R )
+15.DATA_BLOB             f414              (R )
+15.POINTER               0087              (R )
 2.DATA_BLOB              f400              (R )
 2.POINTER                0083              (R )
-3.VSLP1                  f05c              (R )
+3.VSLP1                  f060              (R )
 4.cycles                 0aef              (R )
 4.lines                  0025              (R )
-5.waittimer              f091              (R )
+5.waittimer              f095              (R )
 6.cycles                 3fc7              (R )
 6.lines                  00d7              (R )
 7.DATA_BLOB              f41b              (R )
-7.POINTER                0085              (R )
-8.waittimer              f17e              (R )
-9.cycles                 01bb              (R )
-9.lines                  0006              (R )
+7.POINTER                0083              (R )
+8.DATA_BLOB              f429              (R )
+8.POINTER                0087              (R )
+9.waittimer              f196              (R )
 AUDC0                    0015                  
 AUDC1                    0016                  
 AUDF0                    0017                  
 AUDF1                    0018                  
 AUDV0                    0019                  
 AUDV1                    001a                  
-blankLevelColrs_Colors   f01c              (R )
+blankLevelColrs_Colors   f020              (R )
 boolBase                 0080                  
-ClearForLauncher         f0ea                  
+ClearForLauncher         f0ee                  
 COLUBK                   0009              (R )
 COLUP0                   0006              (R )
 COLUP1                   0007              (R )
@@ -102,7 +108,7 @@ CONS_COLOR_WHITE         00ef
 CONS_COLOR_YELLOW        001e              (R )
 CONS_LAUNCH_START_X      004d              (R )
 CONS_LAUNCH_START_Y      0078              (R )
-CONS_LAUNCHER_IDX_STEP   0003              (R )
+CONS_LAUNCHER_IDX_STEP   0001              (R )
 CONS_LEFT_WALL           0026              (R )
 CONS_P0_STARTING_JOYSTICK_BYTE 0080                  
 CONS_P1_STARTING_JOYSTICK_BYTE 0008                  
@@ -131,15 +137,15 @@ CXM1P                    0001
 CXP0FB                   0002                  
 CXP1FB                   0003                  
 CXPPMM                   0007                  
-DivideLoop               f19a              (R )
+DivideLoop               f1b2              (R )
 ENABL                    001f              (R )
 ENAM0                    001d                  
 ENAM1                    001e              (R )
-getColFromX              f2c5                  
-getCollision             f238              (R )
+getColFromX              f2e1                  
+getCollision             f252              (R )
 GRP0                     001b              (R )
 GRP1                     001c              (R )
-HMBL                     0024                  
+HMBL                     0024              (R )
 HMCLR                    002b              (R )
 HMM0                     0022                  
 HMM1                     0023                  
@@ -153,45 +159,51 @@ INPT3                    000b
 INPT4                    000c              (R )
 INPT5                    000d                  
 INTIM                    0284              (R )
-Kernal_DrawBlocks_Col    f0ac              (R )
-Kernal_DrawBlocks_Row    f0a7              (R )
-Kernal_End               f144                  
-Kernal_Gap_Under_Blocks  f0f8              (R )
-Kernal_Launcher          f12c              (R )
-Kernal_Launcher_Base     f13b              (R )
-Launcher_Drawing         f41b              (R )
-Launcher_Positions       f406              (R )
+Kernal_DrawBlocks_Col    f0b0              (R )
+Kernal_DrawBlocks_Row    f0ab              (R )
+Kernal_End               f15c                  
+Kernal_Gap_Under_Blocks  f0fc              (R )
+Kernal_Launcher          f140              (R )
+Kernal_Launcher_Base     f153              (R )
+Launcher_Drawing_CTRLPF  f41b              (R )
+Launcher_Drawing_HMOVE   f429              (R )
+Launcher_Drawing_X       f422              (R )
+Launcher_Positions_PlayerXSpeed f40d              (R )
+Launcher_Positions_PlayerXTicks f406              (R )
+Launcher_Positions_PlayerYTicks f414              (R )
 LineIdx                  0081              (R )
-loadLevelData_Colors     f02f              (R )
-loadRowIndex             f043              (R )
-NextFrame                f055              (R )
+loadLevelData_Colors     f033              (R )
+loadRowIndex             f047              (R )
+NextFrame                f059              (R )
 NUSIZ0                   0004                  
 NUSIZ1                   0005              (R )
-OffScreen                f17d              (R )
-OnScreen                 f098                  
+OffScreen                f195              (R )
+OnScreen                 f09c                  
 PF0                      000d              (R )
 PF1                      000e              (R )
 PF2                      000f              (R )
-PF_BallStates_All        0087              (R )
-PF_BallStates_Current    00be              (R )
+PF_BallStates_All        0089              (R )
+PF_BallStates_Current    00c0              (R )
 PF_Level_Colors          f400              (R )
-PF_Ptr                   0083              (R )
-PF_RowIndexes            00c4              (R )
+PF_RowIndexes            00c6              (R )
 PF_TEMP                  00f4              (R )
-PLAYER_Ptr               0085              (R )
-PlayerCol                00db              (R )
-PlayerColor              00dd              (R )
-PlayerDirX               00d1              (R )
-PlayerDirY               00d8              (R )
+PF_TopMost_Row           00d1              (R )
+PlayerCol                00de              (R )
+PlayerColor              00e0              (R )
+PlayerDirX               00d4              (R )
+PlayerDirY               00db              (R )
 PlayerInputSettings      00f2              (R )
 PlayerLauncherIdx        00f1              (R )
-PlayerRow                00d4              (R )
+PlayerRow                00d7              (R )
 PlayerState              00f0              (R )
-PlayerXPos               00cf              (R )
-PlayerYPos               00d6              (R )
-Pre_Kernal_Launcher      f112                  
-Pre_Kernal_Launcher_Base f131                  
-ReadJoystick             f328              (R )
+PlayerXPos               00d2              (R )
+PlayerYPos               00d9              (R )
+Pre_Kernal_Launcher      f116                  
+Pre_Kernal_Launcher_Base f145                  
+Ptr_A                    0083              (R )
+Ptr_B                    0085              (R )
+Ptr_C                    0087              (R )
+ReadJoystick             f354              (R )
 REFP0                    000b                  
 REFP1                    000c                  
 RESBL                    0014                  
@@ -203,13 +215,13 @@ RESP0                    0010              (R )
 RESP1                    0011                  
 RowIdx                   0082              (R )
 RSYNC                    0003                  
-setBallPosition          f1fa              (R )
-setCollision             f2e4              (R )
-setCurrentRowTileColors  f1d8              (R )
-SetHorizPos              f197              (R )
+setBallPosition          f214              (R )
+setCollision             f300              (R )
+setCurrentRowTileColors  f1f2              (R )
+SetHorizPos              f1af              (R )
 SetupLevel               f017                  
-setXPositionsForObjects  f1af              (R )
-spawnBallAtLauncher      f2f3              (R )
+setXPositionsForObjects  f1c7              (R )
+spawnBallAtLauncher      f30f              (R )
 Start                    f000              (R )
 SWACNT                   0281                  
 SWBCNT                   0283                  
@@ -219,8 +231,8 @@ T1024T                   0297
 TIA_BASE_ADDRESS         0000              (R )
 TIA_BASE_READ_ADDRESS    0000              (R )
 TIA_BASE_WRITE_ADDRESS   0000              (R )
-Tick_PlayerX_Step        00d2              (R )
-Tick_PlayerY_Step        00d9              (R )
+Tick_PlayerX_Step        00d5              (R )
+Tick_PlayerY_Step        00dc              (R )
 TIM1T                    0294                  
 TIM64T                   0296              (R )
 TIM8T                    0295                  

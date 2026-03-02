@@ -69,8 +69,9 @@ CONS_P1_STARTING_JOYSTICK_BYTE EQU %00001000
 boolBase .byte
 LineIdx  .byte
 RowIdx   .byte
-PF_Ptr	    .DS 2
-PLAYER_Ptr  .DS 2
+Ptr_A  .DS 2
+Ptr_B  .DS 2
+Ptr_C  .DS 2
 ; ---- Playfield
 CONS_LEFT_WALL         EQU #$26
 CONS_RIGHT_WALL        EQU #$7B
@@ -84,11 +85,11 @@ CONS_TILE_MAX          EQU #CONS_TILE_ROWS * #CONS_TILE_COLS
 PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1 ; the +1 is for storing the background color. Performance thing.
 PF_RowIndexes         .DS #CONS_TILE_ROWS
-
+PF_TopMost_Row        .byte
 ; ---- Player
 CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
 CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0
-CONS_LAUNCHER_IDX_STEP EQU #$03
+CONS_LAUNCHER_IDX_STEP EQU #01
 CONS_PLAYER_HEIGHT  EQU #02
 CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
 CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
@@ -139,7 +140,8 @@ Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SetupLevel
 	jsr spawnBallAtLauncher
-        
+        lda #0
+        sta PF_TopMost_Row
         ; PF_Level_Color
         ldx #CONS_TILE_MAX-1
 blankLevelColrs_Colors
@@ -149,12 +151,12 @@ blankLevelColrs_Colors
         bpl blankLevelColrs_Colors  
         
         ; Set level data
-        LOAD_POINTER_WITH_DATA PF_Ptr,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
+        LOAD_POINTER_WITH_DATA Ptr_A,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
         ; PF_Level_Color
         ldy #$04
         ldx #CONS_TILE_MAX-(#CONS_TILE_COLS*6)-1
 loadLevelData_Colors
-	lda (PF_Ptr),y
+	lda (Ptr_A),y
         sta PF_BallStates_All,x
         dey
         bpl .repeatColors
@@ -176,7 +178,7 @@ loadRowIndex
         dex
         bne loadRowIndex
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        lda #$09
+        lda #$03
         sta PlayerLauncherIdx        
         ;TODO -- more eligant start up
         lda #CONS_PLAYER_STATE_AIMING
@@ -323,16 +325,15 @@ Pre_Kernal_Launcher
 	lda PlayerColor+1 ; sets launcher color
         sta COLUPF
 
-        LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Drawing
+        LOAD_POINTER_WITH_DATA Ptr_A,Launcher_Drawing_CTRLPF
+        LOAD_POINTER_WITH_DATA Ptr_C,Launcher_Drawing_HMOVE
         ldy PlayerLauncherIdx
 	; byte 1: ball size
-	;iny
-        ;lda (PLAYER_Ptr),y
-        ;sta CTRLPF
+        lda (Ptr_A),y
+        sta CTRLPF
         ; byte 2: per-scanline horizontal motion (ramp)
-        ;iny
-        ;lda (PLAYER_Ptr),y
-        ;sta HMBL
+        lda (Ptr_B),y
+        sta HMBL
         ; Turn on Ball
         lda #$02
         sta ENABL
@@ -347,7 +348,8 @@ Kernal_Launcher
 Pre_Kernal_Launcher_Base
         lda #$00
         sta ENABL ; turn off ball
-        
+        lda #%00000001
+        sta CTRLPF
         lda PlayerColor+1
         sta COLUPF
 	ldy #$6
@@ -387,7 +389,7 @@ Kernal_End
         lda PlayerColor+2
         cmp #CONS_COLOR_BLOCK_BACKGROUND
         bne .keepMoving
-        lda #CONS_PLAYER_STATE_COLLISION_SET
+        lda #CONS_PLAYER_STATE_MOVING;#CONS_PLAYER_STATE_COLLISION_SET
         bne .storeMoveState
 .keepMoving
         lda #CONS_PLAYER_STATE_MOVING
@@ -458,10 +460,9 @@ setXPositionsForObjects
         jsr SetHorizPos   
         
         ;;; AMG -- we are going to need to get rid of the funky loops....
-        LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Drawing
-        ;ldy PlayerLauncherIdx
-        ;lda (PLAYER_Ptr),y
-        lda #CONS_LAUNCH_START_X+5
+        LOAD_POINTER_WITH_DATA Ptr_A,Launcher_Drawing_X
+        ldy PlayerLauncherIdx
+        lda (Ptr_A),y
         ldx #4
         jsr SetHorizPos
         
@@ -539,7 +540,8 @@ getCollision
         lsr
         lsr
 	sta PlayerRow
-        sta PlayerRow+1
+        cmp PF_TopMost_Row
+        beq .checkColCollision
         lda Tick_PlayerY_Step
         cmp #01
         bne .checkColCollision ; otherwise we skip to the COL stuff
@@ -550,9 +552,9 @@ getCollision
         lsr
         lsr
         lsr
-	sta PlayerRow+1
 ;-----
 .checkColCollision
+        sta PlayerRow+1 ; whatever pat hwe take we need to do this!
         lda PlayerXPos
         cmp #CONS_LEFT_WALL+#CONS_TILE_WIDTH
         bcc .col0A
@@ -674,16 +676,18 @@ spawnBallAtLauncher
         lda #CONS_LAUNCH_START_Y
         sta PlayerYPos
         ;------------
-        LOAD_POINTER_WITH_DATA PLAYER_Ptr,Launcher_Positions 
+        LOAD_POINTER_WITH_DATA Ptr_A,Launcher_Positions_PlayerXSpeed
+        LOAD_POINTER_WITH_DATA Ptr_B,Launcher_Positions_PlayerXTicks
+        LOAD_POINTER_WITH_DATA Ptr_C,Launcher_Positions_PlayerYTicks
         ldy PlayerLauncherIdx
-        lda (PLAYER_Ptr),y
+        lda (Ptr_B),y
         sta Tick_PlayerX_Step
         sta Tick_PlayerX_Step+1
         iny
-        lda (PLAYER_Ptr),y
+        lda (Ptr_A),y
         sta PlayerDirX
         iny
-        lda (PLAYER_Ptr),y
+        lda (Ptr_C),y
         sta Tick_PlayerY_Step
         sta Tick_PlayerY_Step+1
         ; TODO not really necessary but we will keep it
@@ -764,9 +768,9 @@ ReadJoystick
         clc
         lda PlayerLauncherIdx
         adc #CONS_LAUNCHER_IDX_STEP
-        cmp #$15
+        cmp #$06
         bcc .storeRightIdx
-        lda #$12
+        lda #$06
 .storeRightIdx
         sta PlayerLauncherIdx
         jmp .storeCurrentInput
@@ -792,29 +796,60 @@ PF_Level_Colors
         .byte #CONS_COLOR_GREEN
         .byte #CONS_COLOR_PURPLE
         .byte #CONS_COLOR_BLUE
-Launcher_Positions
-	; PlayerXTicks | PlayerXSpeed (aka dir) | PlayerYTicks 
-        .byte #$01,#$00-CONS_PLAYER_SPEED_X,#$03 ; Left Center 3
-        .byte #$02,#$00-CONS_PLAYER_SPEED_X,#$02 ; Left Center 2
-        .byte #$03,#$00-CONS_PLAYER_SPEED_X,#$01 ; Left Center 1
-        .byte #$00,#$00,#$01                     ; Center
-        .byte #$03,#CONS_PLAYER_SPEED_X,#$01     ; Right Center 1
-        .byte #$02,#CONS_PLAYER_SPEED_X,#$02     ; Right Center 2
-        .byte #$01,#CONS_PLAYER_SPEED_X,#$03     ; Right Center 3
-Launcher_Drawing 
+Launcher_Positions_PlayerXTicks
+        .byte #$01; Left Center 3
+        .byte #$02; Left Center 2
+        .byte #$03; Left Center 1
+        .byte #$00; Center
+        .byte #$03; Right Center 1
+        .byte #$02; Right Center 2
+        .byte #$01; Right Center 3
+Launcher_Positions_PlayerXSpeed
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Left Center 3
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Left Center 2
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Left Center 1
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Center
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Right Center 1
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Right Center 2
+        .byte #CONS_PLAYER_SPEED_X+#$00 ; Right Center 3
+Launcher_Positions_PlayerYTicks
+        .byte #$03 ; Left Center 3
+        .byte #$02 ; Left Center 2
+        .byte #$01 ; Left Center 1
+        .byte #$01 ; Center
+        .byte #$01 ; Right Center 1
+        .byte #$02 ; Right Center 2
+        .byte #$03 ; Right Center 3
+Launcher_Drawing_CTRLPF 
 	; X start | Ball size (only LEFT aka HIGH nibble as well!)| HMOVE (only high nibble)
         ; Ball size chart
         ; 0000xxxx = 1 px
         ; 0001xxxx = 2 px
         ; 0010xxxx = 4 px
         ; 0011xxxx = 8 px
-        .byte #CONS_LAUNCH_START_X+20 ,#%00000001,#$00, ; Left Center 3
-        .byte #CONS_LAUNCH_START_X+15 ,#%00000001,#$00, ; Left Center 2
-        .byte #CONS_LAUNCH_START_X+10 ,#%00000001,#$00, ; Left Center 1
-        .byte #CONS_LAUNCH_START_X+5  ,#%00000001,#$00, ; Center
-        .byte #CONS_LAUNCH_START_X-10 ,#%00000001,#$00, ; Right Center 1
-        .byte #CONS_LAUNCH_START_X-15 ,#%00000001,#$00, ; Right Center 2
-        .byte #CONS_LAUNCH_START_X-20 ,#%00000001,#$00, ; Right Center 3
+        .byte #%00110001 ; Left Center 3
+        .byte #%00100001 ; Left Center 2
+        .byte #%00010001 ; Left Center 1
+        .byte #%00000001 ; Center
+        .byte #%00010001 ; Right Center 1
+        .byte #%00100001 ; Right Center 2
+        .byte #%00110001 ; Right Center 3
+Launcher_Drawing_X
+        .byte #CONS_LAUNCH_START_X-24 ; Left Center 3
+        .byte #CONS_LAUNCH_START_X-16 ; Left Center 2
+        .byte #CONS_LAUNCH_START_X-8 ; Left Center 1
+        .byte #CONS_LAUNCH_START_X+0 ; Center
+        .byte #CONS_LAUNCH_START_X+8 ; Right Center 1
+        .byte #CONS_LAUNCH_START_X+16 ; Right Center 2
+        .byte #CONS_LAUNCH_START_X+24 ; Right Center 3
+Launcher_Drawing_HMOVE
+        .byte #$00 ; Left Center 3
+        .byte #$00 ; Left Center 2
+        .byte #$00 ; Left Center 1
+        .byte #$00 ; Center
+        .byte #$00 ; Right Center 1
+        .byte #$00 ; Right Center 2
+        .byte #$00 ; Right Center 3
 ;-----------------------------------------
 ;PF_Boundries_Row
 ;	.byte #(CONS_TILE_HEIGHT)*1
