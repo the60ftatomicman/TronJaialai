@@ -881,7 +881,7 @@
     402  f18c		       a5 e2		      lda	PlayerColor+2
     403  f18e		       c9 00		      cmp	#CONS_COLOR_BLOCK_BACKGROUND
     404  f190		       d0 04		      bne	.keepMoving
-    405  f192		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING	;#CONS_PLAYER_STATE_COLLISION_SET
+    405  f192		       a9 03		      lda	#CONS_PLAYER_STATE_COLLISION_SET	;#CONS_PLAYER_STATE_COLLISION_SET
     406  f194		       d0 02		      bne	.storeMoveState
     407  f196				   .keepMoving
     408  f196		       a9 01		      lda	#CONS_PLAYER_STATE_MOVING

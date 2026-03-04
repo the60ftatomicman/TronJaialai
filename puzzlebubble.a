@@ -402,7 +402,7 @@ Kernal_End
         lda PlayerColor+2
         cmp #CONS_COLOR_BLOCK_BACKGROUND
         bne .keepMoving
-        lda #CONS_PLAYER_STATE_MOVING;#CONS_PLAYER_STATE_COLLISION_SET
+        lda #CONS_PLAYER_STATE_COLLISION_SET;#CONS_PLAYER_STATE_COLLISION_SET
         bne .storeMoveState
 .keepMoving
         lda #CONS_PLAYER_STATE_MOVING
