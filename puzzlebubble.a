@@ -85,7 +85,7 @@ CONS_TILE_MAX          EQU #CONS_TILE_ROWS * #CONS_TILE_COLS
 PF_BallStates_All     .DS #CONS_TILE_MAX
 PF_BallStates_Current .DS #CONS_TILE_COLS+1 ; the +1 is for storing the background color. Performance thing.
 PF_RowIndexes         .DS #CONS_TILE_ROWS
-PF_TopMost_Row        .byte
+PF_TopRow             .DS 3 ; 0 == index of row that should be our top, 1 = count til lower,2 = max counts
 ; ---- Player
 CONS_LAUNCH_START_X EQU #CONS_LEFT_WALL+(3*13)
 CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0
@@ -140,8 +140,11 @@ Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SetupLevel
 	jsr spawnBallAtLauncher
-        lda #0
-        sta PF_TopMost_Row
+        lda #$00
+        sta PF_TopRow
+        lda #$03 ; 3 shots until we lower the row
+        sta PF_TopRow+1
+        sta PF_TopRow+2
         ; PF_Level_Color
         ldx #CONS_TILE_MAX-1
 blankLevelColrs_Colors
@@ -151,11 +154,14 @@ blankLevelColrs_Colors
         bpl blankLevelColrs_Colors  
         
         ; Set level data
-        LOAD_POINTER_WITH_DATA Ptr_A,PF_Level_Colors;; TODO this should be setup ONCE than forgotten!!
+        LOAD_POINTER_WITH_DATA Ptr_A,PF_Level_Colors; TODO this should be setup ONCE than forgotten!!
         ; PF_Level_Color
-        ldy #$04
+        ldy #$04 ; todo --- this will be a seed into randomizing the colors selected! can go up to the length of PF_LEVEL_COLORS
         ldx #CONS_TILE_MAX-(#CONS_TILE_COLS*6)-1
 loadLevelData_Colors
+        ;if we are greater than the top row, pull from our level data otherwise set it to CONS_COLOR_BORDERS
+        ;TODO -- this is going to have to read forwards instead of BACKWARDS.
+        ;TODO -- make this a subroutine.
 	lda (Ptr_A),y
         sta PF_BallStates_All,x
         dey
@@ -411,9 +417,15 @@ Kernal_End
         jmp OffScreen
 .setCollision
 	jsr setCollision
-        jsr spawnBallAtLauncher ; should happen!! possible new state?
+        jsr spawnBallAtLauncher
+        jsr setXPositionsForObjects
 	lda #CONS_PLAYER_STATE_AIMING
         sta PlayerState
+        dec PF_TopRow+1
+        bne OffScreen ; if we still have shots until we lower the row, skip the rest
+        inc PF_TopRow ; move the top row down
+        lda PF_TopRow+2
+        sta PF_TopRow+1
         ;jmp OffScreen ; TODO -- not needed but keeps things clean
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
@@ -546,121 +558,39 @@ setBallPosition
         rts
 ;-----------------------------------------
 getCollision
-.checkRowCollision
+        ; if we arent even in a row, skip!
         lda PlayerYPos
-        lsr
-        lsr
-        lsr
-        lsr
-	sta PlayerRow
-        cmp PF_TopMost_Row
-        beq .checkColCollision
-        lda Tick_PlayerY_Step
-        cmp #01
-        bne .checkColCollision ; otherwise we skip to the COL stuff
-        lda PlayerYPos
+        cmp #CONS_TOP_WALL+(#CONS_TILE_ROWS*CONS_TILE_HEIGHT)
+        bcc .setBlankCollision
+.doGetCollision
+        ldy #CONS_TILE_ROWS
+.checkRowCollisionCurrent
+        lda PF_RowIndexes,y
+        cmp PlayerYPos
+        bcs .checkRowCollisionNext
+        cmp #$00
+        beq .checkRowCollisionNext
+        dey
+        jmp .checkRowCollisionCurrent
+.checkRowCollisionNext
+        sta PlayerRow
         sec
-        sbc PlayerDirY
-        lsr
-        lsr
-        lsr
-        lsr
-;-----
-.checkColCollision
-        sta PlayerRow+1 ; whatever pat hwe take we need to do this!
-        lda PlayerXPos
-        cmp #CONS_LEFT_WALL+#CONS_TILE_WIDTH
-        bcc .col0A
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*2)
-        bcc .col1A
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*3)
-        bcc .col2A
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*4)
-        bcc .col3A
-        ldy #$04
-.col4A
-        jmp .endOfColFetchA
-.col0A
-        ldy #$00
-        jmp .endOfColFetchA
-.col1A
-        ldy #$01
-        jmp .endOfColFetchA
-.col2A
-        ldy #$02
-        jmp .endOfColFetchA
-.col3A
-        ldy #$03
-        jmp .endOfColFetchA
-.endOfColFetchA
-        sty PlayerCol+1
-        lda Tick_PlayerX_Step
-        cmp #01
-        bne .getNextColor ; otherwise we skip to the COL stuff
-.getNextColumn
-        lda PlayerXPos
-        clc
-        adc PlayerDirX
-        ;jsr getColFromX
-        cmp #CONS_LEFT_WALL+#CONS_TILE_WIDTH
-        bcc .col0B
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*2)
-        bcc .col1B
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*3)
-        bcc .col2B
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*4)
-        bcc .col3B
-        ldy #$04
-.col4B
-        jmp .endOfColFetchB
-.col0B
-        ldy #$00
-        jmp .endOfColFetchB
-.col1B
-        ldy #$01
-        jmp .endOfColFetchB
-.col2B
-        ldy #$02
-        jmp .endOfColFetchB
-.col3B
-        ldy #$03
-        jmp .endOfColFetchB
-.endOfColFetchB
-	sty PlayerCol+1
+        sbc #$01 ;PlayerCol
+        sta PlayerRow+1
 .getNextColor
         ldy PlayerRow+1
 	lda PF_RowIndexes,y
         clc
-        adc PlayerCol+1
+        adc #$00 ;PlayerCol+1
         tay
         lda PF_BallStates_All,y
         sta PlayerColor+2
+        jmp .endGetcollision
+.setBlankCollision
+        lda #CONS_COLOR_BLOCK_BACKGROUND
+        sta PlayerColor+2
+.endGetcollision
 	rts
-;-----------------------------------------
-; A = X position, Y = column index (0-4)
-getColFromX
-        cmp #CONS_LEFT_WALL+#CONS_TILE_WIDTH
-        bcc .col0
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*2)
-        bcc .col1
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*3)
-        bcc .col2
-        cmp #CONS_LEFT_WALL+(#CONS_TILE_WIDTH*4)
-        bcc .col3
-        ldy #$04
-        rts
-.col0
-        ldy #$00
-        rts
-.col1
-        ldy #$01
-        rts
-.col2
-        ldy #$02
-        rts
-.col3
-        ldy #$03
-        rts
 ;-----------------------------------------
 ;TODO -- i ought to be able to do this faster and IDK why I cant!
 setCollision
@@ -811,6 +741,7 @@ PF_Level_Colors
         .byte #CONS_COLOR_GREEN
         .byte #CONS_COLOR_PURPLE
         .byte #CONS_COLOR_BLUE
+;-----------------------------------------
 Launcher_Positions_PlayerXTicks
         .byte #$01; Left Center 3
         .byte #$02; Left Center 2
@@ -835,6 +766,7 @@ Launcher_Positions_PlayerYTicks
         .byte #$01 ; Right Center 1
         .byte #$02 ; Right Center 2
         .byte #$03 ; Right Center 3
+;-----------------------------------------
 Launcher_Drawing_CTRLPF 
 	; X start | Ball size (only LEFT aka HIGH nibble as well!)| HMOVE (only high nibble)
         ; Ball size chart
@@ -868,24 +800,7 @@ Launcher_Drawing_HMOVE_AND_Y
         .byte #$0A ; Right Center 2
         .byte #$0A ; Right Center 3
 ;-----------------------------------------
-;PF_Boundries_Row
-;	.byte #(CONS_TILE_HEIGHT)*1
-;        .byte #(CONS_TILE_HEIGHT)*2
-;        .byte #(CONS_TILE_HEIGHT)*3
-;        .byte #(CONS_TILE_HEIGHT)*4
-;        .byte #(CONS_TILE_HEIGHT)*5
-;        .byte #(CONS_TILE_HEIGHT)*6
-;        .byte #(CONS_TILE_HEIGHT)*7
-;        .byte #(CONS_TILE_HEIGHT)*8
-;        .byte #(CONS_TILE_HEIGHT)*9
-;        .byte #(CONS_TILE_HEIGHT)*10
-;        .byte #(CONS_TILE_HEIGHT)*11
-;        .byte #(CONS_TILE_HEIGHT)*12
-;PF_Boundries_Col
-;	.byte #(CONS_LEFT_WALL+17)
-;        .byte #(CONS_LEFT_WALL+35)
-;        .byte #(CONS_LEFT_WALL+53)
-;        .byte #(CONS_LEFT_WALL+71)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Epilogue
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
