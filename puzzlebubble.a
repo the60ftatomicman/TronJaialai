@@ -326,7 +326,7 @@ Pre_Kernal_Launcher
         sta COLUPF
 
         LOAD_POINTER_WITH_DATA Ptr_A,Launcher_Drawing_CTRLPF
-        LOAD_POINTER_WITH_DATA Ptr_C,Launcher_Drawing_HMOVE
+        LOAD_POINTER_WITH_DATA Ptr_B,Launcher_Drawing_HMOVE_AND_Y
         ldy PlayerLauncherIdx
 	; byte 1: ball size
         lda (Ptr_A),y
@@ -334,14 +334,26 @@ Pre_Kernal_Launcher
         ; byte 2: per-scanline horizontal motion (ramp)
         lda (Ptr_B),y
         sta HMBL
-        ; Turn on Ball
-        lda #$02
-        sta ENABL
+        ;TODO extract lower nibble from A,
+        ; store it it into LineIdx
+        and #$0f
+        sta LineIdx
         ldx #CONS_TILE_HEIGHT ; must be this height!
 Kernal_Launcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+        cpx LineIdx
+        ;if the ball height is greater than LineIdx, do not turn on the ball
+        ; if it is LESS, turn on the ball and do our hmoves!
+        bpl .skipTurnOnBall
+        lda #$02
+        sta ENABL
         sta WSYNC
-	;sta HMOVE
+	sta HMOVE
+        jmp .iterate
+.skipTurnOnBall
+        sta WSYNC
+.iterate
         dex 
         bne Kernal_Launcher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;     
@@ -378,6 +390,7 @@ Kernal_End
         beq .setCollision
 .readUserImport
         jsr ReadJoystick
+        jsr SetBallMovementValues
         jmp OffScreen
 .moveBall
         jsr setBallPosition
@@ -676,6 +689,10 @@ spawnBallAtLauncher
         lda #CONS_LAUNCH_START_Y
         sta PlayerYPos
         ;------------
+        jsr SetBallMovementValues
+        ;------------
+	rts
+SetBallMovementValues
         LOAD_POINTER_WITH_DATA Ptr_A,Launcher_Positions_PlayerXSpeed
         LOAD_POINTER_WITH_DATA Ptr_B,Launcher_Positions_PlayerXTicks
         LOAD_POINTER_WITH_DATA Ptr_C,Launcher_Positions_PlayerYTicks
@@ -693,9 +710,7 @@ spawnBallAtLauncher
         ; TODO not really necessary but we will keep it
         lda #CONS_PLAYER_SPEED_Y
         sta PlayerDirY
-        ;------------
-	rts
- 
+        rts
 ;-----------------------------------------
 ; SWCHA -- directional register
 ; #%10000000 -- P1 Right
@@ -816,7 +831,7 @@ Launcher_Positions_PlayerYTicks
         .byte #$03 ; Left Center 3
         .byte #$02 ; Left Center 2
         .byte #$01 ; Left Center 1
-        .byte #$01 ; Center
+        .byte #$00 ; Center
         .byte #$01 ; Right Center 1
         .byte #$02 ; Right Center 2
         .byte #$03 ; Right Center 3
@@ -827,29 +842,31 @@ Launcher_Drawing_CTRLPF
         ; 0001xxxx = 2 px
         ; 0010xxxx = 4 px
         ; 0011xxxx = 8 px
-        .byte #%00110001 ; Left Center 3
-        .byte #%00100001 ; Left Center 2
+        .byte #%00010001 ; Left Center 3
+        .byte #%00010001 ; Left Center 2
         .byte #%00010001 ; Left Center 1
         .byte #%00000001 ; Center
         .byte #%00010001 ; Right Center 1
-        .byte #%00100001 ; Right Center 2
-        .byte #%00110001 ; Right Center 3
+        .byte #%00010001 ; Right Center 2
+        .byte #%00010001 ; Right Center 3
 Launcher_Drawing_X
         .byte #CONS_LAUNCH_START_X-24 ; Left Center 3
-        .byte #CONS_LAUNCH_START_X-16 ; Left Center 2
-        .byte #CONS_LAUNCH_START_X-8 ; Left Center 1
-        .byte #CONS_LAUNCH_START_X+0 ; Center
+        .byte #CONS_LAUNCH_START_X-8 ; Left Center 2
+        .byte #CONS_LAUNCH_START_X-3 ; Left Center 1
+        .byte #CONS_LAUNCH_START_X+6 ; Center
         .byte #CONS_LAUNCH_START_X+8 ; Right Center 1
         .byte #CONS_LAUNCH_START_X+16 ; Right Center 2
         .byte #CONS_LAUNCH_START_X+24 ; Right Center 3
-Launcher_Drawing_HMOVE
-        .byte #$00 ; Left Center 3
-        .byte #$00 ; Left Center 2
-        .byte #$00 ; Left Center 1
-        .byte #$00 ; Center
-        .byte #$00 ; Right Center 1
-        .byte #$00 ; Right Center 2
-        .byte #$00 ; Right Center 3
+Launcher_Drawing_HMOVE_AND_Y
+	; higher nibble is HMOVE,
+        ; Lower nibble is gap for Y
+        .byte #$0A ; Left Center 3
+        .byte #$0A ; Left Center 2
+        .byte #$FA ; Left Center 1
+        .byte #$0A ; Center
+        .byte #$0A ; Right Center 1
+        .byte #$0A ; Right Center 2
+        .byte #$0A ; Right Center 3
 ;-----------------------------------------
 ;PF_Boundries_Row
 ;	.byte #(CONS_TILE_HEIGHT)*1
