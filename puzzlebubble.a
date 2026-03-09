@@ -761,32 +761,32 @@ Launcher_Drawing_CTRLPF
         ; 0001xxxx = 2 px
         ; 0010xxxx = 4 px
         ; 0011xxxx = 8 px
-        .byte #%00010001 ; Left Center 3
+        .byte #%00110001 ; Left Center 3
         .byte #%00100001 ; Left Center 2
         .byte #%00010001 ; Left Center 1
         .byte #%00000001 ; Center
         .byte #%00010001 ; Right Center 1
-        .byte #%00010001 ; Right Center 2
-        .byte #%00010001 ; Right Center 3
+        .byte #%00100001 ; Right Center 2
+        .byte #%00110001 ; Right Center 3
 Launcher_Drawing_X
-        .byte #CONS_LAUNCH_START_X-24 ; Left Center 3
         .byte #CONS_LAUNCH_START_X-3 ; Left Center 2
-        .byte #CONS_LAUNCH_START_X-3 ; Left Center 1
+        .byte #CONS_LAUNCH_START_X-2 ; Left Center 2
+        .byte #CONS_LAUNCH_START_X-0 ; Left Center 1
         .byte #CONS_LAUNCH_START_X+6 ; Center
-        .byte #CONS_LAUNCH_START_X+14 ; Right Center 1
-        .byte #CONS_LAUNCH_START_X+16 ; Right Center 2
-        .byte #CONS_LAUNCH_START_X+24 ; Right Center 3
+        .byte #CONS_LAUNCH_START_X+12 ; Right Center 1
+        .byte #CONS_LAUNCH_START_X+12 ; Right Center 2
+        .byte #CONS_LAUNCH_START_X+9 ; Right Center 3
 Launcher_Drawing_HMOVE_AND_Y
 	; higher nibble is HMOVE,
         ; Lower nibble is gap for Y
         ; A == 10 aka full fight
-        .byte #$09 ; Left Center 3
+        .byte #$D3 ; Left Center 3
         .byte #$E5 ; Left Center 2
-        .byte #$FA ; Left Center 1
+        .byte #$F8 ; Left Center 1
         .byte #$0A ; Center
-        .byte #$1A ; Right Center 1
-        .byte #$09 ; Right Center 2
-        .byte #$09 ; Right Center 3
+        .byte #$18 ; Right Center 1
+        .byte #$25 ; Right Center 2
+        .byte #$33 ; Right Center 3
 ;-----------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
