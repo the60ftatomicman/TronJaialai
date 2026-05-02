@@ -92,6 +92,7 @@ CONS_LAUNCH_START_Y EQU #CONS_TOP_WALL+(#CONS_TILE_HEIGHT*12)+0
 CONS_LAUNCHER_IDX_STEP EQU #01
 CONS_PLAYER_HEIGHT  EQU #02
 CONS_PLAYER_WIDTH   EQU #%11111111          ;#%11100000 --> 3 byte
+CONS_PLAYER_WIDTH_PIXELS EQU #8
 CONS_PLAYER_SPEED_Y EQU #CONS_PLAYER_HEIGHT ;2 gives me 5 steps per 10
 CONS_PLAYER_SPEED_X EQU #9                  ; 3 width 3 speed == 5 steps					                        
                                             ; 6 with 6 steps == 3 steps
@@ -544,8 +545,10 @@ setBallPosition
         rts
 ;-----------------------------------------
 getCollision
-        ; Determine the playfield row from the ball Y position.
+        ; Determine the playfield row from the ball bottom pixel.
         lda PlayerYPos
+        clc
+        adc #CONS_PLAYER_HEIGHT-1
         ldx #0
 .calcCollisionRow
         cmp #CONS_TILE_HEIGHT
@@ -565,10 +568,16 @@ getCollision
         sec
         sbc PlayerCol
         sta PlayerRow
-        ; Determine the column from the ball X position.
+        ; Determine the column from the ball leading collision edge.
+        lda PlayerDirX
+        bmi .useLeftBallEdge
         lda PlayerXPos
         clc
-        adc #$04        ; use approximate ball center for collision
+        adc #CONS_PLAYER_WIDTH_PIXELS-1
+        jmp .calcCollisionX
+.useLeftBallEdge
+        lda PlayerXPos
+.calcCollisionX
         sec
         sbc #CONS_LEFT_WALL
         bmi .setBlankCollision

@@ -1,23 +1,24 @@
 --- Symbol List (sorted by symbol)
 0.adjustXFromLeftBoundry f252                  
 0.adjustXFromRightBoundry f25f              (R )
-0.calcCollisionCol       f298              (R )
-0.calcCollisionRow       f270              (R )
-0.checkbutton            f338              (R )
-0.checkLeft              f31e                  
-0.checkRight             f32b              (R )
-0.colFound               f2a7              (R )
-0.determineJoystickAction f342              (R )
+0.calcCollisionCol       f2a4              (R )
+0.calcCollisionRow       f273              (R )
+0.calcCollisionX         f29d              (R )
+0.checkbutton            f344              (R )
+0.checkLeft              f32a                  
+0.checkRight             f337              (R )
+0.colFound               f2b3              (R )
+0.determineJoystickAction f34e              (R )
 0.DrawPlayfield          f0cf              (R )
 0.endBallPosition        f26b              (R )
-0.endGetcollision        f2c1                  
-0.endJoystickCheck       f382                  
+0.endGetcollision        f2cd                  
+0.endJoystickCheck       f38e                  
 0.endXPosition           f269              (R )
-0.fireOnRelease          f37a              (R )
+0.fireOnRelease          f386              (R )
 0.FREE_BYTES             0000                  
 0.iterate                f157              (R )
 0.keepMoving             f19d              (R )
-0.leftOnRelease          f35c              (R )
+0.leftOnRelease          f368              (R )
 0.moveBall               f18c              (R )
 0.moveX                  f24d                  
 0.moveY                  f238                  
@@ -26,18 +27,19 @@
 0.nextSection            f0f0                  
 0.readUserImport         f183                  
 0.repeatColors           f042              (R )
-0.rightOnRelease         f36a              (R )
-0.rowFound               f27f              (R )
-0.setBlankCollision      f2bd              (R )
+0.rightOnRelease         f376              (R )
+0.rowFound               f282              (R )
+0.setBlankCollision      f2c9              (R )
 0.setCollision           f1a4              (R )
 0.skipTurnOnBall         f155              (R )
-0.storeCurrentInput      f37e              (R )
-0.storeLeftIdx           f365              (R )
+0.storeCurrentInput      f38a              (R )
+0.storeLeftIdx           f371              (R )
 0.storeMoveState         f19f                  
-0.storeRightIdx          f375              (R )
+0.storeRightIdx          f381              (R )
 0.tickX                  f23f              (R )
 0.TurnOnPlayer           f0c8              (R )
 0.TurnOnPlayer_2         f114              (R )
+0.useLeftBallEdge        f29b              (R )
 1.CLEAR_STACK            f006              (R )
 10.cycles                01bb              (R )
 10.lines                 0006              (R )
@@ -104,6 +106,7 @@ CONS_PLAYER_STATE_COLLISION_CHECK 0002
 CONS_PLAYER_STATE_COLLISION_SET 0003              (R )
 CONS_PLAYER_STATE_MOVING 0001              (R )
 CONS_PLAYER_WIDTH        00ff              (R )
+CONS_PLAYER_WIDTH_PIXELS 0008              (R )
 CONS_RIGHT_WALL          007b              (R )
 CONS_TILE_COLS           0005              (R )
 CONS_TILE_HEIGHT         000a              (R )
@@ -186,7 +189,7 @@ Pre_Kernal_Launcher_Base f15a
 Ptr_A                    0083              (R )
 Ptr_B                    0085              (R )
 Ptr_C                    0087              (R )
-ReadJoystick             f31a              (R )
+ReadJoystick             f326              (R )
 REFP0                    000b                  
 REFP1                    000c                  
 RESBL                    0014                  
@@ -198,14 +201,14 @@ RESP0                    0010              (R )
 RESP1                    0011                  
 RowIdx                   0082              (R )
 RSYNC                    0003                  
-SetBallMovementValues    f2e9              (R )
+SetBallMovementValues    f2f5              (R )
 setBallPosition          f230              (R )
-setCollision             f2c2              (R )
+setCollision             f2ce              (R )
 setCurrentRowTileColors  f20e              (R )
 SetHorizPos              f1cb              (R )
 SetupLevel               f017                  
 setXPositionsForObjects  f1e3              (R )
-spawnBallAtLauncher      f2d1              (R )
+spawnBallAtLauncher      f2dd              (R )
 Start                    f000              (R )
 SWACNT                   0281                  
 SWBCNT                   0283                  
