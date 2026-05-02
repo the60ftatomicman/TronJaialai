@@ -400,37 +400,25 @@ Kernal_End
         jmp OffScreen
 .moveBall
         jsr setBallPosition
-        ;lda #CONS_PLAYER_STATE_COLLISION_CHECK
-        ;jmp OffScreen
-.checkCollision
-	;jsr getCollision
-.checkIfNextBlockIsBlank
-        ;lda PlayerColor+2
-        ;cmp #CONS_COLOR_BLOCK_BACKGROUND
-        ;bne .keepMoving
-        ;lda #CONS_PLAYER_STATE_COLLISION_SET
-        ;bne .storeMoveState
+        jsr getCollision
+        cmp #CONS_COLOR_BLOCK_BACKGROUND
+        beq .keepMoving
+        lda #CONS_PLAYER_STATE_COLLISION_SET
+        sta PlayerState
+        jmp OffScreen
 .keepMoving
         lda #CONS_PLAYER_STATE_MOVING
 .storeMoveState
         sta PlayerState
         jmp OffScreen
 .setCollision
-        jsr .keepMoving
-	;jsr setCollision
-        ;jsr spawnBallAtLauncher
-        ;jsr setXPositionsForObjects
-	;lda #CONS_PLAYER_STATE_AIMING
-        ;sta PlayerState
-        ;dec PF_TopRow+1
-        ;bne OffScreen ; if we still have shots until we lower the row, skip the rest
-        ;inc PF_TopRow ; move the top row down
-        ;lda PF_TopRow+2
-        ;sta PF_TopRow+1
-        ;jmp OffScreen ; TODO -- not needed but keeps things clean
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;  
+        jsr setCollision
+        lda #CONS_PLAYER_STATE_AIMING
+        sta PlayerState
+        jsr spawnBallAtLauncher
+        jmp OffScreen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -556,27 +544,63 @@ setBallPosition
         rts
 ;-----------------------------------------
 getCollision
-        ; if we arent even in a row, skip!
+        ; Determine the playfield row from the ball Y position.
         lda PlayerYPos
-        cmp #CONS_TOP_WALL+(#CONS_TILE_ROWS*CONS_TILE_HEIGHT)
-        bcc .setBlankCollision
-.doGetCollision
-        ldy #CONS_TILE_ROWS
-.checkRowCollisionCurrent
-        lda PF_RowIndexes,y
-        cmp PlayerYPos
-        bcs .checkRowCollisionNext
-        cmp #$00
-        beq .checkRowCollisionNext
-        dey
-        jmp .checkRowCollisionCurrent
-.checkRowCollisionNext
+        ldx #0
+.calcCollisionRow
+        cmp #CONS_TILE_HEIGHT
+        bcc .rowFound
+        sec
+        sbc #CONS_TILE_HEIGHT
+        inx
+        cpx #CONS_TILE_ROWS
+        beq .setBlankCollision
+        jmp .calcCollisionRow
+.rowFound
+        cpx #CONS_TILE_ROWS
+        beq .setBlankCollision
+        ; Convert from top row index to PF_RowIndexes index (bottom-up array).
+        stx PlayerCol
+        lda #CONS_TILE_ROWS-1
+        sec
+        sbc PlayerCol
         sta PlayerRow
+        ; Determine the column from the ball X position.
+        lda PlayerXPos
+        clc
+        adc #$04        ; use approximate ball center for collision
+        sec
+        sbc #CONS_LEFT_WALL
+        bmi .setBlankCollision
+        ldx #0
+.calcCollisionCol
+        cmp #CONS_TILE_WIDTH
+        bcc .colFound
+        sec
+        sbc #CONS_TILE_WIDTH
+        inx
+        cpx #CONS_TILE_COLS
+        beq .setBlankCollision
+        jmp .calcCollisionCol
+.colFound
+        stx PlayerCol
+        ; Get the block color at the computed row/column.
+        lda PlayerRow
+        tay
+        lda PF_RowIndexes,y
+        clc
+        adc PlayerCol
+        tay
+        lda PF_BallStates_All,y
+        sta PlayerColor+2
+        cmp #CONS_COLOR_BLOCK_BACKGROUND
+        beq .setBlankCollision
+        rts
 .setBlankCollision
         lda #CONS_COLOR_BLOCK_BACKGROUND
-.endGetcollision
         sta PlayerColor+2
-	rts
+.endGetcollision
+        rts
 ;-----------------------------------------
 ;TODO -- i ought to be able to do this faster and IDK why I cant!
 setCollision
@@ -587,7 +611,7 @@ setCollision
         tay
 	lda #CONS_COLOR_BLOCK_BACKGROUND;PlayerColor
         sta PF_BallStates_All,y
-	rts 
+        rts 
 ;-----------------------------------------
 spawnBallAtLauncher
         ; Set player colors
