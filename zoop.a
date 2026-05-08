@@ -1,0 +1,320 @@
+    processor 6502
+    include "vcs.h"
+    include "macro.h"
+    include "xmacro.h"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Constants segment
+; ---- COLORS
+CONS_COLOR_BLACK  EQU $00
+CONS_COLOR_GREY   EQU $E1
+CONS_COLOR_WHITE  EQU $EF
+
+CONS_COLOR_RED    EQU $46
+CONS_COLOR_ORANGE EQU $38
+CONS_COLOR_YELLOW EQU $1E
+CONS_COLOR_GREEN  EQU $C6
+CONS_COLOR_BLUE   EQU $A6
+CONS_COLOR_PURPLE EQU $64
+
+CONS_COLOR_PINK   EQU $3C
+CONS_COLOR_TEAL   EQU $8D
+CONS_COLOR_CHART  EQU $CA
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Macros
+;--------
+; FLIP_BOOL
+; Original author: Andy Garber
+; Takes a memory address and flips it's value than stores it
+; Assumes the Memory address value is 1 or 0
+; usage: FLIP_BOOL SomeAddress
+    MAC FLIP_BOOL
+.MEMADDR     SET {1}
+    lda .MEMADDR
+    EOR #$01
+    sta .MEMADDR
+    ENDM
+
+;--------
+; LOAD_POINTER_WITH_DATA
+; Original author: Andy Garber
+; Loads a pointer with low byte than high byte address of data object
+; usage: LOAD_POINTER_WITH_DATA pointer data
+    MAC LOAD_POINTER_WITH_DATA
+.POINTER      SET {1}
+.DATA_BLOB    SET {2}
+    lda #<.DATA_BLOB
+    sta .POINTER
+    lda #>.DATA_BLOB
+    sta .POINTER+1
+    ENDM
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Variables segment
+
+    seg.u Variables
+    org $80
+
+TempByte .byte
+
+
+CONS_BQ_VERT_COLS        EQU #5
+CONS_BQ_VERT_ROWS        EQU #5
+CONS_BQ_VERT_ROW_HEIGHT  EQU #10
+;
+CONS_BQ_HORI_COLS        EQU #5
+CONS_BQ_HORI_ROWS        EQU #5
+CONS_BQ_HORI_ROW_HEIGHT  EQU #8
+;
+CONS_PLAYERZ_COLS        EQU #5
+CONS_PLAYERZ_ROWS        EQU #3
+CONS_PLAYERZ_ROW_HEIGHT  EQU #8
+
+BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
+BlockQueue_Current_Hori .DS #CONS_BQ_HORI_COLS
+BlockQueue_Current_Start .byte
+
+BlockQueue_Top   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
+BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
+BlockQueue_Left  .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
+BlockQueue_Right .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
+
+LoopIdx .DS 2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+    seg Code
+    org $f000
+
+Start
+    CLEAN_START
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Lets build some mock data for the blocks
+
+;;;;;;;;;;;;;;;;;;;;;;;
+    lda #$00
+    sta TempByte
+
+    lda #CONS_BQ_VERT_ROWS
+    sta LoopIdx
+
+    ldx #$00
+
+Kernal_Temp_Rows
+    ldy #CONS_BQ_VERT_COLS
+
+Kernal_Temp_Cols
+    FLIP_BOOL TempByte
+    bne Kernal_Temp_B
+
+Kernal_Temp_A
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top,x
+    jmp Kernal_Temp_Next
+
+Kernal_Temp_B
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top,x
+
+Kernal_Temp_Next
+    inx
+    dey
+    bne Kernal_Temp_Cols
+
+    lda #CONS_COLOR_BLACK
+    dec LoopIdx
+    bne Kernal_Temp_Rows
+
+    lda #$FF
+    sta BlockQueue_Top,x
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; On Frame Code segment
+
+NextFrame
+    lsr SWCHB    ; test Game Reset switch
+    bcc Start    ; reset?
+
+; 1 + 3 lines of VSYNC
+    VERTICAL_SYNC
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 37 lines of underscan
+
+    TIMER_SETUP 37
+    TIMER_WAIT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 192 lines of frame
+
+    TIMER_SETUP 192
+;;;;;;;;;;;;;;;;;;;;;;;
+    lda #%00000001
+    sta CTRLPF
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    
+    lda #%11110000
+    sta PF0
+    lda #%11111110
+    sta PF1
+    lda #%00000000
+    sta PF2
+    
+    lda #CONS_BQ_VERT_ROWS
+    sta LoopIdx
+    lda #$00
+    sta BlockQueue_Current_Start
+    sta WSYNC
+Kernal_TopBlocks
+    jsr SetupCurrentRow
+    ldy #CONS_BQ_VERT_ROW_HEIGHT
+Kernal_TopBlocks_Rows
+    sta WSYNC
+
+    ;lda BlockQueue_Current_Veri,0
+    lda #CONS_COLOR_PURPLE
+    sta COLUBK
+
+    SLEEP 32
+
+    ;lda BlockQueue_Current_Veri,1
+    lda #CONS_COLOR_GREEN
+    sta COLUBK
+
+    ;lda BlockQueue_Current_Veri,2
+    lda #CONS_COLOR_PURPLE
+    sta COLUBK
+
+    ;lda BlockQueue_Current_Veri,3
+    lda #CONS_COLOR_GREEN
+    sta COLUBK
+
+    ;lda BlockQueue_Current_Veri,4
+    lda #CONS_COLOR_PURPLE
+    sta COLUBK
+    
+    dey
+    bne Kernal_TopBlocks_Rows
+
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+    sta WSYNC
+
+    dec LoopIdx
+    bne Kernal_TopBlocks
+
+;;;;;;;;;;;;;;;;;;;;;;;
+    lda #%00000001
+    sta CTRLPF
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    ; TODO --- may use seperate playfields but not positive!
+    lda #%11110000
+    sta PF0
+    lda #%11111110
+    sta PF1
+    lda #%00000000
+    sta PF2
+
+    lda #CONS_PLAYERZ_ROWS
+    sta LoopIdx
+
+Kernal_PlayerZone
+    ldy #CONS_PLAYERZ_ROW_HEIGHT
+Kernal_PlayerZone_Rows
+    sta WSYNC
+
+    ;lda BlockQueue_Current_Veri,0
+    lda #CONS_COLOR_TEAL
+    sta COLUBK
+
+    SLEEP 32
+    REPEAT 2
+    lda #CONS_COLOR_PINK
+    sta COLUBK
+    lda #CONS_COLOR_TEAL
+    sta COLUBK
+    REPEND
+
+
+    dey
+    bne Kernal_PlayerZone_Rows
+
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+    sta WSYNC
+
+    dec LoopIdx
+    bne Kernal_PlayerZone
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_WaitTilEnd
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+
+    lda #%00000000
+    sta PF0
+
+    lda #%00000000
+    sta PF1
+
+    lda #%00000000
+    sta PF2
+
+    nop
+    TIMER_WAIT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 29 lines of overscan
+
+    TIMER_SETUP 29
+    TIMER_WAIT
+
+; total = 262 lines, go to next frame
+    jmp NextFrame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Subroutines
+
+; Takes 2 Lines
+SetupCurrentRow
+; for the first we determine if we need to set the 2 bytes in PF1    
+    ldy BlockQueue_Current_Start
+    lda BlockQueue_Top,y
+    sta BlockQueue_Current_Veri,0
+; for the rest we determine if we need to set 2 bytes in PF2
+    ldx #$04
+.1
+    iny
+    lda BlockQueue_Top,y
+    sta BlockQueue_Current_Veri,x
+    dex
+    bne .1
+    sty BlockQueue_Current_Start
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Data  
+
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Epilogue
+
+    org $fffc
+    .word Start    ; reset vector
+    .word Start    ; BRK vector
