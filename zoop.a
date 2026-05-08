@@ -8,8 +8,9 @@
 ; Constants segment
 ; ---- COLORS
 CONS_COLOR_BLACK  EQU $00
+CONS_COLOR_LGREY  EQU #04
 CONS_COLOR_GREY   EQU $E1
-CONS_COLOR_WHITE  EQU $EF
+CONS_COLOR_WHITE  EQU $0E
 
 CONS_COLOR_RED    EQU $46
 CONS_COLOR_ORANGE EQU $38
@@ -21,6 +22,11 @@ CONS_COLOR_PURPLE EQU $64
 CONS_COLOR_PINK   EQU $3C
 CONS_COLOR_TEAL   EQU $8D
 CONS_COLOR_CHART  EQU $CA
+; ---- COLOR MAPPING TO OBJECT
+CONS_COLOR_OBJ_PLAYER_TILE_A EQU #CONS_COLOR_LGREY
+CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -85,6 +91,18 @@ BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
 BlockQueue_Left  .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
 BlockQueue_Right .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
 
+Player0Pos_Col .byte
+Player0Pos_Row .byte
+Player0Pos_X .byte
+Player0Pos_Y .byte
+Player0_Color .byte
+
+Player1Pos_Col .byte
+Player1Pos_Row .byte
+Player1Pos_X .byte
+Player1Pos_Y .byte
+Player1_Color .byte
+
 LoopIdx .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -134,6 +152,18 @@ Kernal_Temp_Next
 
     lda #$FF
     sta BlockQueue_Top,x
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Setup Other Player Things
+    lda #CONS_COLOR_RED
+    sta COLUP0
+    lda #80
+    sta Player0Pos_X
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Now lets set our horizontal positions
+    sta WSYNC
+    lda Player0Pos_X ; get X coordinate
+    ldx #0           ; player 0
+    jsr SetHorizPos  ; set coarse offset
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -178,7 +208,7 @@ NextFrame
 Kernal_TopBlocks
     jsr SetupCurrentRow
     ldy #CONS_BQ_VERT_ROW_HEIGHT
-Kernal_TopBlocks_Rows
+Kernal_TopBlocks.Rows
     sta WSYNC
 
     ;lda BlockQueue_Current_Veri,0
@@ -204,7 +234,7 @@ Kernal_TopBlocks_Rows
     sta COLUBK
     
     dey
-    bne Kernal_TopBlocks_Rows
+    bne Kernal_TopBlocks.Rows
 
     lda #CONS_COLOR_BLACK
     sta COLUBK
@@ -231,24 +261,28 @@ Kernal_TopBlocks_Rows
 
 Kernal_PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
-Kernal_PlayerZone_Rows
+Kernal_PlayerZone.Rows
     sta WSYNC
-
+    ; Turn on player?
+    lda #01
+    sta GRP0
+    
     ;lda BlockQueue_Current_Veri,0
-    lda #CONS_COLOR_TEAL
+    lda #CONS_COLOR_OBJ_PLAYER_TILE_A
     sta COLUBK
 
-    SLEEP 32
+    SLEEP 27
+    
     REPEAT 2
-    lda #CONS_COLOR_PINK
-    sta COLUBK
-    lda #CONS_COLOR_TEAL
-    sta COLUBK
+        lda #CONS_COLOR_OBJ_PLAYER_TILE_B
+        sta COLUBK
+        lda #CONS_COLOR_OBJ_PLAYER_TILE_A
+        sta COLUBK
     REPEND
 
 
     dey
-    bne Kernal_PlayerZone_Rows
+    bne Kernal_PlayerZone.Rows
 
     lda #CONS_COLOR_BLACK
     sta COLUBK
@@ -296,14 +330,35 @@ SetupCurrentRow
     sta BlockQueue_Current_Veri,0
 ; for the rest we determine if we need to set 2 bytes in PF2
     ldx #$04
-.1
+SetupCurrentRow.1
     iny
     lda BlockQueue_Top,y
     sta BlockQueue_Current_Veri,x
     dex
-    bne .1
+    bne SetupCurrentRow.1
     sty BlockQueue_Current_Start
     rts
+    
+; SetHorizPos routine
+; A = X coordinate
+; X = player number (0 or 1)
+SetHorizPos
+        sta WSYNC	; start a new line
+        sec		; set carry flag
+SetHorizPos.1
+	sbc #15		; subtract 15
+	bcs SetHorizPos.1 ; branch until negative
+	eor #7		; calculate fine offset
+        asl
+        asl
+        asl
+        asl
+        sta RESP0,x	; fix coarse position
+        sta HMP0,x	; set fine offset
+        sta WSYNC
+        sta HMOVE	; apply the previous fine position(s)
+	sta HMCLR	; reset the old horizontal position(s)
+        rts		; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
