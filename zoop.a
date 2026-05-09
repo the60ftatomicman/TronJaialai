@@ -82,9 +82,9 @@ CONS_PLAYERZ_COLS        EQU #5
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #8
 
+BlockQueue_Current_Start .byte
 BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
 BlockQueue_Current_Hori .DS #CONS_BQ_HORI_COLS
-BlockQueue_Current_Start .byte
 
 BlockQueue_Top   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
 BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
@@ -95,7 +95,8 @@ Player0Pos_Col .byte
 Player0Pos_Row .byte
 Player0Pos_X .byte
 Player0Pos_Y .byte
-Player0_Color .byte
+Player0_Color  .byte
+Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
 
 Player1Pos_Col .byte
 Player1Pos_Row .byte
@@ -156,9 +157,11 @@ Kernal_Temp_Next
 ; Setup Other Player Things
     lda #CONS_COLOR_RED
     sta Player0_Color
+    lda #00
+    sta Player0Pos_Col
     lda #80
     sta Player0Pos_X
-
+   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Now lets set our horizontal positions
     sta WSYNC
@@ -274,21 +277,26 @@ Kernal_TopBlocks.Rows
 
     lda #CONS_PLAYERZ_ROWS
     sta LoopIdx
-
+    ldx #00
 Kernal_PlayerZone
+    ;Player is on for FULL size of block so lets do that based on X
+    cpx Player0Pos_Col
+    bne Kernal_PlayerZone.Off
+Kernal_PlayerZone.On
+    lda #01
+    jmp Kernal_PlayerZone.StoreGRP0
+Kernal_PlayerZone.Off
+    lda #00
+Kernal_PlayerZone.StoreGRP0
+    sta GRP0
     ldy #CONS_PLAYERZ_ROW_HEIGHT
 Kernal_PlayerZone.Rows
     sta WSYNC
-    ; Turn on player?
-    lda #01
-    sta GRP0
-    
-    ;lda BlockQueue_Current_Veri,0
+    ;Load Player Graphic based on side
+    SLEEP 32
+    ;Draw Tiles
     lda #CONS_COLOR_OBJ_PLAYER_TILE_A
     sta COLUBK
-
-    SLEEP 27
-    
     REPEAT 2
         lda #CONS_COLOR_OBJ_PLAYER_TILE_B
         sta COLUBK
@@ -299,9 +307,11 @@ Kernal_PlayerZone.Rows
 
     dey
     bne Kernal_PlayerZone.Rows
-
+    ;Turn off graphics for a line didider
     lda #CONS_COLOR_BLACK
     sta COLUBK
+    sta GRP0
+    inx
     sta WSYNC
 
     dec LoopIdx
@@ -309,6 +319,9 @@ Kernal_PlayerZone.Rows
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
+    lda #00
+    sta GRP0
+    
     lda #CONS_COLOR_BLACK
     sta COLUPF
 
@@ -338,6 +351,9 @@ Kernal_WaitTilEnd
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 
+
+;;;;;;;;;;;;;;;;;;;;;;;
+; No parameters
 ; Takes 2 Lines
 SetupCurrentRow
 ; for the first we determine if we need to set the 2 bytes in PF1    
@@ -354,8 +370,7 @@ SetupCurrentRow.1
     bne SetupCurrentRow.1
     sty BlockQueue_Current_Start
     rts
-    
-; SetHorizPos routine
+;;;;;;;;;;;;;;;;;;;;;;;    
 ; A = X coordinate
 ; X = player number (0 or 1)
 SetHorizPos
@@ -376,11 +391,93 @@ SetHorizPos.1
 	sta HMCLR	; reset the old horizontal position(s)
         rts		; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Data  
+;-----------------------------------------
+; SWCHA -- directional register
+; #%10000000 -- P1 Right
+; #%01000000 -- P1 left
+; #%00100000 -- P1 down
+; #%00010000 -- P1 up
+; #%00001000 -- P0 Right
+; #%00000100 -- P0 left
+; #%00000010 -- P0 down
+; #%00000001 -- P0 up
+ReadJoystick
+      lda #%00000000
+      sta Player0_InputSettings  ; Set current input state to 0
+.ReadJoystick
+      lda #%01000000
+      bit SWCHA           ; Read Joystick directions`
+      bne .checkRight     ; If 0, Left is pressed
+      
+      lda Player0_InputSettings
+      ora #%00000001      ; Left bit
+      sta Player0_InputSettings
+.checkRight    
+      lda #%10000000
+      bit SWCHA      ; Mask for Bit 7
+      bne .checkbutton        ; If 0, Right is pressed
+     
+      lda Player0_InputSettings
+      ora #%00000010      ; Right bit
+      sta Player0_InputSettings
+      
+.checkbutton
+      bit INPT4
+      bmi .determineJoystickAction ; released
+      lda Player0_InputSettings
+      ora #%00000100
+      sta Player0_InputSettings
+      
+.determineJoystickAction
+        lda Player0_InputSettings
+        bne .storeCurrentInput
+        lda Player0_InputSettings+1
+        beq .storeCurrentInput
 
-    
+        tax
+        ; Fire on release
+        and #%00000100
+        bne .fireOnRelease
+
+        txa
+        and #%00000001
+        bne .leftOnRelease
+
+        txa
+        and #%00000010
+        bne .rightOnRelease
+        jmp .storeCurrentInput
+.leftOnRelease
+	lda Player0Pos_Col
+        
+        jmp .storeCurrentInput
+.rightOnRelease
+        jmp .storeCurrentInput
+.fireOnRelease
+.storeCurrentInput
+        lda Player0_InputSettings
+        sta Player0_InputSettings+1
+.endJoystickCheck
+      rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Data
+
+;;;;;;;;;;;;;;;;;;;;;;;
+PlayerYCoordinates
+    .byte $00
+;;;;;;;;;;;;;;;;;;;;;;;
+PlayerSprite_Up
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%11111111
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
