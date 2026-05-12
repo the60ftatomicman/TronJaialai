@@ -72,7 +72,7 @@ TempByte .byte
 
 CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #5
-CONS_BQ_VERT_ROW_HEIGHT  EQU #10
+CONS_BQ_VERT_ROW_HEIGHT  EQU #8
 ;
 CONS_BQ_HORI_COLS        EQU #5
 CONS_BQ_HORI_ROWS        EQU #3
@@ -80,7 +80,7 @@ CONS_BQ_HORI_ROW_HEIGHT  EQU #8
 ;
 CONS_PLAYERZ_COLS        EQU #5
 CONS_PLAYERZ_ROWS        EQU #3
-CONS_PLAYERZ_ROW_HEIGHT  EQU #8
+CONS_PLAYERZ_ROW_HEIGHT  EQU #9
 
 BlockQueue_Current_Start .byte
 BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
@@ -156,11 +156,11 @@ Kernal_Temp_Next
     sta BlockQueue_Top,x
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
-    lda #CONS_COLOR_RED
+    lda #CONS_COLOR_TEAL
     sta Player0_Color
     lda #00
     sta Player0Pos_Row
-    lda #$04
+    lda #$01
     sta Player0Pos_Col
     ; Set level data
     LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerXCoordinates
@@ -217,7 +217,7 @@ NextFrame
     
     lda #%11110000
     sta PF0
-    lda #%11111110
+    lda #%11100000
     sta PF1
     lda #%00000000
     sta PF2
@@ -230,29 +230,30 @@ NextFrame
 Kernal_TopBlocks
     jsr SetupCurrentRow
     ldy #CONS_BQ_VERT_ROW_HEIGHT
+    ldx #$00
 Kernal_TopBlocks.Rows
     sta WSYNC
 
-    ;lda BlockQueue_Current_Veri,0
-    lda #CONS_COLOR_PURPLE
+    lda BlockQueue_Current_Veri,x+1
+    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
 
-    SLEEP 32
+    SLEEP 25
 
-    ;lda BlockQueue_Current_Veri,1
-    lda #CONS_COLOR_GREEN
+    lda BlockQueue_Current_Veri,x+2
+    ;lda #CONS_COLOR_GREEN
     sta COLUBK
 
-    ;lda BlockQueue_Current_Veri,2
-    lda #CONS_COLOR_PURPLE
+    lda BlockQueue_Current_Veri,x+3
+    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
 
-    ;lda BlockQueue_Current_Veri,3
-    lda #CONS_COLOR_GREEN
+    lda BlockQueue_Current_Veri,x+4
+    ;lda #CONS_COLOR_GREEN
     sta COLUBK
 
-    ;lda BlockQueue_Current_Veri,4
-    lda #CONS_COLOR_PURPLE
+    lda BlockQueue_Current_Veri,x+5
+    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
     
     dey
@@ -273,7 +274,7 @@ Kernal_TopBlocks.Rows
     ; TODO --- may use seperate playfields but not positive!
     lda #%11110000
     sta PF0
-    lda #%11111110
+    lda #%11100000
     sta PF1
     lda #%00000000
     sta PF2
@@ -296,15 +297,18 @@ Kernal_PlayerZone.StoreGRP0
 Kernal_PlayerZone.Rows
     sta WSYNC
     ;Load Player Graphic based on side
-    SLEEP 32
+    SLEEP 27
     ;Draw Tiles
     lda #CONS_COLOR_OBJ_PLAYER_TILE_A
     sta COLUBK
+    nop 
     REPEAT 2
         lda #CONS_COLOR_OBJ_PLAYER_TILE_B
         sta COLUBK
+        nop
         lda #CONS_COLOR_OBJ_PLAYER_TILE_A
         sta COLUBK
+        nop
     REPEND
 
     dey
@@ -529,11 +533,11 @@ ReadJoystick
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
 PlayerXCoordinates
-    .byte #$34
-    .byte #$43
-    .byte #$52
-    .byte #$61
-    .byte #$70
+    .byte #$29
+    .byte #$40
+    .byte #$55
+    .byte #$68
+    .byte #$80
 ;;;;;;;;;;;;;;;;;;;;;;;
 PlayerSprite_Up
     .byte #%11111111
