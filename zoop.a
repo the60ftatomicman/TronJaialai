@@ -81,16 +81,7 @@ CONS_BQ_HORI_ROW_HEIGHT  EQU #8
 CONS_PLAYERZ_COLS        EQU #5
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #9
-
-BlockQueue_Current_Start .byte
-BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
-BlockQueue_Current_Hori .DS #CONS_BQ_HORI_COLS
-
-BlockQueue_Top   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
-BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
-BlockQueue_Left  .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
-BlockQueue_Right .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
-
+;
 Player0Pos_Col .byte
 Player0Pos_Row .byte
 Player0Pos_X .byte
@@ -98,12 +89,26 @@ Player0Pos_Y .byte
 Player0Pos_Ptr .DS 2
 Player0_Color  .byte
 Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
-
+Player0Missle_X .byte
+Player0Missle_Y .byte
+;
 Player1Pos_Col .byte
 Player1Pos_Row .byte
 Player1Pos_X .byte
 Player1Pos_Y .byte
 Player1_Color .byte
+;
+GameState .byte
+;
+BlockQueue_Current_Start .byte
+BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
+BlockQueue_Current_Hori .DS #CONS_BQ_HORI_COLS
+;
+BlockQueue_Top   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
+BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
+BlockQueue_Left  .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
+BlockQueue_Right .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
+
 
 LoopIdx .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -151,7 +156,7 @@ Kernal_Temp_Next
     lda #CONS_COLOR_BLACK
     dec LoopIdx
     bne Kernal_Temp_Rows
-
+; -- just shows us the LAST value
     lda #$FF
     sta BlockQueue_Top,x
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -228,6 +233,7 @@ NextFrame
     sta BlockQueue_Current_Start
     sta WSYNC
 Kernal_TopBlocks
+    ;TODO -- honsetly do I need this? Could just try to use the X value!
     jsr SetupCurrentRow
     ldy #CONS_BQ_VERT_ROW_HEIGHT
     ldx #$00
@@ -235,25 +241,20 @@ Kernal_TopBlocks.Rows
     sta WSYNC
 
     lda BlockQueue_Current_Veri,x+1
-    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
 
     SLEEP 25
 
     lda BlockQueue_Current_Veri,x+2
-    ;lda #CONS_COLOR_GREEN
     sta COLUBK
 
     lda BlockQueue_Current_Veri,x+3
-    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
 
     lda BlockQueue_Current_Veri,x+4
-    ;lda #CONS_COLOR_GREEN
     sta COLUBK
 
     lda BlockQueue_Current_Veri,x+5
-    ;lda #CONS_COLOR_PURPLE
     sta COLUBK
     
     dey
@@ -521,6 +522,10 @@ ReadJoystick
 	inc Player0Pos_Row
         jmp .storeCurrentInput
 .fireOnRelease
+	lda Player0Pos_X
+        sta Player0Missle_X
+        lda #$50
+        sta Player0Missle_Y
 .storeCurrentInput
         lda Player0_InputSettings
         sta Player0_InputSettings+1
