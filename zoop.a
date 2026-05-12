@@ -71,7 +71,7 @@ TempByte .byte
 
 
 CONS_BQ_VERT_COLS        EQU #5
-CONS_BQ_VERT_ROWS        EQU #3
+CONS_BQ_VERT_ROWS        EQU #5
 CONS_BQ_VERT_ROW_HEIGHT  EQU #10
 ;
 CONS_BQ_HORI_COLS        EQU #5
@@ -360,19 +360,18 @@ Kernal_WaitTilEnd
 ; No parameters
 ; Takes 2 Lines
 SetupCurrentRow
-; for the first we determine if we need to set the 2 bytes in PF1    
-    ldy BlockQueue_Current_Start
-    lda BlockQueue_Top,y
-    sta BlockQueue_Current_Veri,0
-; for the rest we determine if we need to set 2 bytes in PF2
-    ldx #$04
+; for the first we determine if we need to set the 2 bytes in PF1
+    ldx #CONS_PLAYERZ_COLS
+    lda BlockQueue_Current_Start
+    adc #CONS_PLAYERZ_COLS-1
+    sta BlockQueue_Current_Start
+    tay
 SetupCurrentRow.1
-    iny
     lda BlockQueue_Top,y
     sta BlockQueue_Current_Veri,x
+    dey
     dex
     bne SetupCurrentRow.1
-    sty BlockQueue_Current_Start
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
 ; A = X coordinate
