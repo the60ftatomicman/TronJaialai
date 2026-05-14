@@ -78,15 +78,16 @@ CONS_BQ_HORI_COLS        EQU #5
 CONS_BQ_HORI_ROWS        EQU #3
 CONS_BQ_HORI_ROW_HEIGHT  EQU #8
 ;
-CONS_PLAYERZ_COLS        EQU #5
+CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #9
 ;
 Player0Pos_Col .byte
 Player0Pos_Row .byte
-Player0Pos_X .byte
-Player0Pos_Y .byte
-Player0Pos_Ptr .DS 2
+Player0Pos_PF_Left1  .byte
+Player0Pos_PF_Left2  .byte
+Player0Pos_PF_Right0 .byte
+Player0Pos_PF_Right1 .byte
 Player0_Color  .byte
 Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
 Player0Missle_X .byte
@@ -94,8 +95,6 @@ Player0Missle_Y .byte
 ;
 Player1Pos_Col .byte
 Player1Pos_Row .byte
-Player1Pos_X .byte
-Player1Pos_Y .byte
 Player1_Color .byte
 ;
 CurrentScanline .byte
@@ -162,7 +161,11 @@ Kernal_Temp_Next
     sta BlockQueue_Top,x
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
-
+    lda #$00
+    sta Player0Pos_Col
+    
+    lda #$02
+    sta Player0Pos_Row
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,8 +191,75 @@ NextFrame
     jsr SetHorizPos
     
     jsr SetPositionMissles
+;;;;;;;;;;;;;;;;;;;;;;;
+; Set Player X -- todo make this a pointer and data table affair.
+    lda Player0Pos_Col
+.setPlayerCol_Zero
+    cmp #$00
+    bne .setPlayerCol_One
+    lda #%11110110
+    sta Player0Pos_PF_Left1
+    lda #%00000000
+    sta Player0Pos_PF_Left2
+    sta Player0Pos_PF_Right0
+    sta Player0Pos_PF_Right1
     
-    
+    jmp .setPlayerCol_Done
+.setPlayerCol_One
+    cmp #$01
+    bne .setPlayerCol_Two
+    lda #%11110000
+    sta Player0Pos_PF_Left1
+    lda #%00000110
+    sta Player0Pos_PF_Left2
+    lda #%00000000
+    sta Player0Pos_PF_Right0
+    sta Player0Pos_PF_Right1
+    jmp .setPlayerCol_Done
+.setPlayerCol_Two
+    cmp #$02
+    bne .setPlayerCol_Three
+    lda #%11110000
+    sta Player0Pos_PF_Left1
+    lda #%01100000
+    sta Player0Pos_PF_Left2
+    lda #%00000000
+    sta Player0Pos_PF_Right0
+    sta Player0Pos_PF_Right1
+    jmp .setPlayerCol_Done
+.setPlayerCol_Three
+    cmp #$03
+    bne .setPlayerCol_Four
+    lda #%11110000
+    sta Player0Pos_PF_Left1
+    lda #%01100000
+    sta Player0Pos_PF_Right0
+    lda #%00000000
+    sta Player0Pos_PF_Left2
+    sta Player0Pos_PF_Right1
+    jmp .setPlayerCol_Done
+.setPlayerCol_Four
+    cmp #$04
+    bne .setPlayerCol_Five
+    lda #%11110000
+    sta Player0Pos_PF_Left1
+    lda #%01100000
+    sta Player0Pos_PF_Right1
+    lda #%00000000
+    sta Player0Pos_PF_Left2
+    sta Player0Pos_PF_Right0
+    jmp .setPlayerCol_Done
+.setPlayerCol_Five
+    lda #%11110000
+    sta Player0Pos_PF_Left1
+    lda #%00000110
+    sta Player0Pos_PF_Right1
+    lda #%00000000
+    sta Player0Pos_PF_Left2
+    sta Player0Pos_PF_Right0
+
+.setPlayerCol_Done
+    nop
     TIMER_WAIT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -279,33 +349,83 @@ Kernal_TopBlocks.Rows
     sta NUSIZ0
     sta NUSIZ1
     
-    lda #%00000001
-    sta CTRLPF
-    
-
-    ; TODO --- may use seperate playfields but not positive!
-    lda #%11110000
-    sta PF0
-    lda #%11111000
-    sta PF1
     lda #%00000000
-    sta PF2
+    sta CTRLPF
+   
+    ; one time
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
     
     lda #CONS_PLAYERZ_ROWS
     sta LoopIdx
     ldx #00
 Kernal_PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
+    
+
+
 Kernal_PlayerZone.Rows
     sta WSYNC
-    lda #CONS_COLOR_OBJ_PLAYER_TILE_B
+
+    lda #CONS_COLOR_WHITE
     sta COLUBK
+    
+    lda #%11110000
+    sta PF0
+    ;lda #%11110000
+    ;sta PF1  
+; 1 == bot, increases as we go up.    
+Kernal_PlayerZone.PlayerLogic_Left
+    lda Player0Pos_Row
+    cmp LoopIdx
+    bne Kernal_PlayerZone.SkipPlayer_Left 
+Kernal_PlayerZone.DrawPlayer_Left
+    lda Player0Pos_PF_Left1
+    sta PF1
+    lda Player0Pos_PF_Left2
+    sta PF2
+    
+Kernal_PlayerZone.ColorPlayer_Color
+    lda #CONS_COLOR_TEAL
+    sta COLUPF
+
+Kernal_PlayerZone.DrawPlayer_Right    
+    lda Player0Pos_PF_Right0
+    sta PF0
+    lda Player0Pos_PF_Right1
+    sta PF1  
+    lda #%11111111
+    sta PF2
+    SLEEP 5
+    
+    jmp Kernal_PlayerZone.EndLine
+Kernal_PlayerZone.SkipPlayer_Left
+    lda #%11110000
+    sta PF1
+    lda #%000000000
+    sta PF2
+    SLEEP 4
+    
+Kernal_PlayerZone.SkipPlayer_Right        
+    lda #%00000000
+    sta PF0
+    lda #%00000000
+    sta PF1  
+    lda #%11111111
+    sta PF2
+    
+   
+Kernal_PlayerZone.EndLine    
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
     
     dey
     bne Kernal_PlayerZone.Rows
+    sta WSYNC
     ;Turn off graphics for a line didider
     lda #CONS_COLOR_BLACK
     sta COLUBK
+    
     inx
     sta WSYNC
 
@@ -331,6 +451,8 @@ Kernal_WaitTilEnd
     lda #%00000000
     sta PF2
 
+
+    jsr ReadJoystick
     TIMER_WAIT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -495,15 +617,15 @@ ReadJoystick
         jmp .storeCurrentInput
 .upOnRelease
 	lda Player0Pos_Row
-        cmp #$00
+        cmp #CONS_PLAYERZ_ROWS
         beq .storeCurrentInput
-	dec Player0Pos_Row
+	inc Player0Pos_Row
         jmp .storeCurrentInput
 .downOnRelease
 	lda Player0Pos_Row
-        cmp #CONS_PLAYERZ_ROWS-1
+        cmp #$01
         beq .storeCurrentInput
-	inc Player0Pos_Row
+	dec Player0Pos_Row
         jmp .storeCurrentInput
 .fireOnRelease
 	;lda Player0Pos_X
