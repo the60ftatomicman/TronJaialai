@@ -293,11 +293,13 @@ NextFrame
     
     lda #$00
     sta CurrentScanline
+    sta BlockQueue_Current_Start
     lda #CONS_BQ_VERT_ROWS
     sta LoopIdx
     sta WSYNC
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
+    jsr SetupCurrentRow
     ldy #CONS_BQ_VERT_ROW_HEIGHT
     ldx #$00
 Kernal_TopBlocks.Rows
@@ -306,26 +308,32 @@ Kernal_TopBlocks.Rows
     sta ENAM0
     sta ENAM1
     
-    SLEEP 16
+    SLEEP 16 ; 16 with web, 17 with stella
     
-    lda #CONS_COLOR_RED
+    ;lda #CONS_COLOR_RED
+    lda BlockQueue_Current_Veri,x+1
     sta COLUP0
 
-    lda #CONS_COLOR_ORANGE
+    ;lda #CONS_COLOR_ORANGE
+    lda BlockQueue_Current_Veri,x+2
     sta COLUP1
     
 
-    lda #CONS_COLOR_YELLOW
+    ;lda #CONS_COLOR_YELLOW
+    lda BlockQueue_Current_Veri,x+3
     sta COLUP0
     
-    lda #CONS_COLOR_GREEN
+    ;lda #CONS_COLOR_GREEN
+    lda BlockQueue_Current_Veri,x+4
     sta COLUP1
 
 
-    lda #CONS_COLOR_PURPLE
+    ;lda #CONS_COLOR_PURPLE
+    lda BlockQueue_Current_Veri,x+5
     sta COLUP0
     
-    lda #CONS_COLOR_TEAL
+    ;lda #CONS_COLOR_TEAL
+    lda BlockQueue_Current_Veri,x+6
     sta COLUP1
 
     dey
@@ -372,8 +380,6 @@ Kernal_PlayerZone.Rows
     
     lda #%11110000
     sta PF0
-    ;lda #%11110000
-    ;sta PF1  
 ; 1 == bot, increases as we go up.    
 Kernal_PlayerZone.PlayerLogic_Left
     lda Player0Pos_Row
@@ -483,6 +489,23 @@ SetPositionMissles
     lda #62
     ldx #3           ; player 1 Missle
     jsr SetHorizPos
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;
+; No parameters
+; Takes 2 Lines
+SetupCurrentRow
+; for the first we determine if we need to set the 2 bytes in PF1
+    ldx #CONS_PLAYERZ_COLS
+    lda BlockQueue_Current_Start
+    adc #CONS_PLAYERZ_COLS-1
+    sta BlockQueue_Current_Start
+    tay
+SetupCurrentRow.1
+    lda BlockQueue_Top,y
+    sta BlockQueue_Current_Veri,x
+    dey
+    dex
+    bne SetupCurrentRow.1
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
 ; A = X coordinate
