@@ -93,22 +93,23 @@ Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
 Player0Missle_X .byte
 Player0Missle_Y .byte
 ;
-Player1Pos_Col .byte
-Player1Pos_Row .byte
-Player1_Color .byte
-;
 CurrentScanline .byte
 GameState .byte
-;
-BlockQueue_Current_Start .byte
-BlockQueue_Current_Veri .DS #CONS_BQ_VERT_COLS
-BlockQueue_Current_Hori .DS #CONS_BQ_HORI_COLS
-;
-BlockQueue_Top   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
-BlockQueue_Bot   .DS #CONS_BQ_VERT_ROWS * #CONS_BQ_VERT_COLS
-BlockQueue_Left  .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
-BlockQueue_Right .DS #CONS_BQ_HORI_ROWS * #CONS_BQ_HORI_COLS
 
+BlockQueue_Ptr   .DS 2
+
+	org $C0
+BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
+	org $C8
+BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
+	org $D0
+BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
+	org $D8
+BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
+	org $E0
+BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
+	org $E8
+BlockQueue_Top_5 .DS  #CONS_BQ_VERT_COLS
 
 LoopIdx .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,38 +128,47 @@ Start
     lda #$00
     sta TempByte
 
-    lda #CONS_BQ_VERT_ROWS
-    sta LoopIdx
 
-    ldx #$00
-
+    ldy #$00
 Kernal_Temp_Rows
-    ldy #CONS_BQ_VERT_COLS
-
-Kernal_Temp_Cols
     FLIP_BOOL TempByte
     bne Kernal_Temp_B
-
 Kernal_Temp_A
     lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top,x
+    sta BlockQueue_Top_0,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_1,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_2,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_3,y    
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_4,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_5,y  
+    
     jmp Kernal_Temp_Next
-
 Kernal_Temp_B
     lda #CONS_COLOR_RED
-    sta BlockQueue_Top,x
-
+    sta BlockQueue_Top_0,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_1,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_2,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_3,y    
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_4,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_5,y
 Kernal_Temp_Next
-    inx
-    dey
-    bne Kernal_Temp_Cols
-
-    lda #CONS_COLOR_BLACK
-    dec LoopIdx
-    bne Kernal_Temp_Rows
+    iny
+    tya
+    cmp #CONS_BQ_VERT_ROWS
+    bcc Kernal_Temp_Rows
 ; -- just shows us the LAST value
     lda #$FF
-    sta BlockQueue_Top,x
+    sta BlockQueue_Top_5,y
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
     lda #$00
@@ -283,7 +293,7 @@ NextFrame
     lda #%00000000
     sta PF2
 ;;;;;;;;;;;;;;;;;;;;;;;
-    
+    ;TODO only kept here because we may put stuff above htis. think of it as just safegaurding for now
     lda #%00000000
     sta PF0
     lda #%00000000
@@ -292,16 +302,11 @@ NextFrame
     sta PF2
     
     lda #$00
-    sta CurrentScanline
-    sta BlockQueue_Current_Start
-    lda #CONS_BQ_VERT_ROWS
-    sta LoopIdx
+    ldx #CONS_BQ_VERT_ROWS
     sta WSYNC
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
-    jsr SetupCurrentRow
     ldy #CONS_BQ_VERT_ROW_HEIGHT
-    ldx #$00
 Kernal_TopBlocks.Rows
     sta WSYNC
     lda #%11111111
@@ -311,29 +316,28 @@ Kernal_TopBlocks.Rows
     SLEEP 16 ; 16 with web, 17 with stella
     
     ;lda #CONS_COLOR_RED
-    lda BlockQueue_Current_Veri,x+1
+    lda BlockQueue_Top_0,x
     sta COLUP0
 
     ;lda #CONS_COLOR_ORANGE
-    lda BlockQueue_Current_Veri,x+2
+    lda BlockQueue_Top_1,x
     sta COLUP1
     
-
     ;lda #CONS_COLOR_YELLOW
-    lda BlockQueue_Current_Veri,x+3
+    lda BlockQueue_Top_2,x
     sta COLUP0
     
     ;lda #CONS_COLOR_GREEN
-    lda BlockQueue_Current_Veri,x+4
+    lda BlockQueue_Top_3,x
     sta COLUP1
 
 
     ;lda #CONS_COLOR_PURPLE
-    lda BlockQueue_Current_Veri,x+5
+    lda BlockQueue_Top_4,x
     sta COLUP0
     
     ;lda #CONS_COLOR_TEAL
-    lda BlockQueue_Current_Veri,x+6
+    lda BlockQueue_Top_5,x
     sta COLUP1
 
     dey
@@ -343,8 +347,8 @@ Kernal_TopBlocks.Rows
     sta COLUP0
     sta COLUP1
     
-    dec LoopIdx
-    bne Kernal_TopBlocks
+    dex
+    bpl Kernal_TopBlocks
 
 ;;;;;;;;;;;;;;;;;;;;;;;
     ;sta WSYNC
@@ -392,7 +396,7 @@ Kernal_PlayerZone.DrawPlayer_Left
     sta PF2
     
 Kernal_PlayerZone.ColorPlayer_Color
-    lda #CONS_COLOR_TEAL
+    lda Player0_Color;#CONS_COLOR_TEAL
     sta COLUPF
 
 Kernal_PlayerZone.DrawPlayer_Right    
@@ -402,9 +406,9 @@ Kernal_PlayerZone.DrawPlayer_Right
     sta PF1  
     lda #%11111111
     sta PF2
-    SLEEP 5
+    SLEEP 4
     
-    jmp Kernal_PlayerZone.EndLine
+   jmp Kernal_PlayerZone.EndLine
 Kernal_PlayerZone.SkipPlayer_Left
     lda #%11110000
     sta PF1
@@ -440,6 +444,7 @@ Kernal_PlayerZone.EndLine
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
+    jsr handleFireButton
     lda #00
     sta GRP0
     sta GRP1
@@ -490,23 +495,6 @@ SetPositionMissles
     ldx #3           ; player 1 Missle
     jsr SetHorizPos
     rts
-;;;;;;;;;;;;;;;;;;;;;;;
-; No parameters
-; Takes 2 Lines
-SetupCurrentRow
-; for the first we determine if we need to set the 2 bytes in PF1
-    ldx #CONS_PLAYERZ_COLS
-    lda BlockQueue_Current_Start
-    adc #CONS_PLAYERZ_COLS-1
-    sta BlockQueue_Current_Start
-    tay
-SetupCurrentRow.1
-    lda BlockQueue_Top,y
-    sta BlockQueue_Current_Veri,x
-    dey
-    dex
-    bne SetupCurrentRow.1
-    rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
 ; A = X coordinate
 ; X = player number (0 or 1)
@@ -527,6 +515,33 @@ SetHorizPos.1
         sta HMOVE	; apply the previous fine position(s)
 	sta HMCLR	; reset the old horizontal position(s)
         rts		; return to caller
+;;;;;;;;;;;;;;;;;;;;;;;    
+; 
+; To redo -- this will be easier with 
+handleFireButton
+    ldy Player0Pos_Col
+    iny
+    lda #((CONS_BQ_VERT_ROWS-2)*CONS_BQ_VERT_COLS)
+    clc
+.handleFireButton.FindColMem
+    adc #$01
+    dey
+    bne .handleFireButton.FindColMem
+    ldx CONS_BQ_VERT_COLS
+    tay
+.handleFireButton.FindRowMem
+   ; TODO -- this obviously becomes more complicated once we know what ROW we are looking at!
+    lda BlockQueue_Top_0,y
+    cmp #00
+    bne .handleFireButton.storeColor
+    REPEAT CONS_BQ_VERT_COLS
+    dey
+    REPEND
+    dex
+    bne .handleFireButton.FindRowMem
+.handleFireButton.storeColor
+    sta Player0_Color
+    rts 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;-----------------------------------------
 ; SWCHA -- directional register
@@ -666,12 +681,14 @@ ReadJoystick
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
-PlayerXCoordinates
-    .byte #$29
-    .byte #$40
-    .byte #$55
-    .byte #$68
-    .byte #$80
+PlayerColMemAddresses
+    .byte BlockQueue_Top_0
+    .byte BlockQueue_Top_1
+    .byte BlockQueue_Top_2
+    .byte BlockQueue_Top_3
+    .byte BlockQueue_Top_4
+    .byte BlockQueue_Top_5
+    
 ;;;;;;;;;;;;;;;;;;;;;;;
 PlayerSprite_Up
     .byte #%11111111
