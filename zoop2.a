@@ -351,7 +351,9 @@ Kernal_TopBlocks.Rows
     bpl Kernal_TopBlocks
 
 ;;;;;;;;;;;;;;;;;;;;;;;
-    ;sta WSYNC
+    REPEAT 10
+    sta WSYNC
+    REPEND
     lda #%01100000
     sta HMM0
     sta HMM1
@@ -374,8 +376,6 @@ Kernal_TopBlocks.Rows
 Kernal_PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
     
-
-
 Kernal_PlayerZone.Rows
     sta WSYNC
 
@@ -441,6 +441,74 @@ Kernal_PlayerZone.EndLine
 
     dec LoopIdx
     bne Kernal_PlayerZone
+
+;;;;;;;;;;;;;;;;;;;;;;;
+    lda #%10100000
+    sta HMM0
+    sta HMM1
+    sta WSYNC
+    sta HMOVE 
+    lda #%01110110
+    sta NUSIZ0
+    sta NUSIZ1
+
+    ;TODO only kept here because we may put stuff above htis. think of it as just safegaurding for now
+    lda #%00000000
+    sta PF0
+    lda #%00000000
+    sta PF1
+    lda #%00000000
+    sta PF2
+    
+    lda #$00
+    ldx #CONS_BQ_VERT_ROWS
+    sta WSYNC
+Kernal_BotBlocks
+    ;TODO -- honsetly do I need this? Could just try to use the X value!
+    ldy #CONS_BQ_VERT_ROW_HEIGHT
+Kernal_BotBlocks.Rows
+    sta WSYNC
+    lda #%11111111
+    sta ENAM0
+    sta ENAM1
+    
+    SLEEP 16 ; 16 with web, 17 with stella
+    
+    ;lda #CONS_COLOR_RED
+    lda BlockQueue_Top_0,x
+    sta COLUP0
+
+    ;lda #CONS_COLOR_ORANGE
+    lda BlockQueue_Top_1,x
+    sta COLUP1
+    
+    ;lda #CONS_COLOR_YELLOW
+    lda BlockQueue_Top_2,x
+    sta COLUP0
+    
+    ;lda #CONS_COLOR_GREEN
+    lda BlockQueue_Top_3,x
+    sta COLUP1
+
+
+    ;lda #CONS_COLOR_PURPLE
+    lda BlockQueue_Top_4,x
+    sta COLUP0
+    
+    ;lda #CONS_COLOR_TEAL
+    lda BlockQueue_Top_5,x
+    sta COLUP1
+
+    dey
+    bne Kernal_BotBlocks.Rows
+    
+    lda #CONS_COLOR_BLACK
+    sta COLUP0
+    sta COLUP1
+    
+    dex
+    bpl Kernal_BotBlocks
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
