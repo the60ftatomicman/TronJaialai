@@ -58,7 +58,6 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
     sta .POINTER+1
     ENDM
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -96,8 +95,10 @@ Player0Missle_Y .byte
 CurrentScanline .byte
 GameState .byte
 
-BlockQueue_Ptr   .DS 2
+BlockQueue_Data_Ptr .DS 2
+BlockQueue_Addr_Ptr .DS 2
 
+BlockQueue_Idx   .byte
 	org $C0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
 	org $C8
@@ -173,7 +174,8 @@ Kernal_Temp_Next
 ; Setup Other Player Things
     lda #$00
     sta Player0Pos_Col
-    
+    sta BlockQueue_Idx
+
     lda #$02
     sta Player0Pos_Row
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -508,10 +510,8 @@ Kernal_BotBlocks.Rows
     
     dex
     bpl Kernal_BotBlocks
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_WaitTilEnd
+Kernal_StopVisuals
     jsr handleFireButton
     lda #00
     sta GRP0
@@ -529,15 +529,19 @@ Kernal_WaitTilEnd
 
     lda #%00000000
     sta PF2
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Inputs
     jsr ReadJoystick
+    jsr setBlockQueueIdx
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_WaitTilEnd
+    nop  ; at: 197 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
-
+Kernal_Overscan
     TIMER_SETUP 29
+    nop
     TIMER_WAIT
 
 ; total = 262 lines, go to next frame
@@ -587,29 +591,40 @@ SetHorizPos.1
 ; 
 ; To redo -- this will be easier with 
 handleFireButton
-    ldy Player0Pos_Col
-    iny
-    lda #((CONS_BQ_VERT_ROWS-2)*CONS_BQ_VERT_COLS)
-    clc
-.handleFireButton.FindColMem
-    adc #$01
-    dey
-    bne .handleFireButton.FindColMem
-    ldx CONS_BQ_VERT_COLS
-    tay
+    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
+    ldy BlockQueue_Idx
+    lda (BlockQueue_Addr_Ptr),y
+    sta BlockQueue_Data_Ptr
+    lda #>00
+    sta BlockQueue_Data_Ptr+1
+    
+    ldy #CONS_BQ_VERT_COLS-1
 .handleFireButton.FindRowMem
    ; TODO -- this obviously becomes more complicated once we know what ROW we are looking at!
-    lda BlockQueue_Top_0,y
+    lda (BlockQueue_Data_Ptr),y
     cmp #00
     bne .handleFireButton.storeColor
-    REPEAT CONS_BQ_VERT_COLS
     dey
-    REPEND
-    dex
-    bne .handleFireButton.FindRowMem
+    bcc .handleFireButton.NoAction
 .handleFireButton.storeColor
     sta Player0_Color
-    rts 
+.handleFireButton.NoAction
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;    
+; 
+; 
+setBlockQueueIdx
+    ; we will set the BlockQueue_Idx to point to the proper index
+    lda Player0Pos_Col ; maybe lessen this by ALWAYS adding this to our blockqueue?
+    sta BlockQueue_Idx
+    ; rows count from bottom UP apparently! starting at 1. my bad?
+    lda Player0Pos_Row
+    cmp #01
+    bne .setBlockQueueIdx.noRowChange 
+    ; add the col amount to our index since it'll be the next grouping!
+    ; store that into BlockQueue_Idx
+.setBlockQueueIdx.noRowChange 
+    rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;-----------------------------------------
 ; SWCHA -- directional register
@@ -711,28 +726,28 @@ ReadJoystick
       bne .downOnRelease
 .leftOnRelease
 	lda Player0Pos_Col
-        cmp #$00
-        beq .storeCurrentInput
-	dec Player0Pos_Col
-        jmp .storeCurrentInput
+    cmp #$00
+    beq .storeCurrentInput
+    dec Player0Pos_Col
+    jmp .storeCurrentInput
 .rightOnRelease
-	lda Player0Pos_Col
-        cmp #CONS_PLAYERZ_COLS-1
-        beq .storeCurrentInput
-	inc Player0Pos_Col
-        jmp .storeCurrentInput
+    lda Player0Pos_Col
+    cmp #CONS_PLAYERZ_COLS-1
+    beq .storeCurrentInput
+    inc Player0Pos_Col
+    jmp .storeCurrentInput
 .upOnRelease
-	lda Player0Pos_Row
-        cmp #CONS_PLAYERZ_ROWS
-        beq .storeCurrentInput
-	inc Player0Pos_Row
-        jmp .storeCurrentInput
+    lda Player0Pos_Row
+    cmp #CONS_PLAYERZ_ROWS
+    beq .storeCurrentInput
+    inc Player0Pos_Row
+    jmp .storeCurrentInput
 .downOnRelease
-	lda Player0Pos_Row
-        cmp #$01
-        beq .storeCurrentInput
-	dec Player0Pos_Row
-        jmp .storeCurrentInput
+    lda Player0Pos_Row
+    cmp #$01
+    beq .storeCurrentInput
+    dec Player0Pos_Row
+    jmp .storeCurrentInput
 .fireOnRelease
 	;lda Player0Pos_X
     ;    sta Player0Missle_X
