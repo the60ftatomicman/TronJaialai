@@ -187,6 +187,9 @@ Kernal_Temp_Next
 
     lda #$02
     sta Player0Pos_Row
+
+    lda #CONS_COLOR_GREEN
+    sta Player0_Color
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -520,7 +523,7 @@ Kernal_BotBlocks.Rows
     bpl Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
-    jsr handleFireButton
+    ;jsr handleFireButton
     lda #00
     sta GRP0
     sta GRP1
@@ -605,16 +608,27 @@ handleFireButton
     sta BlockQueue_Data_Ptr
     lda #>00
     sta BlockQueue_Data_Ptr+1
-    
-    ldy #CONS_BQ_VERT_COLS-1
+    ldy #00 
 .handleFireButton.FindRowMem
    ; TODO -- this obviously becomes more complicated once we know what ROW we are looking at!
     lda (BlockQueue_Data_Ptr),y
-    cmp #00
-    bne .handleFireButton.storeColor
-    dey
+    cmp #00           ; ----------    is empty
+    beq .handleFireButton.gotoNextBlock
+    cmp Player0_Color ; ----------    is the same color
+    bne .handleFireButton.NoBlankNoMatch
+.handleFireButton.NoBlankMatch
+    ; here we will loop through the columns blacking out all of the 
+    jmp .handleFireButton.NoAction
+    
+.handleFireButton.gotoNextBlock
+    iny
+    cmp #CONS_BQ_VERT_COLS
     bcc .handleFireButton.NoAction
-.handleFireButton.storeColor
+.handleFireButton.NoBlankNoMatch
+    sta TempByte
+    lda Player0_Color
+    sta (BlockQueue_Data_Ptr),y
+    lda TempByte
     sta Player0_Color
 .handleFireButton.NoAction
     rts
@@ -757,13 +771,10 @@ ReadJoystick
     dec Player0Pos_Row
     jmp .storeCurrentInput
 .fireOnRelease
-	;lda Player0Pos_X
-    ;    sta Player0Missle_X
-    ;    lda #$50
-    ;    sta Player0Missle_Y
+    jsr handleFireButton
 .storeCurrentInput
-        lda Player0_InputSettings
-        sta Player0_InputSettings+1
+    lda Player0_InputSettings
+    sta Player0_InputSettings+1
 .endJoystickCheck
       rts
 
