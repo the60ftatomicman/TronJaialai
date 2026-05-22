@@ -57,7 +57,16 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
     lda #>.DATA_BLOB
     sta .POINTER+1
     ENDM
-
+;--------
+; LOAD_POINTER_WITH_DATA
+; Original author: Andy Garber
+; just a wrapper around REPEAT X lines of WSYNC. used to help with spacing in this game.
+    MAC WYSNC_REPEATER
+.LINES_TO_WAIT SET {1}
+    REPEAT .LINES_TO_WAIT
+        sta WSYNC
+    REPEND
+    ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -353,9 +362,8 @@ Kernal_TopBlocks.Rows
     bpl Kernal_TopBlocks
 
 ;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 10
-    sta WSYNC
-    REPEND
+    WYSNC_REPEATER 10
+;;;;;;;;;;;;;;;;;;;;;;;
     lda #%01100000
     sta HMM0
     sta HMM1
@@ -386,7 +394,7 @@ Kernal_PlayerZone.Rows
     
     lda #%11110000
     sta PF0
-; 1 == bot, increases as we go up.    
+; 1 == bot, increases as we go up. Bug?    
 Kernal_PlayerZone.PlayerLogic_Left
     lda Player0Pos_Row
     cmp LoopIdx
@@ -532,7 +540,7 @@ Kernal_StopVisuals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Inputs
     jsr ReadJoystick
-    jsr setBlockQueueIdx
+    jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
     nop  ; at: 197 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
