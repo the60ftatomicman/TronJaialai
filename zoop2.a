@@ -58,7 +58,7 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
     sta .POINTER+1
     ENDM
 ;--------
-; LOAD_POINTER_WITH_DATA
+; WYSNC_REPEATER
 ; Original author: Andy Garber
 ; just a wrapper around REPEAT X lines of WSYNC. used to help with spacing in this game.
     MAC WYSNC_REPEATER
@@ -66,6 +66,48 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
     REPEAT .LINES_TO_WAIT
         sta WSYNC
     REPEND
+    ENDM
+    
+;--------
+; SET_BLOCK_COLUMNS
+; Original author: Andy Garber
+; easy way to set my column counts
+    MAC SET_BLOCK_COLUMNS
+.COLUMN_COUNT SET {1}
+    IF .COLUMN_COUNT = 6
+        lda #%01110110
+        sta NUSIZ0
+        sta NUSIZ1
+    ELSE
+        IF .COLUMN_COUNT = 5
+            lda #%01110110
+            sta NUSIZ0
+            lda #%01110010
+            sta NUSIZ1
+        ELSE
+            IF .COLUMN_COUNT = 4
+                lda #%01110010
+                sta NUSIZ0
+                sta NUSIZ1
+            ELSE
+                IF .COLUMN_COUNT = 3
+                    lda #%01110010
+                    sta NUSIZ0
+                    lda #%01110001
+                    sta NUSIZ1
+                ELSE
+                    IF .COLUMN_COUNT = 2
+                        lda #%01110000
+                        sta NUSIZ0
+                        sta NUSIZ1
+                    ELSE
+                        ECHO "ERROR: SET_BLOCK_COLUMNS only supports 6-2"
+                        ERR
+                    ENDIF
+                ENDIF
+            ENDIF
+        ENDIF
+    ENDIF
     ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,7 +120,7 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
 TempByte .byte
 
 
-CONS_BQ_VERT_COLS        EQU #5
+CONS_BQ_VERT_COLS        EQU #4
 CONS_BQ_VERT_ROWS        EQU #5
 CONS_BQ_VERT_ROW_HEIGHT  EQU #8
 ;
@@ -90,6 +132,7 @@ CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #9
 ;
+Player0Pos_Ptr .DS 2
 Player0Pos_Col .byte
 Player0Pos_Row .byte
 Player0Pos_PF_Left1  .byte
@@ -116,10 +159,7 @@ BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
 BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
 	org $D8
 BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
-	org $E0
-BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
-	org $E8
-BlockQueue_Top_5 .DS  #CONS_BQ_VERT_COLS
+
 
 LoopIdx .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -152,10 +192,6 @@ Kernal_Temp_A
     sta BlockQueue_Top_2,y
     lda #CONS_COLOR_RED
     sta BlockQueue_Top_3,y    
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top_4,y
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Top_5,y  
     
     jmp Kernal_Temp_Next
 Kernal_Temp_B
@@ -167,18 +203,13 @@ Kernal_Temp_B
     sta BlockQueue_Top_2,y
     lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_3,y    
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Top_4,y
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top_5,y
+
 Kernal_Temp_Next
     iny
     tya
     cmp #CONS_BQ_VERT_ROWS
     bcc Kernal_Temp_Rows
-; -- just shows us the LAST value
-    lda #$FF
-    sta BlockQueue_Top_5,y
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
     lda #$00
@@ -210,79 +241,18 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Positions
     sta WSYNC
-    lda #20
-    ldx #0           ; player 0
-    jsr SetHorizPos
+    ;lda #20
+    ;ldx #0           ; player 0
+    ;jsr SetHorizPos
     
     jsr SetPositionMissles
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Player X -- todo make this a pointer and data table affair.
-    lda Player0Pos_Col
-.setPlayerCol_Zero
-    cmp #$00
-    bne .setPlayerCol_One
-    lda #%11110110
-    sta Player0Pos_PF_Left1
-    lda #%00000000
-    sta Player0Pos_PF_Left2
-    sta Player0Pos_PF_Right0
-    sta Player0Pos_PF_Right1
-    
-    jmp .setPlayerCol_Done
-.setPlayerCol_One
-    cmp #$01
-    bne .setPlayerCol_Two
-    lda #%11110000
-    sta Player0Pos_PF_Left1
-    lda #%00000110
-    sta Player0Pos_PF_Left2
-    lda #%00000000
-    sta Player0Pos_PF_Right0
-    sta Player0Pos_PF_Right1
-    jmp .setPlayerCol_Done
-.setPlayerCol_Two
-    cmp #$02
-    bne .setPlayerCol_Three
-    lda #%11110000
-    sta Player0Pos_PF_Left1
-    lda #%01100000
-    sta Player0Pos_PF_Left2
-    lda #%00000000
-    sta Player0Pos_PF_Right0
-    sta Player0Pos_PF_Right1
-    jmp .setPlayerCol_Done
-.setPlayerCol_Three
-    cmp #$03
-    bne .setPlayerCol_Four
-    lda #%11110000
-    sta Player0Pos_PF_Left1
-    lda #%01100000
-    sta Player0Pos_PF_Right0
-    lda #%00000000
-    sta Player0Pos_PF_Left2
-    sta Player0Pos_PF_Right1
-    jmp .setPlayerCol_Done
-.setPlayerCol_Four
-    cmp #$04
-    bne .setPlayerCol_Five
-    lda #%11110000
-    sta Player0Pos_PF_Left1
-    lda #%01100000
-    sta Player0Pos_PF_Right1
-    lda #%00000000
-    sta Player0Pos_PF_Left2
-    sta Player0Pos_PF_Right0
-    jmp .setPlayerCol_Done
-.setPlayerCol_Five
-    lda #%11110000
-    sta Player0Pos_PF_Left1
-    lda #%00000110
-    sta Player0Pos_PF_Right1
-    lda #%00000000
-    sta Player0Pos_PF_Left2
-    sta Player0Pos_PF_Right0
-
-.setPlayerCol_Done
+    ldy Player0Pos_Col
+    LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerPositions_Columns
+    lda (Player0Pos_Ptr),y
+    ldx #0           ; player 0
+    jsr SetHorizPos
     nop
     TIMER_WAIT
 
@@ -291,10 +261,7 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
-    lda #%01110110
-    sta NUSIZ0
-    sta NUSIZ1
-    
+    SET_BLOCK_COLUMNS CONS_BQ_VERT_COLS+1    
     lda #%00000001
     sta CTRLPF
     lda #CONS_COLOR_BLACK
@@ -327,32 +294,21 @@ Kernal_TopBlocks.Rows
     sta ENAM0
     sta ENAM1
     
-    SLEEP 16 ; 16 with web, 17 with stella
+    SLEEP 7 ; 16 with web, 17 with stella
     
-    ;lda #CONS_COLOR_RED
     lda BlockQueue_Top_0,x
     sta COLUP0
 
-    ;lda #CONS_COLOR_ORANGE
     lda BlockQueue_Top_1,x
     sta COLUP1
     
-    ;lda #CONS_COLOR_YELLOW
     lda BlockQueue_Top_2,x
     sta COLUP0
     
-    ;lda #CONS_COLOR_GREEN
     lda BlockQueue_Top_3,x
     sta COLUP1
 
-
-    ;lda #CONS_COLOR_PURPLE
-    lda BlockQueue_Top_4,x
-    sta COLUP0
-    
-    ;lda #CONS_COLOR_TEAL
-    lda BlockQueue_Top_5,x
-    sta COLUP1
+     SLEEP 7
 
     dey
     bne Kernal_TopBlocks.Rows
@@ -363,25 +319,24 @@ Kernal_TopBlocks.Rows
     
     dex
     bpl Kernal_TopBlocks
-
+    lda #%00000000
+    sta ENAM0
+    sta ENAM1
 ;;;;;;;;;;;;;;;;;;;;;;;
     WYSNC_REPEATER 10
 ;;;;;;;;;;;;;;;;;;;;;;;
-    lda #%01100000
-    sta HMM0
-    sta HMM1
-    sta WSYNC
-    sta HMOVE 
-    lda #%00100110
-    sta NUSIZ0
-    sta NUSIZ1
     
     lda #%00000000
     sta CTRLPF
    
-    ; one time
     lda #CONS_COLOR_BLACK
     sta COLUPF
+    
+    lda #%00000000
+    sta NUSIZ0
+    sta NUSIZ1
+    lda Player0_Color
+    sta COLUP0
     
     lda #CONS_PLAYERZ_ROWS
     sta LoopIdx
@@ -391,63 +346,46 @@ Kernal_PlayerZone
     
 Kernal_PlayerZone.Rows
     sta WSYNC
-
     lda #CONS_COLOR_WHITE
     sta COLUBK
     
+Kernal_PlayerZone.DrawPlayerfield.Left
     lda #%11110000
     sta PF0
-; 1 == bot, increases as we go up. Bug?    
-Kernal_PlayerZone.PlayerLogic_Left
+    lda #%11111001
+    sta PF1
+    lda #%10011001
+    sta PF2
+
+Kernal_PlayerZone.PlayerLogic.ComparePlayer
     lda Player0Pos_Row
     cmp LoopIdx
-    bne Kernal_PlayerZone.SkipPlayer_Left 
-Kernal_PlayerZone.DrawPlayer_Left
-    lda Player0Pos_PF_Left1
+    bne Kernal_PlayerZone.SkipPlayer 
+Kernal_PlayerZone.DrawPlayer
+    lda #$FF
+    jmp Kernal_PlayerZone.DrawPlayerfield.Right
+Kernal_PlayerZone.SkipPlayer 
+    lda #$00
+Kernal_PlayerZone.DrawPlayerfield.Right
+    sta GRP0
+    SLEEP 5
+    lda #%10010000
+    sta PF0
+    lda #%10011111
     sta PF1
-    lda Player0Pos_PF_Left2
+    lda #%11111111
     sta PF2
     
-Kernal_PlayerZone.ColorPlayer_Color
-    lda Player0_Color;#CONS_COLOR_TEAL
-    sta COLUPF
 
-Kernal_PlayerZone.DrawPlayer_Right    
-    lda Player0Pos_PF_Right0
-    sta PF0
-    lda Player0Pos_PF_Right1
-    sta PF1  
-    lda #%11111111
-    sta PF2
-    SLEEP 4
-    
-   jmp Kernal_PlayerZone.EndLine
-Kernal_PlayerZone.SkipPlayer_Left
-    lda #%11110000
-    sta PF1
-    lda #%000000000
-    sta PF2
-    SLEEP 4
-    
-Kernal_PlayerZone.SkipPlayer_Right        
-    lda #%00000000
-    sta PF0
-    lda #%00000000
-    sta PF1  
-    lda #%11111111
-    sta PF2
-    
-   
 Kernal_PlayerZone.EndLine    
     lda #CONS_COLOR_BLACK
-    sta COLUPF
+    sta COLUBK
     
     dey
     bne Kernal_PlayerZone.Rows
     sta WSYNC
-    ;Turn off graphics for a line didider
-    lda #CONS_COLOR_BLACK
-    sta COLUBK
+    lda #$00
+    sta GRP0
     
     inx
     sta WSYNC
@@ -455,75 +393,8 @@ Kernal_PlayerZone.EndLine
     dec LoopIdx
     bne Kernal_PlayerZone
 
-;;;;;;;;;;;;;;;;;;;;;;;
-    lda #%10100000
-    sta HMM0
-    sta HMM1
-    sta WSYNC
-    sta HMOVE 
-    lda #%01110110
-    sta NUSIZ0
-    sta NUSIZ1
-
-    ;TODO only kept here because we may put stuff above htis. think of it as just safegaurding for now
-    lda #%00000000
-    sta PF0
-    lda #%00000000
-    sta PF1
-    lda #%00000000
-    sta PF2
-    
-    lda #$00
-    ldx #CONS_BQ_VERT_ROWS
-    sta WSYNC
-Kernal_BotBlocks
-    ;TODO -- honsetly do I need this? Could just try to use the X value!
-    ldy #CONS_BQ_VERT_ROW_HEIGHT
-Kernal_BotBlocks.Rows
-    sta WSYNC
-    lda #%11111111
-    sta ENAM0
-    sta ENAM1
-    
-    SLEEP 16 ; 16 with web, 17 with stella
-    
-    ;lda #CONS_COLOR_RED
-    lda BlockQueue_Top_0,x
-    sta COLUP0
-
-    ;lda #CONS_COLOR_ORANGE
-    lda BlockQueue_Top_1,x
-    sta COLUP1
-    
-    ;lda #CONS_COLOR_YELLOW
-    lda BlockQueue_Top_2,x
-    sta COLUP0
-    
-    ;lda #CONS_COLOR_GREEN
-    lda BlockQueue_Top_3,x
-    sta COLUP1
-
-
-    ;lda #CONS_COLOR_PURPLE
-    lda BlockQueue_Top_4,x
-    sta COLUP0
-    
-    ;lda #CONS_COLOR_TEAL
-    lda BlockQueue_Top_5,x
-    sta COLUP1
-
-    dey
-    bne Kernal_BotBlocks.Rows
-    
-    lda #CONS_COLOR_BLACK
-    sta COLUP0
-    sta COLUP1
-    
-    dex
-    bpl Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
-    ;jsr handleFireButton
     lda #00
     sta GRP0
     sta GRP1
@@ -562,14 +433,9 @@ Kernal_Overscan
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
-SetPositionMissles
+SetPositionMissles 
     sta WSYNC
-    lda #30
-    ldx #1           ; player 1
-    jsr SetHorizPos  
-    
-    sta WSYNC
-    lda #46
+    lda #46 ;#46
     ldx #2           ; player 0 Missle
     jsr SetHorizPos
 
@@ -608,6 +474,7 @@ handleFireButton
     sta BlockQueue_Data_Ptr
     lda #>00
     sta BlockQueue_Data_Ptr+1
+
     ldy #00 
 .handleFireButton.FindRowMem
    ; TODO -- this obviously becomes more complicated once we know what ROW we are looking at!
@@ -618,8 +485,8 @@ handleFireButton
     bne .handleFireButton.NoBlankNoMatch
 .handleFireButton.NoBlankMatch
     ; here we will loop through the columns blacking out all of the 
-    jmp .handleFireButton.NoAction
-    
+    lda #CONS_COLOR_BLACK
+    sta (BlockQueue_Data_Ptr),y
 .handleFireButton.gotoNextBlock
     iny
     cmp #CONS_BQ_VERT_COLS
@@ -747,14 +614,14 @@ ReadJoystick
       and #%00010000
       bne .downOnRelease
 .leftOnRelease
-	lda Player0Pos_Col
+    lda Player0Pos_Col
     cmp #$00
     beq .storeCurrentInput
     dec Player0Pos_Col
     jmp .storeCurrentInput
 .rightOnRelease
     lda Player0Pos_Col
-    cmp #CONS_PLAYERZ_COLS-1
+    cmp #CONS_PLAYERZ_COLS-2
     beq .storeCurrentInput
     inc Player0Pos_Col
     jmp .storeCurrentInput
@@ -788,19 +655,15 @@ PlayerColMemAddresses
     .byte BlockQueue_Top_1
     .byte BlockQueue_Top_2
     .byte BlockQueue_Top_3
-    .byte BlockQueue_Top_4
-    .byte BlockQueue_Top_5
     
 ;;;;;;;;;;;;;;;;;;;;;;;
-PlayerSprite_Up
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
-    .byte #%11111111
+PlayerPositions_Columns
+    .byte #$2D
+    .byte #$3D
+    .byte #$4D
+    .byte #$5D
+    .byte #$6D
+    .byte #$7D
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
