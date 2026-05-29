@@ -159,8 +159,12 @@ BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
 BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
 	org $D8
 BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
-
-
+;For now keep these until we find our TRUE limit!
+	org $E0
+BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
+	org $E8
+BlockQueue_Top_5 .DS  #CONS_BQ_VERT_COLS
+    
 LoopIdx .DS 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,7 +196,10 @@ Kernal_Temp_A
     sta BlockQueue_Top_2,y
     lda #CONS_COLOR_RED
     sta BlockQueue_Top_3,y    
-    
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_4,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_5,y
     jmp Kernal_Temp_Next
 Kernal_Temp_B
     lda #CONS_COLOR_RED
@@ -203,7 +210,11 @@ Kernal_Temp_B
     sta BlockQueue_Top_2,y
     lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_3,y    
-
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Top_4,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Top_5,y
+     
 Kernal_Temp_Next
     iny
     tya
@@ -241,11 +252,6 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Positions
     sta WSYNC
-    ;lda #20
-    ;ldx #0           ; player 0
-    ;jsr SetHorizPos
-    
-    jsr SetPositionMissles
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Player X -- todo make this a pointer and data table affair.
     ldy Player0Pos_Col
@@ -261,25 +267,19 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
-    SET_BLOCK_COLUMNS CONS_BQ_VERT_COLS+1    
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
-    lda #CONS_COLOR_BLACK
+    lda #CONS_COLOR_LGREY
     sta COLUPF
     
-    lda #%00000000
+    lda #%11110000
     sta PF0
-    lda #%00000000
+    lda #%11100111
     sta PF1
-    lda #%00000000
-    sta PF2
-;;;;;;;;;;;;;;;;;;;;;;;
-    ;TODO only kept here because we may put stuff above htis. think of it as just safegaurding for now
-    lda #%00000000
-    sta PF0
-    lda #%00000000
-    sta PF1
-    lda #%00000000
+    lda #%01111001
     sta PF2
     
     lda #$00
@@ -290,40 +290,58 @@ Kernal_TopBlocks
     ldy #CONS_BQ_VERT_ROW_HEIGHT
 Kernal_TopBlocks.Rows
     sta WSYNC
-    lda #%11111111
-    sta ENAM0
-    sta ENAM1
-    
-    SLEEP 7 ; 16 with web, 17 with stella
     
     lda BlockQueue_Top_0,x
-    sta COLUP0
-
+    sta COLUBK
+    
+    SLEEP 23
+    
     lda BlockQueue_Top_1,x
-    sta COLUP1
+    sta COLUBK
     
     lda BlockQueue_Top_2,x
-    sta COLUP0
-    
-    lda BlockQueue_Top_3,x
-    sta COLUP1
+    sta COLUBK
 
-     SLEEP 7
+    lda BlockQueue_Top_3,x
+    sta COLUBK
+
+    nop
+    
+    lda BlockQueue_Top_4,x
+    sta COLUBK
 
     dey
     bne Kernal_TopBlocks.Rows
     
+    nop
     lda #CONS_COLOR_BLACK
-    sta COLUP0
-    sta COLUP1
+    sta COLUBK
+    sta WSYNC
     
     dex
     bpl Kernal_TopBlocks
-    lda #%00000000
-    sta ENAM0
-    sta ENAM1
 ;;;;;;;;;;;;;;;;;;;;;;;
-    WYSNC_REPEATER 10
+    sta WSYNC
+
+    
+    lda #%00000000
+    sta PF0
+    lda #%00011000
+    sta PF1
+    lda #%10000110
+    sta PF2
+    lda #CONS_COLOR_GREY
+    sta COLUBK
+    
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    ldy #$10
+Kernal_Cliff
+    sta WSYNC
+    dey
+    bne Kernal_Cliff
+
+    ;WYSNC_REPEATER 10
 ;;;;;;;;;;;;;;;;;;;;;;;
     
     lda #%00000000
@@ -655,7 +673,8 @@ PlayerColMemAddresses
     .byte BlockQueue_Top_1
     .byte BlockQueue_Top_2
     .byte BlockQueue_Top_3
-    
+    .byte BlockQueue_Top_4
+    .byte BlockQueue_Top_5
 ;;;;;;;;;;;;;;;;;;;;;;;
 PlayerPositions_Columns
     .byte #$2D
@@ -664,6 +683,44 @@ PlayerPositions_Columns
     .byte #$5D
     .byte #$6D
     .byte #$7D
+;;;;;;;;;;;;;;;;;;;;;;; 
+;TODO -- these may not be necessary until I look at
+; if I can do this on the bottom unfortunetly
+Cliff_Top_P0
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+;;;;;;;;;;;;;;;;;;;;;;;
+Cliff_Top_P1
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+;;;;;;;;;;;;;;;;;;;;;;;
+Cliff_Top_P2
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
