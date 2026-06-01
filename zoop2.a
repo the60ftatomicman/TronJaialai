@@ -23,9 +23,9 @@ CONS_COLOR_PINK   EQU $3C
 CONS_COLOR_TEAL   EQU $8D
 CONS_COLOR_CHART  EQU $CA
 ; ---- COLOR MAPPING TO OBJECT
-CONS_COLOR_OBJ_PLAYER_TILE_A EQU #CONS_COLOR_LGREY
-CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
-
+CONS_GRID_BRICKS_BG EQU CONS_COLOR_WHITE
+CONS_GRID_CLIFF_BG  EQU CONS_COLOR_LGREY
+CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -120,13 +120,9 @@ CONS_COLOR_OBJ_PLAYER_TILE_B EQU #CONS_COLOR_WHITE
 TempByte .byte
 
 
-CONS_BQ_VERT_COLS        EQU #4
+CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #5
-CONS_BQ_VERT_ROW_HEIGHT  EQU #8
-;
-CONS_BQ_HORI_COLS        EQU #5
-CONS_BQ_HORI_ROWS        EQU #3
-CONS_BQ_HORI_ROW_HEIGHT  EQU #8
+CONS_BQ_VERT_ROW_HEIGHT  EQU #7
 ;
 CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
@@ -146,26 +142,36 @@ Player0Missle_Y .byte
 ;
 CurrentScanline .byte
 GameState .byte
+LoopIdx .DS 2
+
 
 BlockQueue_Data_Ptr .DS 2
 BlockQueue_Addr_Ptr .DS 2
 
 BlockQueue_Idx   .byte
-	org $C0
+
+	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
-	org $C8
+	org $B0
 BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
-	org $D0
+	org $C0
 BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
-	org $D8
+	org $D0
 BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
-;For now keep these until we find our TRUE limit!
 	org $E0
 BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
+
+	org $A8
+BlockQueue_Bot_0 .DS  #CONS_BQ_VERT_COLS
+	org $B8
+BlockQueue_Bot_1 .DS  #CONS_BQ_VERT_COLS
+	org $C8
+BlockQueue_Bot_2 .DS  #CONS_BQ_VERT_COLS
+	org $D8
+BlockQueue_Bot_3 .DS  #CONS_BQ_VERT_COLS
 	org $E8
-BlockQueue_Top_5 .DS  #CONS_BQ_VERT_COLS
-    
-LoopIdx .DS 2
+BlockQueue_Bot_4 .DS  #CONS_BQ_VERT_COLS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,9 +194,10 @@ Kernal_Temp_Rows
     FLIP_BOOL TempByte
     bne Kernal_Temp_B
 Kernal_Temp_A
+    ;TOP
     lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_0,y
-    lda #CONS_COLOR_RED
+    lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_1,y
     lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_2,y
@@ -198,10 +205,21 @@ Kernal_Temp_A
     sta BlockQueue_Top_3,y    
     lda #CONS_COLOR_ORANGE
     sta BlockQueue_Top_4,y
+    ;BOT
     lda #CONS_COLOR_RED
-    sta BlockQueue_Top_5,y
+    sta BlockQueue_Bot_0,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Bot_1,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Bot_2,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Bot_3,y    
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Bot_4,y
+    
     jmp Kernal_Temp_Next
 Kernal_Temp_B
+    ;TOP
     lda #CONS_COLOR_RED
     sta BlockQueue_Top_0,y
     lda #CONS_COLOR_ORANGE
@@ -212,18 +230,26 @@ Kernal_Temp_B
     sta BlockQueue_Top_3,y    
     lda #CONS_COLOR_RED
     sta BlockQueue_Top_4,y
+    ;BOT
     lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top_5,y
-     
+    sta BlockQueue_Bot_0,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Bot_1,y
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Bot_2,y
+    lda #CONS_COLOR_RED
+    sta BlockQueue_Bot_3,y    
+    lda #CONS_COLOR_ORANGE
+    sta BlockQueue_Bot_4,y
 Kernal_Temp_Next
     iny
     tya
     cmp #CONS_BQ_VERT_ROWS
     bcc Kernal_Temp_Rows
-
+    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
-    lda #$00
+    lda #$02
     sta Player0Pos_Col
     sta BlockQueue_Idx
 
@@ -232,6 +258,9 @@ Kernal_Temp_Next
 
     lda #CONS_COLOR_GREEN
     sta Player0_Color
+    jmp NextFrame
+GotoStart
+    jmp Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -239,7 +268,7 @@ Kernal_Temp_Next
 
 NextFrame
     lsr SWCHB    ; test Game Reset switch
-    bcc Start    ; reset?
+    bcc GotoStart    ; reset?
 
 ; 1 + 3 lines of VSYNC
     VERTICAL_SYNC
@@ -272,7 +301,7 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
-    lda #CONS_COLOR_LGREY
+    lda #CONS_GRID_BRICKS_BG
     sta COLUPF
     
     lda #%11110000
@@ -283,7 +312,7 @@ NextFrame
     sta PF2
     
     lda #$00
-    ldx #CONS_BQ_VERT_ROWS
+    ldx #CONS_BQ_VERT_ROWS-1
     sta WSYNC
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
@@ -322,7 +351,6 @@ Kernal_TopBlocks.Rows
     bpl Kernal_TopBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;
     sta WSYNC
-
     
     lda #%00000000
     sta PF0
@@ -330,29 +358,33 @@ Kernal_TopBlocks.Rows
     sta PF1
     lda #%10000110
     sta PF2
-    lda #CONS_COLOR_GREY
+    lda #CONS_GRID_CLIFF_BG
     sta COLUBK
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #$10
-Kernal_Cliff
+Kernal_Cliff_Top
     sta WSYNC
     dey
-    bne Kernal_Cliff
-
-    ;WYSNC_REPEATER 10
+    bne Kernal_Cliff_Top
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+    WYSNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     
-    lda #%00000000
+    lda #%00000001
     sta CTRLPF
-   
-    lda #CONS_COLOR_BLACK
+    lda #CONS_PLAYERZONE_PF
     sta COLUPF
     
-    lda #%00000000
-    sta NUSIZ0
-    sta NUSIZ1
+    lda #%11110000
+    sta PF0
+    lda #%11111001
+    sta PF1
+    lda #%01110011
+    sta PF2
+    
     lda Player0_Color
     sta COLUP0
     
@@ -366,14 +398,7 @@ Kernal_PlayerZone.Rows
     sta WSYNC
     lda #CONS_COLOR_WHITE
     sta COLUBK
-    
-Kernal_PlayerZone.DrawPlayerfield.Left
-    lda #%11110000
-    sta PF0
-    lda #%11111001
-    sta PF1
-    lda #%10011001
-    sta PF2
+
 
 Kernal_PlayerZone.PlayerLogic.ComparePlayer
     lda Player0Pos_Row
@@ -381,27 +406,16 @@ Kernal_PlayerZone.PlayerLogic.ComparePlayer
     bne Kernal_PlayerZone.SkipPlayer 
 Kernal_PlayerZone.DrawPlayer
     lda #$FF
-    jmp Kernal_PlayerZone.DrawPlayerfield.Right
+    jmp Kernal_PlayerZone.EndPlayer
 Kernal_PlayerZone.SkipPlayer 
     lda #$00
-Kernal_PlayerZone.DrawPlayerfield.Right
-    sta GRP0
-    SLEEP 5
-    lda #%10010000
-    sta PF0
-    lda #%10011111
-    sta PF1
-    lda #%11111111
-    sta PF2
-    
-
-Kernal_PlayerZone.EndLine    
-    lda #CONS_COLOR_BLACK
-    sta COLUBK
-    
+Kernal_PlayerZone.EndPlayer
+    sta GRP0 
     dey
     bne Kernal_PlayerZone.Rows
     sta WSYNC
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
     lda #$00
     sta GRP0
     
@@ -410,7 +424,79 @@ Kernal_PlayerZone.EndLine
 
     dec LoopIdx
     bne Kernal_PlayerZone
+;;;;;;;;;;;;;;;;;;;;;;;
+    sta WSYNC
 
+    
+    lda #%00000000
+    sta PF0
+    lda #%00011000
+    sta PF1
+    lda #%10000110
+    sta PF2
+    lda #CONS_GRID_CLIFF_BG
+    sta COLUBK
+    
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    ldy #$10
+Kernal_Cliff_Bot
+    sta WSYNC
+    dey
+    bne Kernal_Cliff_Bot
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+;;;;;;;;;;;;;;;;;;;;;;;
+    lda #%00000001
+    sta CTRLPF
+    lda #CONS_GRID_BRICKS_BG
+    sta COLUPF
+    
+    lda #%11110000
+    sta PF0
+    lda #%11100111
+    sta PF1
+    lda #%01111001
+    sta PF2
+    
+    lda #$00
+    ldx #CONS_BQ_VERT_ROWS-1
+    sta WSYNC
+Kernal_BotBlocks
+    ;TODO -- honsetly do I need this? Could just try to use the X value!
+    ldy #CONS_BQ_VERT_ROW_HEIGHT
+Kernal_BotBlocks.Rows
+    sta WSYNC
+    
+    lda BlockQueue_Top_0,x
+    sta COLUBK
+    
+    SLEEP 23
+    
+    lda BlockQueue_Top_1,x
+    sta COLUBK
+    
+    lda BlockQueue_Top_2,x
+    sta COLUBK
+
+    lda BlockQueue_Top_3,x
+    sta COLUBK
+
+    nop
+    
+    lda BlockQueue_Top_4,x
+    sta COLUBK
+
+    dey
+    bne Kernal_BotBlocks.Rows
+    
+    nop
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+    sta WSYNC
+    
+    dex
+    bpl Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
     lda #00
@@ -420,13 +506,12 @@ Kernal_StopVisuals
     sta ENAM1
     
     lda #CONS_COLOR_BLACK
+    sta COLUBK
     sta COLUPF
     lda #%00000000
     sta PF0
-
     lda #%00000000
     sta PF1
-
     lda #%00000000
     sta PF2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -435,7 +520,7 @@ Kernal_Inputs
     jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
-    nop  ; at: 197 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    nop  ; at: 207 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -495,21 +580,26 @@ handleFireButton
 
     ldy #00 
 .handleFireButton.FindRowMem
-   ; TODO -- this obviously becomes more complicated once we know what ROW we are looking at!
+    tya
+    cmp #CONS_BQ_VERT_ROW_HEIGHT ; if we are at our limit, goto the END
+    beq .handleFireButton.NoAction
+    ; --- now look at blocks
+    tay
     lda (BlockQueue_Data_Ptr),y
-    cmp #00           ; ----------    is empty
+    cmp #CONS_COLOR_BLACK  ; ----------    is empty
     beq .handleFireButton.gotoNextBlock
-    cmp Player0_Color ; ----------    is the same color
-    bne .handleFireButton.NoBlankNoMatch
-.handleFireButton.NoBlankMatch
-    ; here we will loop through the columns blacking out all of the 
+    cmp  Player0_Color  ; ----------    is player color
+    beq .handleFireButton.MatchingColor
+    jmp .handleFireButton.swapWithBlock
+.handleFireButton.MatchingColor
+    ; here we will loop through the columns blacking out all of the
     lda #CONS_COLOR_BLACK
     sta (BlockQueue_Data_Ptr),y
 .handleFireButton.gotoNextBlock
     iny
-    cmp #CONS_BQ_VERT_COLS
-    bcc .handleFireButton.NoAction
-.handleFireButton.NoBlankNoMatch
+    bcs .handleFireButton.FindRowMem
+.handleFireButton.swapWithBlock
+    lda (BlockQueue_Data_Ptr),y
     sta TempByte
     lda Player0_Color
     sta (BlockQueue_Data_Ptr),y
@@ -674,14 +764,18 @@ PlayerColMemAddresses
     .byte BlockQueue_Top_2
     .byte BlockQueue_Top_3
     .byte BlockQueue_Top_4
-    .byte BlockQueue_Top_5
+    .byte BlockQueue_Bot_0
+    .byte BlockQueue_Bot_1
+    .byte BlockQueue_Bot_2
+    .byte BlockQueue_Bot_3
+    .byte BlockQueue_Bot_4
 ;;;;;;;;;;;;;;;;;;;;;;;
 PlayerPositions_Columns
     .byte #$2D
-    .byte #$3D
-    .byte #$4D
-    .byte #$5D
-    .byte #$6D
+    .byte #$41
+    .byte #$55
+    .byte #$69
+    .byte #$7D
     .byte #$7D
 ;;;;;;;;;;;;;;;;;;;;;;; 
 ;TODO -- these may not be necessary until I look at
