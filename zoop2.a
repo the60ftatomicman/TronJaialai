@@ -255,7 +255,6 @@ Kernal_Temp_Next
 
     lda #$02
     sta Player0Pos_Row
-
     lda #CONS_COLOR_GREEN
     sta Player0_Color
     jmp NextFrame
@@ -460,7 +459,7 @@ Kernal_Cliff_Bot
     sta PF2
     
     lda #$00
-    ldx #CONS_BQ_VERT_ROWS-1
+    ldx #00
     sta WSYNC
 Kernal_BotBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
@@ -468,18 +467,18 @@ Kernal_BotBlocks
 Kernal_BotBlocks.Rows
     sta WSYNC
     
-    lda BlockQueue_Top_0,x
+    lda BlockQueue_Bot_0,x
     sta COLUBK
     
     SLEEP 23
     
-    lda BlockQueue_Top_1,x
+    lda BlockQueue_Bot_1,x
     sta COLUBK
     
-    lda BlockQueue_Top_2,x
+    lda BlockQueue_Bot_2,x
     sta COLUBK
 
-    lda BlockQueue_Top_3,x
+    lda BlockQueue_Bot_3,x
     sta COLUBK
 
     nop
@@ -495,8 +494,10 @@ Kernal_BotBlocks.Rows
     sta COLUBK
     sta WSYNC
     
-    dex
-    bpl Kernal_BotBlocks
+    inx
+    txa
+    cmp #CONS_BQ_VERT_ROWS
+    bmi Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
     lda #00
@@ -569,8 +570,12 @@ SetHorizPos.1
         rts		; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;    
 ; 
-; To redo -- this will be easier with 
 handleFireButton
+    ; -- we need to be able to go to the 
+    lda Player0Pos_Row
+    cmp #$02
+    beq .handleFireButton.NoAction
+    
     LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
     ldy BlockQueue_Idx
     lda (BlockQueue_Addr_Ptr),y
@@ -612,15 +617,21 @@ handleFireButton
 ; 
 setBlockQueueIdx
     ; we will set the BlockQueue_Idx to point to the proper index
-    lda Player0Pos_Col ; maybe lessen this by ALWAYS adding this to our blockqueue?
-    sta BlockQueue_Idx
+    ;lda Player0Pos_Col ; maybe lessen this by ALWAYS adding this to our blockqueue?
+    ;sta BlockQueue_Idx
     ; rows count from bottom UP apparently! starting at 1. my bad?
+    ldy #$00
     lda Player0Pos_Row
     cmp #01
-    bne .setBlockQueueIdx.noRowChange 
-    ; add the col amount to our index since it'll be the next grouping!
-    ; store that into BlockQueue_Idx
-.setBlockQueueIdx.noRowChange 
+    bne .setBlockQueueIdx.noRowChange
+    REPEAT CONS_BQ_VERT_COLS
+        iny
+    REPEND 
+.setBlockQueueIdx.noRowChange
+    tya
+    clc
+    adc Player0Pos_Col
+    sta BlockQueue_Idx
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;-----------------------------------------
