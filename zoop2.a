@@ -9,7 +9,9 @@
 ; ---- COLORS
 CONS_COLOR_BLACK  EQU $00
 CONS_COLOR_LGREY  EQU #04
-CONS_COLOR_GREY   EQU $E1
+CONS_COLOR_GREY_C EQU $0C
+CONS_COLOR_GREY_7 EQU $07
+CONS_COLOR_GREY   EQU $02
 CONS_COLOR_WHITE  EQU $0E
 
 CONS_COLOR_RED    EQU $46
@@ -23,10 +25,9 @@ CONS_COLOR_PINK   EQU $3C
 CONS_COLOR_TEAL   EQU $8D
 CONS_COLOR_CHART  EQU $CA
 ; ---- COLOR MAPPING TO OBJECT
-CONS_GRID_BRICKS_BG EQU CONS_COLOR_WHITE
-CONS_GRID_CLIFF_BG  EQU CONS_COLOR_LGREY
+CONS_GRID_BRICKS_BG EQU CONS_COLOR_GREY_C
+CONS_GRID_CLIFF_BG  EQU CONS_COLOR_GREY_7
 CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,14 +120,22 @@ CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
 
 TempByte .byte
 
-
 CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #5
-CONS_BQ_VERT_ROW_HEIGHT  EQU #7
+CONS_BQ_VERT_ROW_HEIGHT  EQU #6
+;
+CONS_CLIFF_HEIGHT        EQU #5
+CONS_CLIFF_SHADING_GAP   EQU #2
 ;
 CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
-CONS_PLAYERZ_ROW_HEIGHT  EQU #9
+CONS_PLAYERZ_ROW_HEIGHT  EQU #8
+;
+Score     .byte
+Time      .byte
+NumberIdx .byte
+;
+CliffColor .byte
 ;
 Player0Pos_Ptr .DS 2
 Player0Pos_Col .byte
@@ -295,8 +304,49 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
+    lda #%00000000
+    sta CTRLPF
+    lda #$14
+    sta COLUPF
+    lda #$11
+    sta COLUBK
 
-
+    lda #$05
+    sta Score
+    lda #$00
+    ldy Score
+Kernal_PreScore.loop
+    clc
+    adc #$03
+    dey
+    bpl Kernal_PreScore.loop
+    adc Score
+    sta NumberIdx
+    WYSNC_REPEATER 1
+    tax
+    ldy #$06
+Kernal_Score
+    lda Score_Numbers,x
+    and $0f
+    WYSNC_REPEATER 1
+    sta PF1
+    SLEEP 32
+    lda Score_Numbers,x
+    and $0f
+    sta PF1
+    ; --- doubles our values so instead of 6 it's 12 and more legable
+    WYSNC_REPEATER 1
+    dex
+    dey
+    bne Kernal_Score
+    WYSNC_REPEATER 1
+    lda #$00
+    sta PF1
+    WYSNC_REPEATER 2
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    sta COLUBK
+    WYSNC_REPEATER 2
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
@@ -358,15 +408,25 @@ Kernal_TopBlocks.Rows
     lda #%10000110
     sta PF2
     lda #CONS_GRID_CLIFF_BG
-    sta COLUBK
+    sta CliffColor
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
-    ldy #$10
+    ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Top
+    lda CliffColor
+    sta COLUBK
+    sec
+    sbc #01
+    sta CliffColor
+    ldx #CONS_CLIFF_SHADING_GAP
+Kernal_Cliff_Top.ColorBandLoop
     sta WSYNC
+    dex 
+    bne Kernal_Cliff_Top.ColorBandLoop
     dey
     bne Kernal_Cliff_Top
+    WYSNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
     WYSNC_REPEATER 1
@@ -425,7 +485,6 @@ Kernal_PlayerZone.EndPlayer
     bne Kernal_PlayerZone
 ;;;;;;;;;;;;;;;;;;;;;;;
     sta WSYNC
-
     
     lda #%00000000
     sta PF0
@@ -433,18 +492,33 @@ Kernal_PlayerZone.EndPlayer
     sta PF1
     lda #%10000110
     sta PF2
-    lda #CONS_GRID_CLIFF_BG
+
+    lda #CONS_COLOR_BLACK
+    sta COLUBK
+    WYSNC_REPEATER 1
+
+    lda CliffColor
     sta COLUBK
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
-    ldy #$10
+    ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Bot
+    lda CliffColor
+    sta COLUBK
+    clc
+    adc #01
+    sta CliffColor
+    ldx #CONS_CLIFF_SHADING_GAP
+Kernal_Cliff_Bot.ColorBandLoop
     sta WSYNC
+    dex 
+    bne Kernal_Cliff_Bot.ColorBandLoop
     dey
     bne Kernal_Cliff_Bot
     lda #CONS_COLOR_BLACK
     sta COLUBK
+    WYSNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
@@ -483,7 +557,7 @@ Kernal_BotBlocks.Rows
 
     nop
     
-    lda BlockQueue_Top_4,x
+    lda BlockQueue_Bot_4,x
     sta COLUBK
 
     dey
@@ -521,7 +595,7 @@ Kernal_Inputs
     jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
-    nop  ; at: 207 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    nop  ; at: 189 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -789,43 +863,49 @@ PlayerPositions_Columns
     .byte #$7D
     .byte #$7D
 ;;;;;;;;;;;;;;;;;;;;;;; 
-;TODO -- these may not be necessary until I look at
-; if I can do this on the bottom unfortunetly
-Cliff_Top_P0
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-;;;;;;;;;;;;;;;;;;;;;;;
-Cliff_Top_P1
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-;;;;;;;;;;;;;;;;;;;;;;;
-Cliff_Top_P2
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
+Score_Numbers
+    ; ---- 00
+    .byte #%01110111
+    .byte #%01010101
+    .byte #%01010101
+    .byte #%01010101
+    .byte #%01010101
+    .byte #%01110111
+    ; ---- 11
+    .byte #%00000111
+    .byte #%00000010
+    .byte #%00000010
+    .byte #%00000010
+    .byte #%00000010
+    .byte #%00000110
+    ; ---- 22
+    .byte #%00000111
+    .byte #%00000100
+    .byte #%00000100
+    .byte #%00000011
+    .byte #%00000001
+    .byte #%00000111
+    ; ---- 33
+    .byte #%00000111
+    .byte #%00000001
+    .byte #%00000001
+    .byte #%00000011
+    .byte #%00000001
+    .byte #%00000111
+    ; ---- 44
+    .byte #%00000001
+    .byte #%00000001
+    .byte #%00000011
+    .byte #%00000111
+    .byte #%00000101
+    .byte #%00000101
+    ; ---- 55
+    .byte #%00000111
+    .byte #%00000001
+    .byte #%00000001
+    .byte #%00000110
+    .byte #%00000100
+    .byte #%00000111
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
