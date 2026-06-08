@@ -118,8 +118,7 @@ CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
     seg.u Variables
     org $80
 
-TempByte .byte
-TempByteB .byte
+TempByte .DS 3
 
 CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #5
@@ -318,49 +317,44 @@ NextFrame
     lda #$63
     sta Score+2
     ; -- just for testing
-    ldx #$02
-Kernal_PreScore.loopdigit
-    lda Score,x
+    lda Score
     and #$0F
-    sta TempByteB
-    tay
+    sta Score
+    lda Score+1
+    and #$0F
+    sta Score+1
+    lda Score+2
+    and #$0F
+    sta Score+2
+    
+    ldx #02
+Kernal_PreScore.setNumAddresses
+    ldy Score,x
     lda #$00
 Kernal_PreScore.loopaddress
-    adc #$05
     dey
-    bne Kernal_PreScore.loopaddress
-    adc TempByteB
+    beq Kernal_PreScore.addTempByte
+    adc #$05
+    jmp Kernal_PreScore.loopaddress
+Kernal_PreScore.addTempByte  
+    adc Score,x
     sta NumberIdx,x
     dex
-    bpl Kernal_PreScore.loopdigit
-    ;tay
-    ;lda #$00
-
-    ;clc
-    ;adc #$05
-    ;dey
-    ;bpl Kernal_PreScore.loop
-    ;adc TempByteB
-    ;sta NumberIdx
-    ;WYSNC_REPEATER 1
-    ;tax
-    ldy #$06
+    bne Kernal_PreScore.setNumAddresses
+    
+    ldy #$05
 Kernal_Score
     ldx NumberIdx
     lda Score_Numbers,x
     and $0f
 ;    WYSNC_REPEATER 1
     sta PF1
-    ;SLEEP 32
-    ldx NumberIdx+1
-    lda Score_Numbers,x
-    and $0f
-    sta PF1
+    SLEEP 32
 ;    ; --- doubles our values so instead of 6 it's 12 and more legable
-;    WYSNC_REPEATER 1
-;    dex
+    WYSNC_REPEATER 1
+    dec NumberIdx
     dey
-;    bne Kernal_Score
+    bne Kernal_Score
     ;WYSNC_REPEATER 1
     ;lda #$00
     ;sta PF1
@@ -936,6 +930,34 @@ Score_Numbers
     .byte #%00000001
     .byte #%00000110
     .byte #%00000100
+    .byte #%00000111
+    ; ---- 66
+    .byte #%00000111
+    .byte #%00000101
+    .byte #%00000111
+    .byte #%00000001
+    .byte #%00000001
+    .byte #%00000111
+    ; ---- 77
+    .byte #%00000010
+    .byte #%00000010
+    .byte #%00000010
+    .byte #%00000001
+    .byte #%00000001
+    .byte #%00000111
+    ; ---- 88
+    .byte #%00000111
+    .byte #%00000101
+    .byte #%00000010
+    .byte #%00000101
+    .byte #%00000101
+    .byte #%00000111
+    ; ---- 99
+    .byte #%00000111
+    .byte #%00000100
+    .byte #%00000100
+    .byte #%00000111
+    .byte #%00000101
     .byte #%00000111
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
