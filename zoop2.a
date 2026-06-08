@@ -119,6 +119,7 @@ CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
     org $80
 
 TempByte .byte
+TempByteB .byte
 
 CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #5
@@ -130,10 +131,6 @@ CONS_CLIFF_SHADING_GAP   EQU #2
 CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #8
-;
-Score     .byte
-Time      .byte
-NumberIdx .byte
 ;
 CliffColor .byte
 ;
@@ -152,13 +149,10 @@ Player0Missle_Y .byte
 CurrentScanline .byte
 GameState .byte
 LoopIdx .DS 2
-
-
+;
 BlockQueue_Data_Ptr .DS 2
 BlockQueue_Addr_Ptr .DS 2
-
-BlockQueue_Idx   .byte
-
+BlockQueue_Idx      .byte
 	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
 	org $B0
@@ -180,7 +174,12 @@ BlockQueue_Bot_2 .DS  #CONS_BQ_VERT_COLS
 BlockQueue_Bot_3 .DS  #CONS_BQ_VERT_COLS
 	org $E8
 BlockQueue_Bot_4 .DS  #CONS_BQ_VERT_COLS
-
+;
+	org $F0
+Score       .DS 3
+Time        .DS 3
+TimeDec     .byte
+NumberIdx   .DS 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -311,38 +310,61 @@ NextFrame
     lda #$11
     sta COLUBK
 
-    lda #$05
+    ; -- just for testing
+    lda #$41
     sta Score
+    lda #$52
+    sta Score+1
+    lda #$63
+    sta Score+2
+    ; -- just for testing
+    ldx #$02
+Kernal_PreScore.loopdigit
+    lda Score,x
+    and #$0F
+    sta TempByteB
+    tay
     lda #$00
-    ldy Score
-Kernal_PreScore.loop
-    clc
-    adc #$03
+Kernal_PreScore.loopaddress
+    adc #$05
     dey
-    bpl Kernal_PreScore.loop
-    adc Score
-    sta NumberIdx
-    WYSNC_REPEATER 1
-    tax
+    bne Kernal_PreScore.loopaddress
+    adc TempByteB
+    sta NumberIdx,x
+    dex
+    bpl Kernal_PreScore.loopdigit
+    ;tay
+    ;lda #$00
+
+    ;clc
+    ;adc #$05
+    ;dey
+    ;bpl Kernal_PreScore.loop
+    ;adc TempByteB
+    ;sta NumberIdx
+    ;WYSNC_REPEATER 1
+    ;tax
     ldy #$06
 Kernal_Score
+    ldx NumberIdx
     lda Score_Numbers,x
     and $0f
-    WYSNC_REPEATER 1
+;    WYSNC_REPEATER 1
     sta PF1
-    SLEEP 32
+    ;SLEEP 32
+    ldx NumberIdx+1
     lda Score_Numbers,x
     and $0f
     sta PF1
-    ; --- doubles our values so instead of 6 it's 12 and more legable
-    WYSNC_REPEATER 1
-    dex
+;    ; --- doubles our values so instead of 6 it's 12 and more legable
+;    WYSNC_REPEATER 1
+;    dex
     dey
-    bne Kernal_Score
-    WYSNC_REPEATER 1
-    lda #$00
-    sta PF1
-    WYSNC_REPEATER 2
+;    bne Kernal_Score
+    ;WYSNC_REPEATER 1
+    ;lda #$00
+    ;sta PF1
+    ;WYSNC_REPEATER 2
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -594,6 +616,15 @@ Kernal_Inputs
     jsr ReadJoystick
     jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Timer
+    dec TimeDec
+    bne Kernal_WaitTilEnd
+    lda #$50
+    sta TimeDec
+    dec Time
+    ;TODO -- times up!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 Kernal_WaitTilEnd
     nop  ; at: 189 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
