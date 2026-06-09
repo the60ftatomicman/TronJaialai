@@ -118,11 +118,11 @@ CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
     seg.u Variables
     org $80
 
-TempByte .DS 3
+TempByte .DS 1
 
 CONS_BQ_VERT_COLS        EQU #5
-CONS_BQ_VERT_ROWS        EQU #5
-CONS_BQ_VERT_ROW_HEIGHT  EQU #6
+CONS_BQ_VERT_ROWS        EQU #6
+CONS_BQ_VERT_ROW_HEIGHT  EQU #5
 ;
 CONS_CLIFF_HEIGHT        EQU #5
 CONS_CLIFF_SHADING_GAP   EQU #2
@@ -136,16 +136,9 @@ CliffColor .byte
 Player0Pos_Ptr .DS 2
 Player0Pos_Col .byte
 Player0Pos_Row .byte
-Player0Pos_PF_Left1  .byte
-Player0Pos_PF_Left2  .byte
-Player0Pos_PF_Right0 .byte
-Player0Pos_PF_Right1 .byte
 Player0_Color  .byte
 Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
-Player0Missle_X .byte
-Player0Missle_Y .byte
 ;
-CurrentScanline .byte
 GameState .byte
 LoopIdx .DS 2
 ;
@@ -175,10 +168,11 @@ BlockQueue_Bot_3 .DS  #CONS_BQ_VERT_COLS
 BlockQueue_Bot_4 .DS  #CONS_BQ_VERT_COLS
 ;
 	org $F0
+NumberIdx   .DS 3
+ScoreNeg    .byte
 Score       .DS 3
 Time        .DS 3
 TimeDec     .byte
-NumberIdx   .DS 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -264,6 +258,11 @@ Kernal_Temp_Next
     sta Player0Pos_Row
     lda #CONS_COLOR_GREEN
     sta Player0_Color
+    ;Just to easily see end of memory
+    lda #$EE
+    sta BlockQueue_Idx+1
+    lda #$FF
+    sta BlockQueue_Idx+2
     jmp NextFrame
 GotoStart
     jmp Start
@@ -294,6 +293,14 @@ NextFrame
     lda (Player0Pos_Ptr),y
     ldx #0           ; player 0
     jsr SetHorizPos
+    sta WSYNC
+    lda #$33
+    ldx #1           ; player 1
+    jsr SetHorizPos
+    sta WSYNC
+    lda #$20
+    ldx #2           ; player 0 missle
+    jsr SetHorizPos
     nop
     TIMER_WAIT
 
@@ -302,21 +309,32 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
-    lda #%00000000
+    lda #%00000001
     sta CTRLPF
+    lda #%0110000
+    sta NUSIZ0
+    lda #%1000110
+    sta NUSIZ1
     lda #$14
     sta COLUPF
+    sta COLUP0
+    sta COLUP1
+
     lda #$11
     sta COLUBK
 
     ; -- just for testing
-    lda #$41
+    lda #$44
     sta Score
-    lda #$52
+    lda #$55
     sta Score+1
-    lda #$63
+    lda #$66
     sta Score+2
+    lda #$01
+    sta ScoreNeg
     ; -- just for testing
+    
+    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
     lda Score
     and #$0F
     sta Score
@@ -326,39 +344,61 @@ NextFrame
     lda Score+2
     and #$0F
     sta Score+2
+    ;-- loop over EVERY digit
     
     ldx #02
 Kernal_PreScore.setNumAddresses
     ldy Score,x
-    lda #$00
+    clc
+    lda #$05 ; 0 ALWAYS starts at 5
 Kernal_PreScore.loopaddress
     dey
-    beq Kernal_PreScore.addTempByte
-    adc #$05
+    bmi Kernal_PreScore.addTempByte
+    adc #$06
     jmp Kernal_PreScore.loopaddress
 Kernal_PreScore.addTempByte  
-    adc Score,x
     sta NumberIdx,x
     dex
-    bne Kernal_PreScore.setNumAddresses
-    
-    ldy #$05
+    bpl Kernal_PreScore.setNumAddresses
+    ;----------------
+    ldy #$06
 Kernal_Score
+    WYSNC_REPEATER 1
+    lda ScoreNeg
+    beq Kernal_Score.extraDelay
+    lda Minus_Sign,y
+    sta ENAM0
+    jmp Kernal_Score.printDigits
+Kernal_Score.extraDelay
+    SLEEP 9
+Kernal_Score.printDigits
+    SLEEP 7
     ldx NumberIdx
     lda Score_Numbers,x
-    and $0f
-;    WYSNC_REPEATER 1
-    sta PF1
-    SLEEP 32
-;    ; --- doubles our values so instead of 6 it's 12 and more legable
-    WYSNC_REPEATER 1
+    sta GRP1
+
+    ldx NumberIdx+1
+    lda Score_Numbers,x
+    sta GRP1
+    
+    ldx NumberIdx+2
+    lda Score_Numbers,x
+    sta GRP1
+    
     dec NumberIdx
+    dec NumberIdx+1
+    dec NumberIdx+2
+    
+    ; WYSNC_REPEATER 1; -- todo why is this SO angry!
+    
     dey
     bne Kernal_Score
-    ;WYSNC_REPEATER 1
-    ;lda #$00
-    ;sta PF1
-    ;WYSNC_REPEATER 2
+Kernal_Score.lowerBuffer
+    WYSNC_REPEATER 1
+    lda #$00
+    sta GRP1
+    sta ENAM0
+    WYSNC_REPEATER 2
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -620,7 +660,7 @@ Kernal_Timer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Kernal_WaitTilEnd
-    nop  ; at: 189 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    nop  ; at: 183 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -887,50 +927,60 @@ PlayerPositions_Columns
     .byte #$69
     .byte #$7D
     .byte #$7D
+;;;;;;;;;;;;;;;;;;;;;;;
+Minus_Sign
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%11111111
+    .byte #%11111111
+    .byte #%00000000
+    .byte #%00000000
+    .byte #%00000000
 ;;;;;;;;;;;;;;;;;;;;;;; 
 Score_Numbers
     ; ---- 00
-    .byte #%01110111
-    .byte #%01010101
-    .byte #%01010101
-    .byte #%01010101
-    .byte #%01010101
-    .byte #%01110111
+    .byte #%11111111
+    .byte #%11100011
+    .byte #%11100011
+    .byte #%11100011
+    .byte #%11100011
+    .byte #%11111111
     ; ---- 11
-    .byte #%00000111
-    .byte #%00000010
-    .byte #%00000010
-    .byte #%00000010
-    .byte #%00000010
-    .byte #%00000110
+    .byte #%11111111
+    .byte #%00011100
+    .byte #%00011100
+    .byte #%00011100
+    .byte #%11011100
+    .byte #%01111100
     ; ---- 22
-    .byte #%00000111
-    .byte #%00000100
-    .byte #%00000100
-    .byte #%00000011
-    .byte #%00000001
-    .byte #%00000111
+    .byte #%11111110
+    .byte #%11100000
+    .byte #%00111000
+    .byte #%00001110
+    .byte #%11100110
+    .byte #%01111100
     ; ---- 33
-    .byte #%00000111
-    .byte #%00000001
-    .byte #%00000001
-    .byte #%00000011
-    .byte #%00000001
-    .byte #%00000111
+    .byte #%01111100
+    .byte #%11100011
+    .byte #%00001111
+    .byte #%00001111
+    .byte #%11100011
+    .byte #%01111100
     ; ---- 44
-    .byte #%00000001
-    .byte #%00000001
-    .byte #%00000011
-    .byte #%00000111
-    .byte #%00000101
-    .byte #%00000101
+    .byte #%00001110
+    .byte #%00001110
+    .byte #%00001110
+    .byte #%11111111
+    .byte #%11001111
+    .byte #%11001110
     ; ---- 55
-    .byte #%00000111
-    .byte #%00000001
-    .byte #%00000001
-    .byte #%00000110
-    .byte #%00000100
-    .byte #%00000111
+    .byte #%11111111
+    .byte #%00000011
+    .byte #%00011111
+    .byte #%11100000
+    .byte #%11100000
+    .byte #%11111111
     ; ---- 66
     .byte #%00000111
     .byte #%00000101
