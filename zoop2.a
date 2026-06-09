@@ -373,7 +373,7 @@ Kernal_Score.extraDelay
     SLEEP 9
 Kernal_Score.printDigits
     SLEEP 7
-    ldx NumberIdx
+    ldx NumberIdx+2
     lda Score_Numbers,x
     sta GRP1
 
@@ -381,7 +381,7 @@ Kernal_Score.printDigits
     lda Score_Numbers,x
     sta GRP1
     
-    ldx NumberIdx+2
+    ldx NumberIdx
     lda Score_Numbers,x
     sta GRP1
     
