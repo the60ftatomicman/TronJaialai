@@ -28,6 +28,9 @@ CONS_COLOR_CHART  EQU $CA
 CONS_GRID_BRICKS_BG EQU CONS_COLOR_GREY_C
 CONS_GRID_CLIFF_BG  EQU CONS_COLOR_GREY_7
 CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
+CONS_SCORE_POSITIVE EQU CONS_COLOR_GREEN
+CONS_SCORE_NEGATIVE EQU CONS_COLOR_RED
+CONS_TIME_BG        EQU CONS_COLOR_PURPLE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -117,12 +120,9 @@ CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
 
     seg.u Variables
     org $80
-
-TempByte .DS 1
-
 CONS_BQ_VERT_COLS        EQU #5
 CONS_BQ_VERT_ROWS        EQU #6
-CONS_BQ_VERT_ROW_HEIGHT  EQU #5
+CONS_BQ_VERT_ROW_HEIGHT  EQU #4
 ;
 CONS_CLIFF_HEIGHT        EQU #5
 CONS_CLIFF_SHADING_GAP   EQU #2
@@ -130,6 +130,14 @@ CONS_CLIFF_SHADING_GAP   EQU #2
 CONS_PLAYERZ_COLS        EQU #6
 CONS_PLAYERZ_ROWS        EQU #3
 CONS_PLAYERZ_ROW_HEIGHT  EQU #8
+;
+CONS_SCORE_LEFTMOST_DIGIT_X EQU #$33
+CONS_SCORE_MINUS_SIGN_X     EQU #$20
+;
+CONS_TIMER_FRAMES_PER_SEC EQU #60
+TempByte   .byte
+NextColor  .byte
+Random     .byte
 ;
 CliffColor .byte
 ;
@@ -189,6 +197,12 @@ Start
     lda #$00
     sta TempByte
 
+    lda #$01
+    sta Time+2
+    lda #$00
+    sta Time+1
+    lda #$00
+    sta Time
 
     ldy #$00
 Kernal_Temp_Rows
@@ -294,12 +308,12 @@ NextFrame
     ldx #0           ; player 0
     jsr SetHorizPos
     sta WSYNC
-    lda #$33
+    lda #CONS_SCORE_LEFTMOST_DIGIT_X
     ldx #1           ; player 1
     jsr SetHorizPos
     sta WSYNC
-    lda #$20
-    ldx #2           ; player 0 missle
+    lda #CONS_SCORE_MINUS_SIGN_X
+    ldx #02 ; player 0 missle
     jsr SetHorizPos
     nop
     TIMER_WAIT
@@ -309,31 +323,29 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
-    lda #%00000001
-    sta CTRLPF
+    ; vv just for testing
+    lda #$01 
+    sta ScoreNeg
+    ; ^^ just for testing
     lda #%0110000
     sta NUSIZ0
     lda #%1000110
     sta NUSIZ1
-    lda #$14
-    sta COLUPF
+    lda #CONS_COLOR_BLACK
     sta COLUP0
     sta COLUP1
-
-    lda #$11
-    sta COLUBK
-
-    ; -- just for testing
-    lda #$47
-    sta Score
-    lda #$58
-    sta Score+1
-    lda #$69
-    sta Score+2
-    lda #$01
-    sta ScoreNeg
-    ; -- just for testing
     
+    WYSNC_REPEATER 1
+    lda ScoreNeg
+    bne Kernal_PreScore.isNegativeColor
+Kernal_PreScore.isPositiveColor
+    lda #CONS_SCORE_POSITIVE
+    sta COLUBK
+    jmp Kernal_PreScore.getNibbles  
+Kernal_PreScore.isNegativeColor    
+    lda #CONS_SCORE_NEGATIVE
+    sta COLUBK
+Kernal_PreScore.getNibbles    
     ; -- Always set the digit right nibble, we'll probably do this LATER in the code
     lda Score
     and #$0F
@@ -384,12 +396,14 @@ Kernal_Score.printDigits
     ldx NumberIdx
     lda Score_Numbers,x
     sta GRP1
-    
+
     dec NumberIdx
     dec NumberIdx+1
     dec NumberIdx+2
     
-    ; WYSNC_REPEATER 1; -- todo why is this SO angry!
+    lda #$00
+    sta GRP1
+    WYSNC_REPEATER 1; -- todo why is this SO angry!
     
     dey
     bne Kernal_Score
@@ -629,6 +643,72 @@ Kernal_BotBlocks.Rows
     cmp #CONS_BQ_VERT_ROWS
     bmi Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_PreTime
+    lda #%00000000
+    sta PF0
+    lda #%00000000
+    sta PF1
+    lda #%00000000
+    sta PF2
+
+    lda #CONS_TIME_BG
+    sta COLUBK
+Kernal_PreTime.getNibbles    
+    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
+    lda Time
+    and #$0F
+    sta Time
+    lda Time+1
+    and #$0F
+    sta Time+1
+    lda Time+2
+    and #$0F
+    sta Time+2
+    ;-- loop over EVERY digit
+    ldx #02
+Kernal_PreTime.setNumAddresses
+    ldy Time,x
+    clc
+    lda #$05 ; 0 ALWAYS starts at 5
+Kernal_PreTime.loopaddress
+    dey
+    bmi Kernal_PreTime.addTempByte
+    adc #$06
+    jmp Kernal_PreTime.loopaddress
+Kernal_PreTime.addTempByte  
+    sta NumberIdx,x
+    dex
+    bpl Kernal_PreTime.setNumAddresses
+    ;----------------
+    ldy #$06
+Kernal_Time
+    WYSNC_REPEATER 1
+    SLEEP 23 
+    ldx NumberIdx+2
+    lda Score_Numbers,x
+    sta GRP1
+
+    ldx NumberIdx+1
+    lda Score_Numbers,x
+    sta GRP1
+    
+    ldx NumberIdx
+    lda Score_Numbers,x
+    sta GRP1
+
+    dec NumberIdx
+    dec NumberIdx+1
+    dec NumberIdx+2
+    
+    lda #$00
+    sta GRP1
+    WYSNC_REPEATER 1!
+    
+    dey
+    bne Kernal_Time
+Kernal_Time.lowerBuffer
+    WYSNC_REPEATER 3
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
     lda #00
     sta GRP0
@@ -650,22 +730,39 @@ Kernal_Inputs
     jsr ReadJoystick
     jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Timer
+Kernal_DecrementTimer
     dec TimeDec
     bne Kernal_WaitTilEnd
-    lda #$50
+    lda CONS_TIMER_FRAMES_PER_SEC
     sta TimeDec
+Kernal_DecrementTimer.ActualDec
+    sed
     dec Time
-    ;TODO -- times up!
+    bpl Kernal_WaitTilEnd
+    lda #$09
+    sta Time
+    dec Time+1
+    bpl Kernal_WaitTilEnd
+    lda #$09
+    sta Time+1
+    dec Time+2
+    bpl Kernal_WaitTilEnd
+    lda #$09
+    sta Time+2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 Kernal_WaitTilEnd
-    nop  ; at: 183 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    cld
+    nop  ; at: 197 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 Kernal_Overscan
     TIMER_SETUP 29
+    dec NextColor
+    bne Kernal_Overscan_Wait
+    lda #$07
+    sta NextColor
+Kernal_Overscan_Wait
     nop
     TIMER_WAIT
 
@@ -725,7 +822,7 @@ handleFireButton
     ldy #00 
 .handleFireButton.FindRowMem
     tya
-    cmp #CONS_BQ_VERT_ROW_HEIGHT ; if we are at our limit, goto the END
+    cmp #CONS_BQ_VERT_ROW_HEIGHT+2 ; if we are at our limit, goto the END
     beq .handleFireButton.NoAction
     ; --- now look at blocks
     tay
@@ -739,8 +836,11 @@ handleFireButton
     ; here we will loop through the columns blacking out all of the
     lda #CONS_COLOR_BLACK
     sta (BlockQueue_Data_Ptr),y
+    ; now do some score
+    jsr .addScore
 .handleFireButton.gotoNextBlock
     iny
+    cmp #$00 ; is our accumulator 0?
     bcs .handleFireButton.FindRowMem
 .handleFireButton.swapWithBlock
     lda (BlockQueue_Data_Ptr),y
@@ -876,6 +976,7 @@ ReadJoystick
     cmp #$00
     beq .storeCurrentInput
     dec Player0Pos_Col
+    ;jsr .subtractScore ; TODO -- we want to implement NEGATIVE scores.
     jmp .storeCurrentInput
 .rightOnRelease
     lda Player0Pos_Col
@@ -902,12 +1003,71 @@ ReadJoystick
     sta Player0_InputSettings+1
 .endJoystickCheck
       rts
-
+;;;;;;;;;;;;;;;;;;;;;;;    
+; 
+; 
+.addScore
+    sta TempByte
+    sed
+    clc
+    lda Score
+    adc #01
+    sta Score
+    cmp #$10
+    bne .addScore.end
+    clc
+    lda Score+1
+    adc #$01
+    sta Score+1
+    cmp #$10
+    bne .addScore.end
+    clc
+    lda Score+2
+    adc #$01
+    sta Score+2
+    lda TempByte
+.addScore.end    
+    cld ; turn off decimal math
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;    
+; 
+;     
+.subtractScore
+    sta TempByte
+    sed
+    sec
+    lda Score
+    sbc #01
+    sta Score
+    bpl .subtractScore.end
+    sec
+    lda Score+1
+    sbc #$01
+    sta Score+1
+    bpl .subtractScore.end
+    sec
+    lda Score+2
+    sbc #$01
+    sta Score+2
+    lda TempByte
+.subtractScore.end
+    cld ; turn off decimal math
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;    
+; lets use this instead. the clankers aren't super great at this.
+; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
+Colors
+    .byte #CONS_COLOR_RED
+    .byte #CONS_COLOR_ORANGE
+    .byte #CONS_COLOR_YELLOW
+    .byte #CONS_COLOR_GREEN
+    .byte #CONS_COLOR_BLUE
+    .byte #CONS_COLOR_PURPLE
 PlayerColMemAddresses
     .byte BlockQueue_Top_0
     .byte BlockQueue_Top_1
@@ -932,9 +1092,8 @@ Minus_Sign
     .byte #%00000000
     .byte #%00000000
     .byte #%00000000
-    .byte #%11111111
-    .byte #%11111111
     .byte #%00000000
+    .byte #%11111111
     .byte #%00000000
     .byte #%00000000
 ;;;;;;;;;;;;;;;;;;;;;;; 
@@ -963,8 +1122,8 @@ Score_Numbers
     ; ---- 33
     .byte #%01111100
     .byte #%11100011
-    .byte #%00001111
-    .byte #%00001111
+    .byte #%00001110
+    .byte #%00001110
     .byte #%11100011
     .byte #%01111100
     ; ---- 44
@@ -972,7 +1131,7 @@ Score_Numbers
     .byte #%00001110
     .byte #%00001110
     .byte #%11111111
-    .byte #%11001111
+    .byte #%11001110
     .byte #%11001110
     ; ---- 55
     .byte #%11111111
@@ -998,7 +1157,7 @@ Score_Numbers
     ; ---- 88
     .byte #%11111111
     .byte #%11000011
-    .byte #%11111111
+    .byte #%11100111
     .byte #%11111111
     .byte #%11000011
     .byte #%11111111
