@@ -25,12 +25,14 @@ CONS_COLOR_PINK   EQU $3C
 CONS_COLOR_TEAL   EQU $8D
 CONS_COLOR_CHART  EQU $CA
 ; ---- COLOR MAPPING TO OBJECT
-CONS_GRID_BRICKS_BG EQU CONS_COLOR_GREY_C
-CONS_GRID_CLIFF_BG  EQU CONS_COLOR_GREY_7
-CONS_PLAYERZONE_PF  EQU CONS_COLOR_GREY
-CONS_SCORE_POSITIVE EQU CONS_COLOR_GREEN
-CONS_SCORE_NEGATIVE EQU CONS_COLOR_RED
-CONS_TIME_BG        EQU CONS_COLOR_PURPLE
+CONS_GRID_BRICKS_BG    EQU CONS_COLOR_GREY_C
+CONS_GRID_CLIFF_BG     EQU CONS_COLOR_GREY_7
+CONS_PLAYERZONE_PF     EQU CONS_COLOR_GREY
+CONS_PLAYERZONE_ACTION EQU CONS_COLOR_WHITE
+CONS_PLAYERZONE_NOACT  EQU CONS_COLOR_LGREY
+CONS_SCORE_POSITIVE    EQU CONS_COLOR_GREEN
+CONS_SCORE_NEGATIVE    EQU CONS_COLOR_RED
+CONS_TIME_BG           EQU CONS_COLOR_PURPLE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -70,48 +72,6 @@ CONS_TIME_BG        EQU CONS_COLOR_PURPLE
     REPEAT .LINES_TO_WAIT
         sta WSYNC
     REPEND
-    ENDM
-    
-;--------
-; SET_BLOCK_COLUMNS
-; Original author: Andy Garber
-; easy way to set my column counts
-    MAC SET_BLOCK_COLUMNS
-.COLUMN_COUNT SET {1}
-    IF .COLUMN_COUNT = 6
-        lda #%01110110
-        sta NUSIZ0
-        sta NUSIZ1
-    ELSE
-        IF .COLUMN_COUNT = 5
-            lda #%01110110
-            sta NUSIZ0
-            lda #%01110010
-            sta NUSIZ1
-        ELSE
-            IF .COLUMN_COUNT = 4
-                lda #%01110010
-                sta NUSIZ0
-                sta NUSIZ1
-            ELSE
-                IF .COLUMN_COUNT = 3
-                    lda #%01110010
-                    sta NUSIZ0
-                    lda #%01110001
-                    sta NUSIZ1
-                ELSE
-                    IF .COLUMN_COUNT = 2
-                        lda #%01110000
-                        sta NUSIZ0
-                        sta NUSIZ1
-                    ELSE
-                        ECHO "ERROR: SET_BLOCK_COLUMNS only supports 6-2"
-                        ERR
-                    ENDIF
-                ENDIF
-            ENDIF
-        ENDIF
-    ENDIF
     ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -525,7 +485,7 @@ Kernal_PlayerZone
     
 Kernal_PlayerZone.Rows
     sta WSYNC
-    lda #CONS_COLOR_WHITE
+    lda PlayerZone_Colors,x ; TODO -- from color data table
     sta COLUBK
 
 
@@ -650,7 +610,7 @@ Kernal_PreTime
     sta PF1
     lda #%00000000
     sta PF2
-
+    WYSNC_REPEATER 2
     lda #CONS_TIME_BG
     sta COLUBK
 Kernal_PreTime.getNibbles    
@@ -719,12 +679,14 @@ Kernal_StopVisuals
     lda #CONS_COLOR_BLACK
     sta COLUBK
     sta COLUPF
+    
     lda #%00000000
     sta PF0
     lda #%00000000
     sta PF1
     lda #%00000000
     sta PF2
+    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Inputs
     jsr ReadJoystick
@@ -752,7 +714,7 @@ Kernal_DecrementTimer.ActualDec
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
     cld
-    nop  ; at: 197 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    nop  ; at: 196 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
@@ -765,7 +727,6 @@ Kernal_Overscan
 Kernal_Overscan_Wait
     nop
     TIMER_WAIT
-
 ; total = 262 lines, go to next frame
     jmp NextFrame
 
@@ -1068,6 +1029,10 @@ Colors
     .byte #CONS_COLOR_GREEN
     .byte #CONS_COLOR_BLUE
     .byte #CONS_COLOR_PURPLE
+PlayerZone_Colors
+    .byte #CONS_PLAYERZONE_ACTION
+    .byte #CONS_PLAYERZONE_NOACT
+    .byte #CONS_PLAYERZONE_ACTION
 PlayerColMemAddresses
     .byte BlockQueue_Top_0
     .byte BlockQueue_Top_1
