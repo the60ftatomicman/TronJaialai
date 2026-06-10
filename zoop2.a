@@ -95,8 +95,15 @@ CONS_SCORE_LEFTMOST_DIGIT_X EQU #$33
 CONS_SCORE_MINUS_SIGN_X     EQU #$20
 ;
 CONS_TIMER_FRAMES_PER_SEC EQU #60
+CONS_TIMER_NEXT_COLOR     EQU #255
+;
 TempByte   .byte
-NextColor  .byte
+;
+NextColorCounter .byte
+NextColor        .byte
+NextColumn       .byte
+;
+FrameCount .byte
 Random     .byte
 ;
 CliffColor .byte
@@ -115,25 +122,35 @@ BlockQueue_Addr_Ptr .DS 2
 BlockQueue_Idx      .byte
 	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Top_0_Preview .byte
 	org $B0
 BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Top_1_Preview .byte
 	org $C0
 BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Top_2_Preview .byte
 	org $D0
 BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Top_3_Preview .byte
 	org $E0
 BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Top_4_Preview .byte
 
 	org $A8
 BlockQueue_Bot_0 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Bot_0_Preview .byte
 	org $B8
 BlockQueue_Bot_1 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Bot_1_Preview .byte
 	org $C8
 BlockQueue_Bot_2 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Bot_2_Preview .byte
 	org $D8
 BlockQueue_Bot_3 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Bot_3_Preview .byte
 	org $E8
 BlockQueue_Bot_4 .DS  #CONS_BQ_VERT_COLS
+BlockQueue_Bot_4_Preview .byte
 ;
 	org $F0
 NumberIdx   .DS 3
@@ -239,6 +256,13 @@ Kernal_Temp_Next
     sta BlockQueue_Idx+2
     jmp NextFrame
 GotoStart
+    lda INPT0     ; Use the timer counter value
+    cmp #$00
+    bne setRandomSeed
+    lda #$87
+setRandomSeed
+    sta Random
+    
     jmp Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -248,7 +272,9 @@ GotoStart
 NextFrame
     lsr SWCHB    ; test Game Reset switch
     bcc GotoStart    ; reset?
-
+    inc FrameCount
+    lda FrameCount
+    sta Random
 ; 1 + 3 lines of VSYNC
     VERTICAL_SYNC
 
@@ -256,7 +282,6 @@ NextFrame
 ; 37 lines of underscan
 
     TIMER_SETUP 37
-    
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Positions
     sta WSYNC
@@ -720,10 +745,12 @@ Kernal_WaitTilEnd
 ; 29 lines of overscan
 Kernal_Overscan
     TIMER_SETUP 29
-    dec NextColor
+    dec NextColorCounter 
     bne Kernal_Overscan_Wait
-    lda #$07
-    sta NextColor
+    lda #255
+    sta NextColorCounter
+    jsr GetRandomColor
+    jsr GetRandomQueue
 Kernal_Overscan_Wait
     nop
     TIMER_WAIT
@@ -937,6 +964,7 @@ ReadJoystick
     cmp #$00
     beq .storeCurrentInput
     dec Player0Pos_Col
+    ;dec Random
     ;jsr .subtractScore ; TODO -- we want to implement NEGATIVE scores.
     jmp .storeCurrentInput
 .rightOnRelease
@@ -944,6 +972,7 @@ ReadJoystick
     cmp #CONS_PLAYERZ_COLS-2
     beq .storeCurrentInput
     inc Player0Pos_Col
+    ;inc Random
     jmp .storeCurrentInput
 .upOnRelease
     lda Player0Pos_Row
@@ -1013,6 +1042,46 @@ ReadJoystick
     lda TempByte
 .subtractScore.end
     cld ; turn off decimal math
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;
+; GetRandomColor
+; Generates a pseudo-random value using a Linear Feedback Shift Register
+; Returns: A = random value, AdjRandom = random value - 1 (for 0-6 range)
+; Modifies: Random variable
+GetRandomColor
+    lda Random
+    and #$0F
+    asl
+    bcc .GetRandomColor.noXor
+    eor #$B2    ; XOR with feedback polynomial
+.GetRandomColor.noXor
+    ; Convert to 1-7 range
+    and #$07    ; Get 0-7
+    bne .GetRandomColor.done  ; If not 0, done
+    lda #$01    ; If 0, use 7
+.GetRandomColor.done
+    sta Random
+    sec
+    sbc #$01; adjust so it's 0-6 without storing into 0
+    sta NextColor
+    rts   
+    
+GetRandomQueue
+    lda Random
+    and #$0F
+    asl
+    bcc .GetRandomQueue.noXor
+    eor #$B2    ; XOR with feedback polynomial
+.GetRandomQueue.noXor
+    ; Convert to 1-7 range
+    and #$0A    ; Get 0-7
+    bne .GetRandomQueue.done  ; If not 0, done
+    lda #$01    ; If 0, use 7
+.GetRandomQueue.done
+    sta Random
+    sec
+    sbc #$01; adjust so it's 0-6 without storing into 0
+    sta NextColumn
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
 ; lets use this instead. the clankers aren't super great at this.
