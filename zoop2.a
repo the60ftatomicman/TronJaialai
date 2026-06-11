@@ -184,6 +184,8 @@ Start
     lda #10
     sta NextColorCounter
 
+    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
+
     ldy #$00
 Kernal_Temp_Rows
     FLIP_BOOL TempByte
@@ -804,8 +806,6 @@ handleFireButton
     lda Player0Pos_Row
     cmp #$02
     beq .handleFireButton.NoAction
-    
-    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses ; TODO -- not always necessary!
     ldy BlockQueue_Idx
     lda (BlockQueue_Addr_Ptr),y
     sta BlockQueue_Data_Ptr
@@ -1050,20 +1050,28 @@ ReadJoystick
 ; lets use this instead. the clankers aren't super great at this.
 ; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html
 setRandomBlock
-   LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
-   ldy NextColumn
-   lda (BlockQueue_Addr_Ptr),y
-   sta BlockQueue_Data_Ptr
-   lda #>00
-   sta BlockQueue_Data_Ptr+1
-   ldx NextColor
-   lda Colors,x
-   ; we ALWAYS push to the back and move forward
-   
-   ldx 0
-   sta (BlockQueue_Data_Ptr,x)
-   ;sta BlockQueue_Top_0,x
-   rts
+    ldy NextColumn
+    lda (BlockQueue_Addr_Ptr),y
+    sta BlockQueue_Data_Ptr
+    lda #>00
+    sta BlockQueue_Data_Ptr+1
+    ldy #$00
+setRandomBlock.shiftBlocks
+    tya
+    cmp #CONS_BQ_VERT_ROWS-1
+    beq setRandomBlock.shiftBlocks.setNextColor
+    tay
+    iny
+    lda (BlockQueue_Data_Ptr),y
+    dey
+    sta (BlockQueue_Data_Ptr),y
+    iny
+    jmp setRandomBlock.shiftBlocks
+setRandomBlock.shiftBlocks.setNextColor
+    ldy #CONS_BQ_VERT_ROWS-1
+    lda #CONS_COLOR_TEAL
+    sta (BlockQueue_Data_Ptr),y
+    rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; GetRandomColor
 ; Generates a pseudo-random value using a Linear Feedback Shift Register
@@ -1081,6 +1089,10 @@ GetRandomColor
     sta Random
 .GetRandomColor.convert
     and #$07
+    cmp #$07
+    bne .GetRandomColor.convert.done
+    lda #$03
+.GetRandomColor.convert.done
     sta NextColor
     rts   
 
@@ -1101,6 +1113,10 @@ GetRandomQueue
     sta Random
 .GetRandomQueue.convert
     and #$0A
+    cmp #$0A
+    bne .GetRandomQueue.z
+    lda #$03
+.GetRandomQueue.z    
     sta NextColumn
     rts   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
