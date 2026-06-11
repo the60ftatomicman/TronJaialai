@@ -94,7 +94,7 @@ CONS_PLAYERZ_ROW_HEIGHT  EQU #8
 CONS_SCORE_LEFTMOST_DIGIT_X EQU #$33
 CONS_SCORE_MINUS_SIGN_X     EQU #$20
 ;
-CONS_TIMER_FRAMES_PER_SEC EQU #60
+CONS_TIMER_FRAMES_PER_SEC EQU #10
 CONS_TIMER_NEXT_COLOR     EQU #255
 ;
 TempByte   .byte
@@ -180,6 +180,9 @@ Start
     sta Time+1
     lda #$00
     sta Time
+
+    lda #10
+    sta NextColorCounter
 
     ldy #$00
 Kernal_Temp_Rows
@@ -272,9 +275,6 @@ setRandomSeed
 NextFrame
     lsr SWCHB    ; test Game Reset switch
     bcc GotoStart    ; reset?
-    inc FrameCount
-    lda FrameCount
-    sta Random
 ; 1 + 3 lines of VSYNC
     VERTICAL_SYNC
 
@@ -309,7 +309,7 @@ NextFrame
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
     ; vv just for testing
-    lda #$01 
+    lda #$00
     sta ScoreNeg
     ; ^^ just for testing
     lda #%0110000
@@ -725,33 +725,37 @@ Kernal_DecrementTimer
 Kernal_DecrementTimer.ActualDec
     sed
     dec Time
-    bpl Kernal_WaitTilEnd
+    bpl Kernal_ClearMath
     lda #$09
     sta Time
     dec Time+1
-    bpl Kernal_WaitTilEnd
+    bpl Kernal_ClearMath
     lda #$09
     sta Time+1
     dec Time+2
-    bpl Kernal_WaitTilEnd
+    bpl Kernal_ClearMath
     lda #$09
     sta Time+2
+Kernal_ClearMath
+    cld
+Kernal_DecBlockCounter
+    dec NextColorCounter
+    bne Kernal_WaitTilEnd
+    lda #10
+    sta NextColorCounter
+    ;TODO -- add to the queue
+    jsr GetRandomColor
+    jsr GetRandomQueue
+    lda NextColor
+    jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
-    cld
-    nop  ; at: 196 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
+    nop  ; at: 199 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 Kernal_Overscan
     TIMER_SETUP 29
-    dec NextColorCounter 
-    bne Kernal_Overscan_Wait
-    lda #255
-    sta NextColorCounter
-    jsr GetRandomColor
-    jsr GetRandomQueue
-Kernal_Overscan_Wait
     nop
     TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -790,9 +794,10 @@ SetHorizPos.1
         sta HMP0,x	; set fine offset
         sta WSYNC
         sta HMOVE	; apply the previous fine position(s)
-	sta HMCLR	; reset the old horizontal position(s)
+	    sta HMCLR	; reset the old horizontal position(s)
         rts		; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;    
+; 
 ; 
 handleFireButton
     ; -- we need to be able to go to the 
@@ -800,7 +805,7 @@ handleFireButton
     cmp #$02
     beq .handleFireButton.NoAction
     
-    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
+    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses ; TODO -- not always necessary!
     ldy BlockQueue_Idx
     lda (BlockQueue_Addr_Ptr),y
     sta BlockQueue_Data_Ptr
@@ -964,7 +969,6 @@ ReadJoystick
     cmp #$00
     beq .storeCurrentInput
     dec Player0Pos_Col
-    ;dec Random
     ;jsr .subtractScore ; TODO -- we want to implement NEGATIVE scores.
     jmp .storeCurrentInput
 .rightOnRelease
@@ -972,7 +976,6 @@ ReadJoystick
     cmp #CONS_PLAYERZ_COLS-2
     beq .storeCurrentInput
     inc Player0Pos_Col
-    ;inc Random
     jmp .storeCurrentInput
 .upOnRelease
     lda Player0Pos_Row
@@ -1043,49 +1046,63 @@ ReadJoystick
 .subtractScore.end
     cld ; turn off decimal math
     rts
+;;;;;;;;;;;;;;;;;;;;;;;    
+; lets use this instead. the clankers aren't super great at this.
+; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html
+setRandomBlock
+   LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
+   ldy NextColumn
+   lda (BlockQueue_Addr_Ptr),y
+   sta BlockQueue_Data_Ptr
+   lda #>00
+   sta BlockQueue_Data_Ptr+1
+   ldx NextColor
+   lda Colors,x
+   ; we ALWAYS push to the back and move forward
+   
+   ldx 0
+   sta (BlockQueue_Data_Ptr,x)
+   ;sta BlockQueue_Top_0,x
+   rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; GetRandomColor
 ; Generates a pseudo-random value using a Linear Feedback Shift Register
-; Returns: A = random value, AdjRandom = random value - 1 (for 0-6 range)
+; Returns: A = random value, NextColor = random value - 1 (for 0-6 range)
 ; Modifies: Random variable
 GetRandomColor
     lda Random
-    and #$0F
-    asl
+    lsr
     bcc .GetRandomColor.noXor
-    eor #$B2    ; XOR with feedback polynomial
+    eor #$B8
 .GetRandomColor.noXor
-    ; Convert to 1-7 range
-    and #$07    ; Get 0-7
     bne .GetRandomColor.done  ; If not 0, done
     lda #$01    ; If 0, use 7
 .GetRandomColor.done
     sta Random
-    sec
-    sbc #$01; adjust so it's 0-6 without storing into 0
+.GetRandomColor.convert
+    and #$07
     sta NextColor
     rts   
-    
+
+;;;;;;;;;;;;;;;;;;;;;;;
+; GetRandomQueue
+; Generates a pseudo-random value using a Linear Feedback Shift Register
+; Returns: A = random value, NextColumn = random value - 1 (for 0-10 range)
+; Modifies: Random variable    
 GetRandomQueue
     lda Random
-    and #$0F
-    asl
+    lsr
     bcc .GetRandomQueue.noXor
-    eor #$B2    ; XOR with feedback polynomial
+    eor #$B8
 .GetRandomQueue.noXor
-    ; Convert to 1-7 range
-    and #$0A    ; Get 0-7
     bne .GetRandomQueue.done  ; If not 0, done
     lda #$01    ; If 0, use 7
 .GetRandomQueue.done
     sta Random
-    sec
-    sbc #$01; adjust so it's 0-6 without storing into 0
+.GetRandomQueue.convert
+    and #$0A
     sta NextColumn
-    rts
-;;;;;;;;;;;;;;;;;;;;;;;    
-; lets use this instead. the clankers aren't super great at this.
-; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html    
+    rts   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
