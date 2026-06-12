@@ -186,6 +186,14 @@ Start
     LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerPositions_Columns
     LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
 
+    lda INPT4     ; Use the timer counter value
+    cmp #$00
+    bne setRandomSeed
+    lda #$87
+setRandomSeed
+    sta Random
+
+
     ldy #CONS_BQ_VERT_ROWS
 Kernal_Temp_Rows
     ;TOP
@@ -243,13 +251,6 @@ Kernal_Temp_Next
     sta BlockQueue_Idx+2
     jmp NextFrame
 GotoStart
-    lda INPT0     ; Use the timer counter value
-    cmp #$00
-    bne setRandomSeed
-    lda #$87
-setRandomSeed
-    sta Random
-    
     jmp Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1068,11 +1069,12 @@ GetRandomColor
 .GetRandomColor.done
     sta Random
 .GetRandomColor.convert
-    and #$06
-    cmp #$06
-    bne .GetRandomColor.convert.done
-    lda #$03
+    and #$07
+    cmp #$07
+    bcs GetRandomColor
 .GetRandomColor.convert.done
+    sec
+    sbc #$01
     sta NextColor
     rts   
 
@@ -1088,15 +1090,14 @@ GetRandomQueue
     eor #$B8
 .GetRandomQueue.noXor
     bne .GetRandomQueue.done  ; If not 0, done
-    lda #$01    ; If 0, use 7
+    lda #$01
 .GetRandomQueue.done
     sta Random
 .GetRandomQueue.convert
-    and #$0A
+    and #$0F
     cmp #$0A
-    bne .GetRandomQueue.z
-    lda #$03
-.GetRandomQueue.z    
+    bcs GetRandomQueue
+.GetRandomQueue.convert.done
     sta NextColumn
     rts   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
