@@ -183,66 +183,48 @@ Start
 
     lda #10
     sta NextColorCounter
-
+    LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerPositions_Columns
     LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
 
-    ldy #$00
+    ldy #CONS_BQ_VERT_ROWS
 Kernal_Temp_Rows
-    FLIP_BOOL TempByte
-    bne Kernal_Temp_B
-Kernal_Temp_A
     ;TOP
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Top_0,y
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Top_1,y
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Top_2,y
-    lda #CONS_COLOR_RED
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Top_3,y    
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Top_4,y
     ;BOT
-    lda #CONS_COLOR_RED
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Bot_0,y
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Bot_1,y
-    lda #CONS_COLOR_RED
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Bot_2,y
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Bot_3,y    
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Bot_4,y
-    
-    jmp Kernal_Temp_Next
-Kernal_Temp_B
-    ;TOP
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Top_0,y
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top_1,y
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Top_2,y
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Top_3,y    
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Top_4,y
-    ;BOT
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Bot_0,y
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Bot_1,y
-    lda #CONS_COLOR_ORANGE
-    sta BlockQueue_Bot_2,y
-    lda #CONS_COLOR_RED
-    sta BlockQueue_Bot_3,y    
-    lda #CONS_COLOR_ORANGE
+    jsr GetRandomColor
+    lda Colors,NextColor
     sta BlockQueue_Bot_4,y
 Kernal_Temp_Next
-    iny
+    dey
     tya
-    cmp #CONS_BQ_VERT_ROWS
-    bcc Kernal_Temp_Rows
+    cmp #CONS_BQ_VERT_ROWS-2
+    bcs Kernal_Temp_Rows
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
@@ -290,7 +272,6 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Player X -- todo make this a pointer and data table affair.
     ldy Player0Pos_Col
-    LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerPositions_Columns
     lda (Player0Pos_Ptr),y
     ldx #0           ; player 0
     jsr SetHorizPos
@@ -745,10 +726,8 @@ Kernal_DecBlockCounter
     bne Kernal_WaitTilEnd
     lda #10
     sta NextColorCounter
-    ;TODO -- add to the queue
     jsr GetRandomColor
     jsr GetRandomQueue
-    lda NextColor
     jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
@@ -1068,8 +1047,9 @@ setRandomBlock.shiftBlocks
     iny
     jmp setRandomBlock.shiftBlocks
 setRandomBlock.shiftBlocks.setNextColor
+    ldx NextColor
+    lda Colors,x
     ldy #CONS_BQ_VERT_ROWS-1
-    lda #CONS_COLOR_TEAL
     sta (BlockQueue_Data_Ptr),y
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1084,12 +1064,12 @@ GetRandomColor
     eor #$B8
 .GetRandomColor.noXor
     bne .GetRandomColor.done  ; If not 0, done
-    lda #$01    ; If 0, use 7
+    lda #$01
 .GetRandomColor.done
     sta Random
 .GetRandomColor.convert
-    and #$07
-    cmp #$07
+    and #$06
+    cmp #$06
     bne .GetRandomColor.convert.done
     lda #$03
 .GetRandomColor.convert.done
