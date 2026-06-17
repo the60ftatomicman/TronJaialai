@@ -112,7 +112,10 @@ CONS_GAMESTATE_PLAY       EQU #02
 CONS_GAMESTATE_GAMEOVER   EQU #01
 ;
 TempByte   .byte
-TempPtr    .DS 2
+TempPtr_a    .DS 2
+TempPtr_b    .DS 2
+TempPtr_c    .DS 2
+TempPtr_d    .DS 2
 ;
 NextColorCounter .byte
 NextColor        .byte
@@ -123,7 +126,6 @@ Random     .byte
 ;
 CliffColor .byte
 ;
-Player0Pos_Ptr .DS 2
 Player0Pos_Col .byte
 Player0Pos_Row .byte
 Player0_Color  .byte
@@ -132,8 +134,6 @@ Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
 GameState .byte
 LoopIdx .DS 1
 ;
-BlockQueue_Data_Ptr .DS 2
-BlockQueue_Addr_Ptr .DS 2
 BlockQueue_Idx      .byte
 	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
@@ -182,8 +182,10 @@ TimeDec     .byte
 
 Start
     CLEAN_START
-    jsr oneTimeVarSetup
+    lda #$00
+    sta GameState
 BranchOnGamestate
+    jsr setupPointers
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
     beq GameState.Initialize
@@ -294,7 +296,7 @@ NextFrame
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Player X -- todo make this a pointer and data table affair.
     ldy Player0Pos_Col
-    lda (Player0Pos_Ptr),y
+    lda (TempPtr_a),y
     ldx #0           ; player 0
     jsr SetHorizPos
     sta WSYNC
@@ -808,10 +810,10 @@ handleFireButton
     cmp #$02
     beq .handleFireButton.NoAction
     ldy BlockQueue_Idx
-    lda (BlockQueue_Addr_Ptr),y
-    sta BlockQueue_Data_Ptr
+    lda (TempPtr_c),y
+    sta TempPtr_b
     lda #>00
-    sta BlockQueue_Data_Ptr+1
+    sta TempPtr_b+1
 
     ldy #00 
 .handleFireButton.FindRowMem
@@ -820,7 +822,7 @@ handleFireButton
     beq .handleFireButton.NoAction
     ; --- now look at blocks
     tay
-    lda (BlockQueue_Data_Ptr),y
+    lda (TempPtr_b),y
     cmp #CONS_COLOR_BLACK  ; ----------    is empty
     beq .handleFireButton.gotoNextBlock
     cmp  Player0_Color  ; ----------    is player color
@@ -829,7 +831,7 @@ handleFireButton
 .handleFireButton.MatchingColor
     ; here we will loop through the columns blacking out all of the
     lda #CONS_COLOR_BLACK
-    sta (BlockQueue_Data_Ptr),y
+    sta (TempPtr_b),y
     ; now do some score
     jsr .addScore
 .handleFireButton.gotoNextBlock
@@ -837,10 +839,10 @@ handleFireButton
     cmp #$00 ; is our accumulator 0?
     bcs .handleFireButton.FindRowMem
 .handleFireButton.swapWithBlock
-    lda (BlockQueue_Data_Ptr),y
+    lda (TempPtr_b),y
     sta TempByte
     lda Player0_Color
-    sta (BlockQueue_Data_Ptr),y
+    sta (TempPtr_b),y
     lda TempByte
     sta Player0_Color
 .handleFireButton.NoAction
@@ -1052,13 +1054,13 @@ ReadJoystick
 ; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html
 setRandomBlock
     ldy NextColumn
-    lda (BlockQueue_Addr_Ptr),y
-    sta BlockQueue_Data_Ptr
+    lda (TempPtr_c),y
+    sta TempPtr_b
     lda #>00
-    sta BlockQueue_Data_Ptr+1
+    sta TempPtr_b+1
     ldy #$00
 setRandomBlock.testIfFull
-    lda (BlockQueue_Data_Ptr),y
+    lda (TempPtr_b),y
     cmp #CONS_COLOR_BLACK
     beq setRandomBlock.shiftBlocks
     lda #$01
@@ -1070,16 +1072,16 @@ setRandomBlock.shiftBlocks
     beq setRandomBlock.shiftBlocks.setNextColor
     tay
     iny
-    lda (BlockQueue_Data_Ptr),y
+    lda (TempPtr_b),y
     dey
-    sta (BlockQueue_Data_Ptr),y
+    sta (TempPtr_b),y
     iny
     jmp setRandomBlock.shiftBlocks
 setRandomBlock.shiftBlocks.setNextColor
     ldx NextColor
     lda Colors,x
     ldy #CONS_BQ_VERT_ROWS-1
-    sta (BlockQueue_Data_Ptr),y
+    sta (TempPtr_b),y
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; GetRandomColor
@@ -1134,9 +1136,9 @@ GetRandomQueue
 runTitleScreen
     START_FRAME
     TIMER_SETUP 37
+    lda #%00000001
+    sta CTRLPF
     sta WSYNC
-    LOAD_POINTER_WITH_DATA TempPtr,Title_Screen_PF0_RIGHT 
-    LOAD_POINTER_WITH_DATA TempPtr,Title_Screen_PF0_LEFT
     TIMER_WAIT
     TIMER_SETUP 192
 ;;;;;;
@@ -1151,20 +1153,27 @@ Kernal_Title.TopGap
     sta TempByte
     ldy #5
 Kernal_Title.Letters
+Kernal_Title.LoadPF
+    lda (TempPtr_d),y
+    sta COLUBK
     FLIP_BOOL TempByte
     bne Kernal_Title.ColorB
 Kernal_Title.ColorA
-    lda #CONS_COLOR_RED
-    sta COLUPF
-    jmp Kernal_Title.LoadPF
+    lda #CONS_COLOR_WHITE
+    jmp Kernal_Title.StartWritePF
 Kernal_Title.ColorB
-    lda #CONS_COLOR_BLUE
-Kernal_Title.LoadPF
+    lda #CONS_COLOR_WHITE
+Kernal_Title.StartWritePF
     sta COLUPF
     ldx #10
 Kernal_Title.WritePF
     WYSNC_REPEATER 1
-    lda (TempPtr),y
+    lda (TempPtr_a),y
+    sta PF1
+    lda (TempPtr_c),y
+    sta PF2
+    SLEEP 12
+    lda (TempPtr_b),y
     sta PF1
     dex
     bne Kernal_Title.WritePF
@@ -1186,13 +1195,31 @@ Kernal_Title.Overscan
     sta WSYNC
     TIMER_WAIT
     rts
-; runTitleScreen
+;;;;;;;;;;;;;;;;;;;;;;;
+; setupPointers
 ; 
-oneTimeVarSetup
-    LOAD_POINTER_WITH_DATA Player0Pos_Ptr,PlayerPositions_Columns
-    LOAD_POINTER_WITH_DATA BlockQueue_Addr_Ptr,PlayerColMemAddresses
-    lda #$03
-    sta GameState
+setupPointers
+    lda GameState
+    cmp #CONS_GAMESTATE_INITIALIZE
+    beq setupPointers.Initialize
+    cmp #CONS_GAMESTATE_PLAY
+    beq setupPointers.Initialize
+    cmp #CONS_GAMESTATE_GAMEOVER
+    beq setupPointers.GameOver
+setupPointers.Title
+    LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
+    LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
+    LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
+    LOAD_POINTER_WITH_DATA TempPtr_d,Colors
+    jmp setupPointers.End
+setupPointers.GameOver
+    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
+    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
+    jmp setupPointers.End
+setupPointers.Initialize
+    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
+    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
+setupPointers.End
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1311,20 +1338,27 @@ Score_Numbers
     .byte #%11000111
     .byte #%11111111
 ;;;;;;;;;;;;;;;;;;;;;;; 
-Title_Screen_PF0_LEFT
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%11111111
-    .byte #%11000111
-    .byte #%11111111
-Title_Screen_PF0_RIGHT
-    .byte #%11111111
-    .byte #%11000001
+Title_Screen_PF1_LEFT
+    .byte #%01111110
+    .byte #%01100010
     .byte #%00110000
     .byte #%00001100
-    .byte #%10000011
-    .byte #%11111111  
+    .byte #%01000110
+    .byte #%01111110  
+Title_Screen_PF1_RIGHT
+    .byte #%000000110
+    .byte #%00000110
+    .byte #%00000110
+    .byte #%01111110
+    .byte #%01100110
+    .byte #%01111110
+Title_Screen_PF2_LEFT
+    .byte #%01111110
+    .byte #%01100110
+    .byte #%01100110
+    .byte #%01100110
+    .byte #%01100110
+    .byte #%01111110
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
