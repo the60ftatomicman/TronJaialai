@@ -1,0 +1,338 @@
+--- Symbol List (sorted by symbol)
+0.addScore               f4eb              (R )
+0.addScore.end           f50d              (R )
+0.checkbutton            f48c              (R )
+0.checkDown              f47f              (R )
+0.checkRight             f465              (R )
+0.checkUp                f472              (R )
+0.determineJoystickAction f496              (R )
+0.downOnRelease          f4d8              (R )
+0.endJoystickCheck       f4ea                  
+0.fireOnRelease          f4e3              (R )
+0.FREE_BYTES             0000                  
+0.GetRandomColor.convert f56f                  
+0.GetRandomColor.convert.done f575                  
+0.GetRandomColor.done    f56d              (R )
+0.GetRandomColor.noXor   f569              (R )
+0.GetRandomQueue.convert f588                  
+0.GetRandomQueue.convert.done f58e                  
+0.GetRandomQueue.done    f586              (R )
+0.GetRandomQueue.noXor   f582              (R )
+0.handleFireButton.FindRowMem f414              (R )
+0.handleFireButton.gotoNextBlock f42e              (R )
+0.handleFireButton.MatchingColor f427              (R )
+0.handleFireButton.NoAction f43f              (R )
+0.handleFireButton.swapWithBlock f433              (R )
+0.leftOnRelease          f4b7              (R )
+0.PointerSetup.GameOver  f650                  
+0.PointerSetup.Play      f63d                  
+0.PointerSetup.Return    f660                  
+0.PointerSetup.Title     f62a                  
+0.ReadJoystick           f458                  
+0.rightOnRelease         f4c2              (R )
+0.setBlockQueueIdx.noRowChange f44d              (R )
+0.storeCurrentInput      f4e6              (R )
+0.subtractScore          f50f                  
+0.subtractScore.end      f52d              (R )
+0.upOnRelease            f4cd              (R )
+1.CLEAR_STACK            f006              (R )
+10.CYCLES                0004              (R )
+11.LINES_TO_WAIT         0001              (R )
+12.LINES_TO_WAIT         0001              (R )
+13.LINES_TO_WAIT         0002              (R )
+14.LINES_TO_WAIT         0002              (R )
+15.CYCLES                0014              (R )
+16.LINES_TO_WAIT         0001              (R )
+17.LINES_TO_WAIT         0001              (R )
+18.LINES_TO_WAIT         0001              (R )
+19.LINES_TO_WAIT         0001              (R )
+20.CYCLES                0014              (R )
+21.LINES_TO_WAIT         0002              (R )
+22.LINES_TO_WAIT         0001              (R )
+23.CYCLES                0014              (R )
+24.LINES_TO_WAIT         0001              (R )
+25.LINES_TO_WAIT         0003              (R )
+26.waittimer             f3be              (R )
+27.cycles                088f              (R )
+27.lines                 001d              (R )
+28.waittimer             f3cd              (R )
+3.VSLP1                  f0cf              (R )
+30.VSLP1                 f596              (R )
+31.cycles                0aef              (R )
+31.lines                 0025              (R )
+32.DATA_BLOB             f6c3              (R )
+32.POINTER               0081              (R )
+33.DATA_BLOB             f6bd              (R )
+33.POINTER               0081              (R )
+34.waittimer             f5b6              (R )
+35.cycles                38f3              (R )
+35.lines                 00c0              (R )
+36.LINES_TO_WAIT         0001              (R )
+37.LINES_TO_WAIT         0001              (R )
+38.MEMADDR               0080              (R )
+39.LINES_TO_WAIT         0001              (R )
+4.cycles                 0aef              (R )
+4.lines                  0025              (R )
+40.waittimer             f604              (R )
+41.cycles                088f              (R )
+41.lines                 001d              (R )
+42.waittimer             f614              (R )
+43.DATA_BLOB             f674              (R )
+43.POINTER               0089              (R )
+44.DATA_BLOB             f66a              (R )
+44.POINTER               0095              (R )
+45.DATA_BLOB             f674              (R )
+45.POINTER               0089              (R )
+46.DATA_BLOB             f66a              (R )
+46.POINTER               0095              (R )
+47.DATA_BLOB             f674              (R )
+47.POINTER               0089              (R )
+48.DATA_BLOB             f66a              (R )
+48.POINTER               0095              (R )
+5.waittimer              f0fb              (R )
+6.cycles                 38f3              (R )
+6.lines                  00c0              (R )
+7.LINES_TO_WAIT          0001              (R )
+8.LINES_TO_WAIT          0001              (R )
+9.CYCLES                 0006              (R )
+AUDC0                    0015                  
+AUDC1                    0016                  
+AUDF0                    0017                  
+AUDF1                    0018                  
+AUDV0                    0019                  
+AUDV1                    001a                  
+BlockQueue_Addr_Ptr      0095              (R )
+BlockQueue_Bot_0         00a8              (R )
+BlockQueue_Bot_0_Preview 00ad                  
+BlockQueue_Bot_1         00b8              (R )
+BlockQueue_Bot_1_Preview 00bd                  
+BlockQueue_Bot_2         00c8              (R )
+BlockQueue_Bot_2_Preview 00cd                  
+BlockQueue_Bot_3         00d8              (R )
+BlockQueue_Bot_3_Preview 00dd                  
+BlockQueue_Bot_4         00e8              (R )
+BlockQueue_Bot_4_Preview 00ed                  
+BlockQueue_Data_Ptr      0093              (R )
+BlockQueue_Idx           0097              (R )
+BlockQueue_Top_0         00a0              (R )
+BlockQueue_Top_0_Preview 00a5                  
+BlockQueue_Top_1         00b0              (R )
+BlockQueue_Top_1_Preview 00b5                  
+BlockQueue_Top_2         00c0              (R )
+BlockQueue_Top_2_Preview 00c5                  
+BlockQueue_Top_3         00d0              (R )
+BlockQueue_Top_3_Preview 00d5                  
+BlockQueue_Top_4         00e0              (R )
+BlockQueue_Top_4_Preview 00e5                  
+BranchOnGamestate        f00f              (R )
+CliffColor               0088              (R )
+Colors                   f661              (R )
+COLUBK                   0009              (R )
+COLUP0                   0006              (R )
+COLUP1                   0007              (R )
+COLUPF                   0008              (R )
+CONS_BQ_VERT_COLS        0005              (R )
+CONS_BQ_VERT_ROW_HEIGHT  0004              (R )
+CONS_BQ_VERT_ROWS        0006              (R )
+CONS_CLIFF_HEIGHT        0005              (R )
+CONS_CLIFF_SHADING_GAP   0002              (R )
+CONS_COLOR_BLACK         0000              (R )
+CONS_COLOR_BLUE          00a6              (R )
+CONS_COLOR_CHART         00ca                  
+CONS_COLOR_GREEN         00c6              (R )
+CONS_COLOR_GREY          0002              (R )
+CONS_COLOR_GREY_7        0007              (R )
+CONS_COLOR_GREY_C        000c              (R )
+CONS_COLOR_LGREY         0004              (R )
+CONS_COLOR_ORANGE        0038              (R )
+CONS_COLOR_PINK          003c                  
+CONS_COLOR_PURPLE        0064              (R )
+CONS_COLOR_RED           0046              (R )
+CONS_COLOR_TEAL          008d                  
+CONS_COLOR_WHITE         000e              (R )
+CONS_COLOR_YELLOW        001e              (R )
+CONS_GAMESTATE_GAMEOVER  0001              (R )
+CONS_GAMESTATE_INITIALIZE 0003              (R )
+CONS_GAMESTATE_PLAY      0002              (R )
+CONS_GAMESTATE_TITLE     0000                  
+CONS_GRID_BRICKS_BG      000c              (R )
+CONS_GRID_CLIFF_BG       0007              (R )
+CONS_PLAYERZ_COLS        0006              (R )
+CONS_PLAYERZ_ROW_HEIGHT  0008              (R )
+CONS_PLAYERZ_ROWS        0003              (R )
+CONS_PLAYERZONE_ACTION   000e              (R )
+CONS_PLAYERZONE_NOACT    0004              (R )
+CONS_PLAYERZONE_PF       0002              (R )
+CONS_SCORE_LEFTMOST_DIGIT_X 0033              (R )
+CONS_SCORE_MINUS_SIGN_X  0020              (R )
+CONS_SCORE_NEGATIVE      0046              (R )
+CONS_SCORE_POSITIVE      00c6              (R )
+CONS_TIME_BG             0064              (R )
+CONS_TIMER_FRAMES_PER_SEC 000a              (R )
+CONS_TIMER_NEXT_COLOR    00ff                  
+CTRLPF                   000a              (R )
+CXBLPF                   0006                  
+CXCLR                    002c                  
+CXM0FB                   0004                  
+CXM0P                    0000                  
+CXM1FB                   0005                  
+CXM1P                    0001                  
+CXP0FB                   0002                  
+CXP1FB                   0003                  
+CXPPMM                   0007                  
+ENABL                    001f                  
+ENAM0                    001d              (R )
+ENAM1                    001e              (R )
+FrameCount               0086                  
+GameState                0090              (R )
+GameState.GameOver       f022              (R )
+GameState.Initialize     f028              (R )
+GameState.Play           f0c9                  
+GameState.Title          f01c              (R )
+GetRandomColor           f562              (R )
+GetRandomQueue           f57b              (R )
+GotoStart                f0c2                  
+GRP0                     001b              (R )
+GRP1                     001c              (R )
+handleFireButton         f402              (R )
+HMBL                     0024                  
+HMCLR                    002b              (R )
+HMM0                     0022                  
+HMM1                     0023                  
+HMOVE                    002a              (R )
+HMP0                     0020              (R )
+HMP1                     0021                  
+INPT0                    0008                  
+INPT1                    0009                  
+INPT2                    000a                  
+INPT3                    000b                  
+INPT4                    000c              (R )
+INPT5                    000d                  
+INTIM                    0284              (R )
+Kernal_BotBlocks         f2bf              (R )
+Kernal_BotBlocks.Rows    f2c1              (R )
+Kernal_ClearMath         f3ab              (R )
+Kernal_Cliff_Bot         f28c              (R )
+Kernal_Cliff_Bot.ColorBandLoop f297              (R )
+Kernal_Cliff_Top         f209              (R )
+Kernal_Cliff_Top.ColorBandLoop f214              (R )
+Kernal_DecBlockCounter   f3ac                  
+Kernal_DecrementTimer    f38a                  
+Kernal_DecrementTimer.ActualDec f392                  
+Kernal_Inputs            f384                  
+Kernal_Overscan          f3c5                  
+Kernal_PlayerZone        f242              (R )
+Kernal_PlayerZone.DrawPlayer f251                  
+Kernal_PlayerZone.EndPlayer f258              (R )
+Kernal_PlayerZone.PlayerLogic.ComparePlayer f24b                  
+Kernal_PlayerZone.Rows   f244              (R )
+Kernal_PlayerZone.SkipPlayer f256              (R )
+Kernal_PreScore.addTempByte f14d              (R )
+Kernal_PreScore.getNibbles f12c              (R )
+Kernal_PreScore.isNegativeColor f128              (R )
+Kernal_PreScore.isPositiveColor f121                  
+Kernal_PreScore.loopaddress f145              (R )
+Kernal_PreScore.setNumAddresses f140              (R )
+Kernal_PreTime           f2f4                  
+Kernal_PreTime.addTempByte f329              (R )
+Kernal_PreTime.getNibbles f308                  
+Kernal_PreTime.loopaddress f321              (R )
+Kernal_PreTime.setNumAddresses f31c              (R )
+Kernal_Score             f154              (R )
+Kernal_Score.extraDelay  f162              (R )
+Kernal_Score.lowerBuffer f18f                  
+Kernal_Score.printDigits f167              (R )
+Kernal_StopVisuals       f368                  
+Kernal_Temp_Next         f0a3                  
+Kernal_Temp_Rows         f049              (R )
+Kernal_Time              f330              (R )
+Kernal_Time.lowerBuffer  f362                  
+Kernal_Title.Bottom      f5f4                  
+Kernal_Title.ColorA      f5db                  
+Kernal_Title.ColorB      f5e2              (R )
+Kernal_Title.Letters     f5d3              (R )
+Kernal_Title.LoadPF      f5e4              (R )
+Kernal_Title.Overscan    f60b                  
+Kernal_Title.TopGap      f5c6              (R )
+Kernal_Title.WritePF     f5e8              (R )
+Kernal_TopBlocks         f1bf              (R )
+Kernal_TopBlocks.Rows    f1c1              (R )
+Kernal_WaitTilEnd        f3bd              (R )
+LoopIdx                  0091              (R )
+Minus_Sign               f67a              (R )
+NextColor                0084              (R )
+NextColorCounter         0083              (R )
+NextColumn               0085              (R )
+NextFrame                f0ca              (R )
+NO_ILLEGAL_OPCODES       0000 ????         (R )
+NumberIdx                00f0              (R )
+NUSIZ0                   0004              (R )
+NUSIZ1                   0005              (R )
+PF0                      000d              (R )
+PF1                      000e              (R )
+PF2                      000f              (R )
+Player0_Color            008d              (R )
+Player0_InputSettings    008e              (R )
+Player0Pos_Col           008b              (R )
+Player0Pos_Ptr           0089              (R )
+Player0Pos_Row           008c              (R )
+PlayerColMemAddresses    f66a              (R )
+PlayerPositions_Columns  f674              (R )
+PlayerZone_Colors        f667              (R )
+PointerSetup.GameOver    0000 ????         (R )
+PointerSetup.Play        0000 ????         (R )
+PointerSetup.Return      0000 ????         (R )
+Random                   0087              (R )
+ReadJoystick             f454              (R )
+REFP0                    000b                  
+REFP1                    000c                  
+RESBL                    0014                  
+RESM0                    0012                  
+RESM1                    0013                  
+RESMP0                   0028                  
+RESMP1                   0029                  
+RESP0                    0010              (R )
+RESP1                    0011                  
+RSYNC                    0003                  
+runTitleScreen           f591              (R )
+Score                    00f4              (R )
+Score_Numbers            f681              (R )
+ScoreNeg                 00f3              (R )
+setBlockQueueIdx         f440              (R )
+SetHorizPos              f3ea              (R )
+SetHorizPos.1            f3ed              (R )
+SetPositionMissles       f3d7                  
+setRandomBlock           f52f              (R )
+setRandomBlock.shiftBlocks f548              (R )
+setRandomBlock.shiftBlocks.setNextColor f558              (R )
+setRandomBlock.testIfFull f53b                  
+setRandomSeed            f045              (R )
+SetupPointersBasedOnGameState f61c              (R )
+Start                    f000              (R )
+SWACNT                   0281                  
+SWBCNT                   0283                  
+SWCHA                    0280              (R )
+SWCHB                    0282              (R )
+T1024T                   0297                  
+TempByte                 0080              (R )
+TempPtr                  0081              (R )
+TIA_BASE_ADDRESS         0000              (R )
+TIA_BASE_READ_ADDRESS    0000              (R )
+TIA_BASE_WRITE_ADDRESS   0000              (R )
+TIM1T                    0294                  
+TIM64T                   0296              (R )
+TIM8T                    0295                  
+Time                     00f7              (R )
+TimeDec                  00fa              (R )
+TIMINT                   0285                  
+Title_Screen_PF0_LEFT    f6bd              (R )
+Title_Screen_PF0_RIGHT   f6c3              (R )
+VBLANK                   0001                  
+VDELBL                   0027                  
+VDELP0                   0025                  
+VDELP1                   0026                  
+VERSION_MACRO            006a                  
+VERSION_VCS              0069                  
+VSYNC                    0000              (R )
+WSYNC                    0002              (R )
+--- End of Symbol List.
