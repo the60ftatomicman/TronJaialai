@@ -214,12 +214,6 @@ GameState.Initialize
     lda #10
     sta NextColorCounter
     
-    lda INTIM           ; Use the timer counter value
-    cmp #$00
-    bne setRandomSeed
-    lda #$87
-setRandomSeed
-    sta Random
     ldy #CONS_BQ_VERT_ROWS
 Kernal_Temp_Rows
     ;TOP
@@ -1146,6 +1140,12 @@ GetRandomQueue
 runTitleScreen.GotoStart
     lda #$03
     sta GameState
+    lda INTIM           ; Use the timer counter value
+    cmp #$00
+    bne setRandomSeed
+    lda #$87
+setRandomSeed
+    sta Random
 runTitleScreen
     START_FRAME runTitleScreen.GotoStart
     TIMER_SETUP 37
