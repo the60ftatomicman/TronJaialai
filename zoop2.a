@@ -78,8 +78,9 @@ CONS_TIME_BG           EQU CONS_COLOR_PURPLE
 ; Original author: Andy Garber
 ; just the first few lines when drawing a frame
     MAC START_FRAME
+.GOTO_LBL_ON_RESET SET {1}
     lsr SWCHB      ; test Game Reset switch
-    ;bcc GotoStart  ; reset?
+    bcc .GOTO_LBL_ON_RESET  ; reset?
     VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
     ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -195,10 +196,10 @@ BranchOnGamestate
     beq GameState.GameOver    
 GameState.Title
     jsr runTitleScreen
-    jmp GameState.Title
+    jmp BranchOnGamestate
 GameState.GameOver
     jsr runTitleScreen
-    jmp GameState.GameOver
+    jmp BranchOnGamestate
 GameState.Initialize
     lda #$00
     sta TempByte
@@ -223,35 +224,45 @@ setRandomSeed
 Kernal_Temp_Rows
     ;TOP
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Top_0,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Top_1,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Top_2,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Top_3,y    
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Top_4,y
     ;BOT
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Bot_0,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Bot_1,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Bot_2,y
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Bot_3,y    
     jsr GetRandomColor
-    lda Colors,NextColor
+    ldx NextColor
+    lda Colors,x
     sta BlockQueue_Bot_4,y
 Kernal_Temp_Next
     dey
@@ -275,7 +286,7 @@ Kernal_Temp_Next
     lda #$FF
     sta BlockQueue_Idx+2
     jmp NextFrame
-GotoStart
+GameState.Play.GotoStart
     lda #$00
     sta GameState
     jmp Start
@@ -286,7 +297,7 @@ GotoStart
 GameState.Play
     nop
 NextFrame
-    START_FRAME
+    START_FRAME GameState.Play.GotoStart
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 37 lines of underscan
     TIMER_SETUP 37
@@ -1106,8 +1117,7 @@ GetRandomColor
     sec
     sbc #$01
     sta NextColor
-    rts   
-
+    rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; GetRandomQueue
 ; Generates a pseudo-random value using a Linear Feedback Shift Register
@@ -1132,9 +1142,12 @@ GetRandomQueue
     rts   
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; runTitleScreen
-; 
+;
+runTitleScreen.GotoStart
+    lda #$03
+    sta GameState
 runTitleScreen
-    START_FRAME
+    START_FRAME runTitleScreen.GotoStart
     TIMER_SETUP 37
     lda #%00000001
     sta CTRLPF
