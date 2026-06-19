@@ -138,35 +138,35 @@ LoopIdx .DS 1
 BlockQueue_Idx      .byte
 	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Top_0_Preview .byte
+;BlockQueue_Top_0_Preview .byte
 	org $B0
 BlockQueue_Top_1 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Top_1_Preview .byte
+;BlockQueue_Top_1_Preview .byte
 	org $C0
 BlockQueue_Top_2 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Top_2_Preview .byte
+;BlockQueue_Top_2_Preview .byte
 	org $D0
 BlockQueue_Top_3 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Top_3_Preview .byte
+;BlockQueue_Top_3_Preview .byte
 	org $E0
 BlockQueue_Top_4 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Top_4_Preview .byte
+;BlockQueue_Top_4_Preview .byte
 
 	org $A8
 BlockQueue_Bot_0 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Bot_0_Preview .byte
+;BlockQueue_Bot_0_Preview .byte
 	org $B8
 BlockQueue_Bot_1 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Bot_1_Preview .byte
+;BlockQueue_Bot_1_Preview .byte
 	org $C8
 BlockQueue_Bot_2 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Bot_2_Preview .byte
+;BlockQueue_Bot_2_Preview .byte
 	org $D8
 BlockQueue_Bot_3 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Bot_3_Preview .byte
+;BlockQueue_Bot_3_Preview .byte
 	org $E8
 BlockQueue_Bot_4 .DS  #CONS_BQ_VERT_COLS
-BlockQueue_Bot_4_Preview .byte
+;BlockQueue_Bot_4_Preview .byte
 ;
 	org $F0
 NumberIdx   .DS 3
@@ -207,8 +207,6 @@ GameState.Initialize
 
     lda #$02
     sta Player0Pos_Row
-    lda #CONS_COLOR_RED
-    sta Player0_Color
     
     lda #$00
     sta TempByte
@@ -275,7 +273,10 @@ Kernal_Temp_Next
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
-
+    ;jsr GetRandomColor messes up horizontal placement!
+    ldx NextColor
+    lda Colors,x
+    sta Player0_Color
     ;Just to easily see end of memory
     lda #$EE
     sta BlockQueue_Idx+1
@@ -1107,11 +1108,9 @@ GetRandomColor
     sta Random
 .GetRandomColor.convert
     and #$07
-    cmp #$07
+    cmp #$06
     bcs GetRandomColor
 .GetRandomColor.convert.done
-    sec
-    sbc #$01
     sta NextColor
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
