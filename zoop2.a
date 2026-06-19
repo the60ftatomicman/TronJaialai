@@ -201,6 +201,15 @@ GameState.GameOver
     jsr runTitleScreen
     jmp BranchOnGamestate
 GameState.Initialize
+    lda #$02
+    sta Player0Pos_Col
+    sta BlockQueue_Idx
+
+    lda #$02
+    sta Player0Pos_Row
+    lda #CONS_COLOR_RED
+    sta Player0_Color
+    
     lda #$00
     sta TempByte
 
@@ -266,14 +275,7 @@ Kernal_Temp_Next
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
-    lda #$02
-    sta Player0Pos_Col
-    sta BlockQueue_Idx
 
-    lda #$02
-    sta Player0Pos_Row
-    lda #CONS_COLOR_GREEN
-    sta Player0_Color
     ;Just to easily see end of memory
     lda #$EE
     sta BlockQueue_Idx+1
