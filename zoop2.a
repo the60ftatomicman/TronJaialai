@@ -118,9 +118,10 @@ TempPtr_b    .DS 2
 TempPtr_c    .DS 2
 TempPtr_d    .DS 2
 ;
-NextColorCounter .byte
-NextColor        .byte
-NextColumn       .byte
+NextColorTimerIdx .byte
+NextColorCounter  .byte
+NextColor         .byte
+NextColumn        .byte
 ;
 FrameCount .byte
 Random     .byte
@@ -183,7 +184,7 @@ TimeDec     .byte
 
 Start
     CLEAN_START
-    lda #$00
+    lda #CONS_GAMESTATE_TITLE
     sta GameState
 BranchOnGamestate
     jsr setupPointers
@@ -218,7 +219,9 @@ GameState.Initialize
     lda #$00
     sta Time
 
-    lda #10
+    ldx #00
+    sta NextColorTimerIdx
+    lda AddBlockTimers,x
     sta NextColorCounter
     
     ldy #CONS_BQ_VERT_ROWS
@@ -284,7 +287,7 @@ Kernal_Temp_Next
     sta BlockQueue_Idx+2
     jmp NextFrame
 GameState.Play.GotoStart
-    lda #$00
+    lda #CONS_GAMESTATE_TITLE
     sta GameState
     jmp Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -756,7 +759,13 @@ Kernal_ClearMath
 Kernal_DecBlockCounter
     dec NextColorCounter
     bne Kernal_WaitTilEnd
-    lda #10
+    lda NextColorTimerIdx
+    cmp #$03 ; amount of entries we have in AddBlockTimers - 1
+    bcs Kernal_DecBlockCounter.IncTimerIdx
+    inc NextColorTimerIdx
+Kernal_DecBlockCounter.IncTimerIdx
+    ldx NextColorTimerIdx
+    lda AddBlockTimers,x
     sta NextColorCounter
     jsr GetRandomColor
     jsr GetRandomQueue
@@ -1071,7 +1080,7 @@ setRandomBlock.testIfFull
     lda (TempPtr_b),y
     cmp #CONS_COLOR_BLACK
     beq setRandomBlock.shiftBlocks
-    lda #$01
+    lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
     jmp BranchOnGamestate
 setRandomBlock.shiftBlocks
@@ -1139,7 +1148,7 @@ GetRandomQueue
 ; runTitleScreen
 ;
 runTitleScreen.GotoStart
-    lda #$03
+    lda #CONS_GAMESTATE_INITIALIZE
     sta GameState
     lda INTIM           ; Use the timer counter value
     cmp #$00
@@ -1240,6 +1249,14 @@ setupPointers.End
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
+AddBlockTimers
+    .byte #$13 ; 20s
+    .byte #$13
+    .byte #$0E ; 15s
+    .byte #$0E
+    .byte #$0A ; 10s
+    .byte #$0A
+    .byte #$05 ; 5s
 Colors
     .byte #CONS_COLOR_RED
     .byte #CONS_COLOR_ORANGE
