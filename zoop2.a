@@ -91,7 +91,7 @@ CONS_TIME_BG           EQU CONS_COLOR_PURPLE
     seg.u Variables
     org $80
 CONS_BQ_VERT_COLS        EQU #5
-CONS_BQ_VERT_ROWS        EQU #6
+CONS_BQ_VERT_ROWS        EQU #5
 CONS_BQ_VERT_ROW_HEIGHT  EQU #4
 ;
 CONS_CLIFF_HEIGHT        EQU #5
@@ -104,8 +104,7 @@ CONS_PLAYERZ_ROW_HEIGHT  EQU #8
 CONS_SCORE_LEFTMOST_DIGIT_X EQU #$33
 CONS_SCORE_MINUS_SIGN_X     EQU #$20
 ;
-CONS_TIMER_FRAMES_PER_SEC EQU #10
-CONS_TIMER_NEXT_COLOR     EQU #255
+CONS_TIMER_FRAMES_PER_SEC EQU #20
 ;
 CONS_GAMESTATE_TITLE      EQU #00
 CONS_GAMESTATE_INITIALIZE EQU #03
@@ -199,7 +198,7 @@ GameState.Title
     jsr runTitleScreen
     jmp BranchOnGamestate
 GameState.GameOver
-    jsr runTitleScreen
+    jsr Gamestate.Gameover
     jmp BranchOnGamestate
 GameState.Initialize
     lda #$02
@@ -211,10 +210,13 @@ GameState.Initialize
     
     lda #$00
     sta TempByte
+    sta Score+2
+    sta Score+1
+    sta Score
 
     lda #$01
     sta Time+2
-    lda #$00
+    lda #$02
     sta Time+1
     lda #$00
     sta Time
@@ -326,100 +328,7 @@ NextFrame
 
     TIMER_SETUP 192
 ;;;;;;;;;;;;;;;;;;;;;;;
-    ; vv just for testing
-    lda #$00
-    sta ScoreNeg
-    ; ^^ just for testing
-    lda #%0110000
-    sta NUSIZ0
-    lda #%1000110
-    sta NUSIZ1
-    lda #CONS_COLOR_BLACK
-    sta COLUP0
-    sta COLUP1
-    
-    WYSNC_REPEATER 1
-    lda ScoreNeg
-    bne Kernal_PreScore.isNegativeColor
-Kernal_PreScore.isPositiveColor
-    lda #CONS_SCORE_POSITIVE
-    sta COLUBK
-    jmp Kernal_PreScore.getNibbles  
-Kernal_PreScore.isNegativeColor    
-    lda #CONS_SCORE_NEGATIVE
-    sta COLUBK
-Kernal_PreScore.getNibbles    
-    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
-    lda Score
-    and #$0F
-    sta Score
-    lda Score+1
-    and #$0F
-    sta Score+1
-    lda Score+2
-    and #$0F
-    sta Score+2
-    ;-- loop over EVERY digit
-    
-    ldx #02
-Kernal_PreScore.setNumAddresses
-    ldy Score,x
-    clc
-    lda #$05 ; 0 ALWAYS starts at 5
-Kernal_PreScore.loopaddress
-    dey
-    bmi Kernal_PreScore.addTempByte
-    adc #$06
-    jmp Kernal_PreScore.loopaddress
-Kernal_PreScore.addTempByte  
-    sta NumberIdx,x
-    dex
-    bpl Kernal_PreScore.setNumAddresses
-    ;----------------
-    ldy #$06
-Kernal_Score
-    WYSNC_REPEATER 1
-    lda ScoreNeg
-    beq Kernal_Score.extraDelay
-    lda Minus_Sign,y
-    sta ENAM0
-    jmp Kernal_Score.printDigits
-Kernal_Score.extraDelay
-    SLEEP 9
-Kernal_Score.printDigits
-    SLEEP 7
-    ldx NumberIdx+2
-    lda Score_Numbers,x
-    sta GRP1
-
-    ldx NumberIdx+1
-    lda Score_Numbers,x
-    sta GRP1
-    
-    ldx NumberIdx
-    lda Score_Numbers,x
-    sta GRP1
-
-    dec NumberIdx
-    dec NumberIdx+1
-    dec NumberIdx+2
-    
-    lda #$00
-    sta GRP1
-    WYSNC_REPEATER 1; -- todo why is this SO angry!
-    
-    dey
-    bne Kernal_Score
-Kernal_Score.lowerBuffer
-    WYSNC_REPEATER 1
-    lda #$00
-    sta GRP1
-    sta ENAM0
-    WYSNC_REPEATER 2
-    lda #CONS_COLOR_BLACK
-    sta COLUPF
-    sta COLUBK
-    WYSNC_REPEATER 2
+    jsr Kernal_Score_Subroutine
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
@@ -731,13 +640,9 @@ Kernal_StopVisuals
     sta PF2
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Inputs
-    jsr ReadJoystick
-    jsr setBlockQueueIdx ; TODO -- maybe move this into that 10 line gap we have after drawing top blocks?
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_DecrementTimer
     dec TimeDec
-    bne Kernal_WaitTilEnd
+    bne Kernal_Inputs
     lda CONS_TIMER_FRAMES_PER_SEC
     sta TimeDec
 Kernal_DecrementTimer.ActualDec
@@ -754,11 +659,20 @@ Kernal_DecrementTimer.ActualDec
     bpl Kernal_ClearMath
     lda #$09
     sta Time+2
+Kernal_TestTimeOver
+    lda Time
+    adc Time+1
+    adc Time+2
+    CMP #$27 ; if its time over we hit 9s in all columns
+    bne Kernal_ClearMath
+    lda #CONS_GAMESTATE_GAMEOVER
+    sta GameState
+    jmp BranchOnGamestate
 Kernal_ClearMath
     cld
 Kernal_DecBlockCounter
     dec NextColorCounter
-    bne Kernal_WaitTilEnd
+    bne Kernal_Inputs
     lda NextColorTimerIdx
     cmp #$03 ; amount of entries we have in AddBlockTimers - 1
     bcs Kernal_DecBlockCounter.IncTimerIdx
@@ -771,13 +685,17 @@ Kernal_DecBlockCounter.IncTimerIdx
     jsr GetRandomQueue
     jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Inputs ; --- above my dec stuff this works. below it fails!
+    jsr ReadJoystick
+    jsr setBlockQueueIdx 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
     nop  ; at: 199 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 Kernal_Overscan
-    TIMER_SETUP 29
+    TIMER_SETUP 35 ; may meed more? at 257
     nop
     TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -1143,9 +1061,35 @@ GetRandomQueue
     bcs GetRandomQueue
 .GetRandomQueue.convert.done
     sta NextColumn
-    rts   
+    rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; runTitleScreen
+; setupPointers
+; 
+setupPointers
+    lda GameState
+    cmp #CONS_GAMESTATE_INITIALIZE
+    beq setupPointers.Initialize
+    cmp #CONS_GAMESTATE_PLAY
+    beq setupPointers.Initialize
+    cmp #CONS_GAMESTATE_GAMEOVER
+    beq setupPointers.GameOver
+setupPointers.Title
+    LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
+    LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
+    LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
+    LOAD_POINTER_WITH_DATA TempPtr_d,Colors
+    jmp setupPointers.End
+setupPointers.GameOver
+    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
+    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
+    jmp setupPointers.End
+setupPointers.Initialize
+    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
+    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
+setupPointers.End
+    rts
+;;;;;;;;;;;;;;;;;;;;;;;
+; Gamestate.Titlescreen
 ;
 runTitleScreen.GotoStart
     lda #CONS_GAMESTATE_INITIALIZE
@@ -1219,30 +1163,139 @@ Kernal_Title.Overscan
     TIMER_WAIT
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; setupPointers
-; 
-setupPointers
-    lda GameState
-    cmp #CONS_GAMESTATE_INITIALIZE
-    beq setupPointers.Initialize
-    cmp #CONS_GAMESTATE_PLAY
-    beq setupPointers.Initialize
-    cmp #CONS_GAMESTATE_GAMEOVER
-    beq setupPointers.GameOver
-setupPointers.Title
-    LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
-    LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
-    LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
-    LOAD_POINTER_WITH_DATA TempPtr_d,Colors
-    jmp setupPointers.End
-setupPointers.GameOver
-    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
-    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
-    jmp setupPointers.End
-setupPointers.Initialize
-    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
-    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
-setupPointers.End
+;
+;
+Gamestate.Gameover.GotoStart
+    lda #CONS_GAMESTATE_INITIALIZE
+    sta GameState
+Gamestate.Gameover
+    START_FRAME Gamestate.Gameover.GotoStart
+    TIMER_SETUP 37
+    sta WSYNC
+    TIMER_WAIT
+    TIMER_SETUP 192
+;;;;;;
+    ldy #60
+Kernal_Gameover.TopGap
+    WYSNC_REPEATER 1
+    dey
+    bne Kernal_Gameover.TopGap
+;;;;;;
+    jsr Kernal_Score_Subroutine
+;;;;;;
+Kernal_Gameover.Bottom
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    sta COLUBK
+    lda #%00000000
+    sta PF0
+    sta PF1
+    sta PF2
+    sta WSYNC
+    TIMER_WAIT
+Kernal_Gameover.Overscan
+    TIMER_SETUP 29
+    sta WSYNC
+    TIMER_WAIT
+    rts
+;;;;;;;;;;
+;
+;
+Kernal_Score_Subroutine
+    ; vv just for testing
+    lda #$00
+    sta ScoreNeg
+    ; ^^ just for testing
+    lda #%0110000
+    sta NUSIZ0
+    lda #%1000110
+    sta NUSIZ1
+    lda #CONS_COLOR_BLACK
+    sta COLUP0
+    sta COLUP1
+    
+    WYSNC_REPEATER 1
+    lda ScoreNeg
+    bne Kernal_PreScore.isNegativeColor
+Kernal_PreScore.isPositiveColor
+    lda #CONS_SCORE_POSITIVE
+    sta COLUBK
+    jmp Kernal_PreScore.getNibbles  
+Kernal_PreScore.isNegativeColor    
+    lda #CONS_SCORE_NEGATIVE
+    sta COLUBK
+Kernal_PreScore.getNibbles    
+    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
+    lda Score
+    and #$0F
+    sta Score
+    lda Score+1
+    and #$0F
+    sta Score+1
+    lda Score+2
+    and #$0F
+    sta Score+2
+    ;-- loop over EVERY digit
+    
+    ldx #02
+Kernal_PreScore.setNumAddresses
+    ldy Score,x
+    clc
+    lda #$05 ; 0 ALWAYS starts at 5
+Kernal_PreScore.loopaddress
+    dey
+    bmi Kernal_PreScore.addTempByte
+    adc #$06
+    jmp Kernal_PreScore.loopaddress
+Kernal_PreScore.addTempByte  
+    sta NumberIdx,x
+    dex
+    bpl Kernal_PreScore.setNumAddresses
+    ;----------------
+    ldy #$06
+Kernal_Score
+    WYSNC_REPEATER 1
+    lda ScoreNeg
+    beq Kernal_Score.extraDelay
+    lda Minus_Sign,y
+    sta ENAM0
+    jmp Kernal_Score.printDigits
+Kernal_Score.extraDelay
+    SLEEP 9
+Kernal_Score.printDigits
+    SLEEP 7
+    ldx NumberIdx+2
+    lda Score_Numbers,x
+    sta GRP1
+
+    ldx NumberIdx+1
+    lda Score_Numbers,x
+    sta GRP1
+    
+    ldx NumberIdx
+    lda Score_Numbers,x
+    sta GRP1
+
+    dec NumberIdx
+    dec NumberIdx+1
+    dec NumberIdx+2
+    
+    lda #$00
+    sta GRP1
+    WYSNC_REPEATER 1; -- todo why is this SO angry!
+    
+    dey
+    bne Kernal_Score
+Kernal_Score.lowerBuffer
+    WYSNC_REPEATER 1
+    lda #$00
+    sta GRP1
+    sta ENAM0
+    WYSNC_REPEATER 2
+    lda #CONS_COLOR_BLACK
+    sta COLUPF
+    sta COLUBK
+    WYSNC_REPEATER 2
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
