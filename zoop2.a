@@ -734,6 +734,7 @@ SetHorizPos.1
         sta HMP0,x	; set fine offset
         sta WSYNC
         sta HMOVE	; apply the previous fine position(s)
+        SLEEP 24
 	    sta HMCLR	; reset the old horizontal position(s)
         rts		; return to caller
 ;;;;;;;;;;;;;;;;;;;;;;;    
@@ -1080,8 +1081,6 @@ setupPointers.Title
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
     jmp setupPointers.End
 setupPointers.GameOver
-    LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
-    LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
     jmp setupPointers.End
 setupPointers.Initialize
     LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
