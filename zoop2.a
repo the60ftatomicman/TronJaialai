@@ -216,6 +216,7 @@ GameState.Initialize
     sta TempByte_a
     sta Score+2
     sta Score+1
+    lda #$01
     sta Score
 
     lda #$01
@@ -277,7 +278,7 @@ Kernal_Temp_Rows
 Kernal_Temp_Next
     dey
     tya
-    cmp #CONS_BQ_VERT_ROWS-2
+    cmp #CONS_BQ_VERT_ROWS-1
     bcs Kernal_Temp_Rows
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -347,7 +348,7 @@ NextFrame
     sta PF2
     
     lda #$00
-    ldx #CONS_BQ_VERT_ROWS-1
+    ldx #CONS_BQ_VERT_ROWS
     sta WSYNC
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
@@ -556,7 +557,7 @@ Kernal_BotBlocks.Rows
     
     inx
     txa
-    cmp #CONS_BQ_VERT_ROWS
+    cmp #CONS_BQ_VERT_ROWS+1
     bmi Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_PreTime
@@ -919,6 +920,7 @@ ReadJoystick
     cmp #CONS_PLAYERZ_COLS-2
     beq .storeCurrentInput
     inc Player0Pos_Col
+    jsr subtractScore
     jmp .storeCurrentInput
 .upOnRelease
     lda Player0Pos_Row
@@ -948,7 +950,7 @@ addScore
     clc
     adc Score+1
     adc Score+2
-    cmp #$00
+    cmp #$00 ; -- TODO, if our math is going to make it switch to positive, lets flip this!
     bne .addScore.switch
     FLIP_BOOL ScoreNeg
 .addScore.switch
@@ -959,7 +961,7 @@ addScore
 .addScore.positive
     clc
     lda Score
-    adc #01
+    adc #02
     sta Score
     cmp #$10
     bne .addScore.end
