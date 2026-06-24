@@ -137,6 +137,7 @@ GameState .byte
 LoopIdx .DS 1
 ;
 BlockQueue_Idx      .byte
+TimeDec     .byte
 	org $A0
 BlockQueue_Top_0 .DS  #CONS_BQ_VERT_COLS
 ;BlockQueue_Top_0_Preview .byte
@@ -174,7 +175,6 @@ NumberIdx   .DS 3
 ScoreNeg    .byte
 Score       .DS 3
 Time        .DS 3
-TimeDec     .byte
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,7 +226,10 @@ GameState.Initialize
     lda #$00
     sta Time
 
-    ldx #00
+    lda CONS_TIMER_FRAMES_PER_SEC
+    sta TimeDec
+    
+    lda #00
     sta NextColorTimerIdx
     lda AddBlockTimers,x
     sta NextColorCounter
@@ -288,10 +291,10 @@ Kernal_Temp_Next
     lda Colors,x
     sta Player0_Color
     ;Just to easily see end of memory
-    lda #$EE
-    sta BlockQueue_Idx+1
-    lda #$FF
-    sta BlockQueue_Idx+2
+    ;lda #$EE
+    ;sta BlockQueue_Idx+1
+    ;lda #$FF
+    ;sta BlockQueue_Idx+2
     jmp NextFrame
 GameState.Play.GotoStart
     lda #CONS_GAMESTATE_TITLE
@@ -679,7 +682,7 @@ Kernal_DecBlockCounter
     dec NextColorCounter
     bne Kernal_Inputs
     lda NextColorTimerIdx
-    cmp #$03 ; amount of entries we have in AddBlockTimers - 1
+    cmp #06; amount of entries we have in AddBlockTimers - 1
     bcs Kernal_DecBlockCounter.IncTimerIdx
     inc NextColorTimerIdx
 Kernal_DecBlockCounter.IncTimerIdx
@@ -792,10 +795,7 @@ handleFireButton
 ; 
 ; 
 setBlockQueueIdx
-    ; we will set the BlockQueue_Idx to point to the proper index
-    ;lda Player0Pos_Col ; maybe lessen this by ALWAYS adding this to our blockqueue?
-    ;sta BlockQueue_Idx
-    ; rows count from bottom UP apparently! starting at 1. my bad?
+     ; rows count from bottom UP apparently! starting at 1. my bad?
     ldy #$00
     lda Player0Pos_Row
     cmp #01
@@ -1366,13 +1366,13 @@ Kernal_Score.lowerBuffer
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
 AddBlockTimers
-    .byte #$13 ; 20s
-    .byte #$13
-    .byte #$0E ; 15s
-    .byte #$0E
-    .byte #$0A ; 10s
-    .byte #$0A
-    .byte #$05 ; 5s
+    .byte #20 ; 20s
+    .byte #20
+    .byte #15 ; 15s
+    .byte #15
+    .byte #10 ; 10s
+    .byte #10
+    .byte #05 ; 5s
 Colors
     .byte #CONS_COLOR_RED
     .byte #CONS_COLOR_ORANGE
