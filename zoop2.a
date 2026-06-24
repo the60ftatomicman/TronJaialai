@@ -649,7 +649,7 @@ Kernal_StopVisuals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_DecrementTimer
     dec TimeDec
-    bne Kernal_Inputs
+    bne Kernal_WaitTilEnd
     lda CONS_TIMER_FRAMES_PER_SEC
     sta TimeDec
 Kernal_DecrementTimer.ActualDec
@@ -679,9 +679,9 @@ Kernal_ClearMath
     cld
 Kernal_DecBlockCounter
     dec NextColorCounter
-    bne Kernal_Inputs
+    bne Kernal_WaitTilEnd
     lda NextColorTimerIdx
-    cmp #04; amount of entries we have in AddBlockTimers - 1
+    cmp #06; amount of entries we have in AddBlockTimers - 1
     bcs Kernal_DecBlockCounter.IncTimerIdx
     inc NextColorTimerIdx
 Kernal_DecBlockCounter.IncTimerIdx
@@ -692,10 +692,6 @@ Kernal_DecBlockCounter.IncTimerIdx
     jsr GetRandomQueue
     jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_Inputs ; --- above my dec stuff this works. below it fails!
-    jsr ReadJoystick
-    jsr setBlockQueueIdx 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
     nop  ; at: 199 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
@@ -703,7 +699,8 @@ Kernal_WaitTilEnd
 ; 29 lines of overscan
 Kernal_Overscan
     TIMER_SETUP 35 ; may meed more? at 257
-    nop
+    jsr ReadJoystick
+    jsr setBlockQueueIdx 
     TIMER_WAIT
 ; total = 262 lines, go to next frame
     jmp NextFrame
@@ -1365,10 +1362,12 @@ Kernal_Score.lowerBuffer
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
 AddBlockTimers
-    .byte #20
+    .byte #21
+    .byte #18
     .byte #15
-    .byte #10
-    .byte #5
+    .byte #12
+    .byte #9
+    .byte #6
     .byte #3
 Colors
     .byte #CONS_COLOR_RED
