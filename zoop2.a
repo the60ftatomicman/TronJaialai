@@ -211,7 +211,8 @@ GameState.Initialize
     
     lda #$00
     sta ScoreNeg
-    
+    sta NextColorTimerIdx
+
     lda #$00
     sta TempByte_a
     sta Score+2
@@ -219,9 +220,9 @@ GameState.Initialize
     lda #$01
     sta Score
 
-    lda #$01
+    lda #$03
     sta Time+2
-    lda #$02
+    lda #$00
     sta Time+1
     lda #$00
     sta Time
@@ -229,8 +230,6 @@ GameState.Initialize
     lda CONS_TIMER_FRAMES_PER_SEC
     sta TimeDec
     
-    lda #00
-    sta NextColorTimerIdx
     lda AddBlockTimers,x
     sta NextColorCounter
     
@@ -682,7 +681,7 @@ Kernal_DecBlockCounter
     dec NextColorCounter
     bne Kernal_Inputs
     lda NextColorTimerIdx
-    cmp #06; amount of entries we have in AddBlockTimers - 1
+    cmp #04; amount of entries we have in AddBlockTimers - 1
     bcs Kernal_DecBlockCounter.IncTimerIdx
     inc NextColorTimerIdx
 Kernal_DecBlockCounter.IncTimerIdx
@@ -1366,13 +1365,11 @@ Kernal_Score.lowerBuffer
 ; Data
 ;;;;;;;;;;;;;;;;;;;;;;;
 AddBlockTimers
-    .byte #20 ; 20s
     .byte #20
-    .byte #15 ; 15s
     .byte #15
-    .byte #10 ; 10s
     .byte #10
-    .byte #05 ; 5s
+    .byte #5
+    .byte #3
 Colors
     .byte #CONS_COLOR_RED
     .byte #CONS_COLOR_ORANGE
