@@ -693,14 +693,15 @@ Kernal_DecBlockCounter.IncTimerIdx
     jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_WaitTilEnd
+    jsr ReadJoystick
+    jsr setBlockQueueIdx 
     nop  ; at: 199 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
     TIMER_WAIT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 29 lines of overscan
 Kernal_Overscan
-    TIMER_SETUP 35 ; may meed more? at 257
-    jsr ReadJoystick
-    jsr setBlockQueueIdx 
+    TIMER_SETUP 29 ; may meed more? at 257
+    nop
     TIMER_WAIT
 ; total = 262 lines, go to next frame
     jmp NextFrame
@@ -1054,6 +1055,11 @@ setRandomBlock
     sta TempPtr_b
     lda #>00
     sta TempPtr_b+1
+    ldy #CONS_BQ_VERT_ROWS
+setRandomBlock.testIfEmpty
+    lda (TempPtr_b),y
+    cmp #CONS_COLOR_BLACK
+    beq setRandomBlock.shiftBlocks.setNextColor
     ldy #$00
 setRandomBlock.testIfFull
     lda (TempPtr_b),y
@@ -1076,7 +1082,7 @@ setRandomBlock.shiftBlocks
 setRandomBlock.shiftBlocks.setNextColor
     ldx NextColor
     lda Colors,x
-    ldy #CONS_BQ_VERT_ROWS-1
+    ldy #CONS_BQ_VERT_ROWS
     sta (TempPtr_b),y
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1166,7 +1172,7 @@ runTitleScreen
     sta CTRLPF
     sta WSYNC
     TIMER_WAIT
-    TIMER_SETUP 192
+    TIMER_SETUP 191
 ;;;;;;
     ldy #60
 Kernal_Title.TopGap
@@ -1253,7 +1259,7 @@ Kernal_Gameover.Bottom
     sta WSYNC
     TIMER_WAIT
 Kernal_Gameover.Overscan
-    TIMER_SETUP 29
+    TIMER_SETUP 28
     sta WSYNC
     TIMER_WAIT
     rts
