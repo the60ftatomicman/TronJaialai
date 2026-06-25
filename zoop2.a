@@ -786,6 +786,7 @@ handleFireButton
     sta (TempPtr_b),y
     lda TempByte_a
     sta Player0_Color
+    jsr subtractScore
 .handleFireButton.NoAction
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
@@ -910,14 +911,12 @@ ReadJoystick
     cmp #$00
     beq .storeCurrentInput
     dec Player0Pos_Col
-    jsr subtractScore
     jmp .storeCurrentInput
 .rightOnRelease
     lda Player0Pos_Col
     cmp #CONS_PLAYERZ_COLS-2
     beq .storeCurrentInput
     inc Player0Pos_Col
-    jsr subtractScore
     jmp .storeCurrentInput
 .upOnRelease
     lda Player0Pos_Row
@@ -950,7 +949,7 @@ addScore
 .addScore.positive
     clc
     lda Score
-    adc #03
+    adc #02
     sta Score
     cmp #$10
     bne .addScore.end
