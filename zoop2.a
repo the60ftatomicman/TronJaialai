@@ -584,68 +584,8 @@ Kernal_BotBlocks.Rows
     bmi Kernal_BotBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_PreTime
-    lda #%00000000
-    sta PF0
-    lda #%00000000
-    sta PF1
-    lda #%00000000
-    sta PF2
-    WYSNC_REPEATER 2
-    lda #CONS_TIME_BG
-    sta COLUBK
-Kernal_PreTime.getNibbles    
-    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
-    lda Time
-    and #$0F
-    sta Time
-    lda Time+1
-    and #$0F
-    sta Time+1
-    lda Time+2
-    and #$0F
-    sta Time+2
-    ;-- loop over EVERY digit
-    ldx #02
-Kernal_PreTime.setNumAddresses
-    ldy Time,x
-    clc
-    lda #$05 ; 0 ALWAYS starts at 5
-Kernal_PreTime.loopaddress
-    dey
-    bmi Kernal_PreTime.addTempByte_a
-    adc #$06
-    jmp Kernal_PreTime.loopaddress
-Kernal_PreTime.addTempByte_a  
-    sta NumberIdx,x
-    dex
-    bpl Kernal_PreTime.setNumAddresses
-    ;----------------
-    ldy #$06
-Kernal_Time
-    WYSNC_REPEATER 1
-    SLEEP 23 
-    ldx NumberIdx+2
-    lda Score_Numbers,x
-    sta GRP1
 
-    ldx NumberIdx+1
-    lda Score_Numbers,x
-    sta GRP1
-    
-    ldx NumberIdx
-    lda Score_Numbers,x
-    sta GRP1
-
-    dec NumberIdx
-    dec NumberIdx+1
-    dec NumberIdx+2
-    
-    lda #$00
-    sta GRP1
-    WYSNC_REPEATER 1!
-    
-    dey
-    bne Kernal_Time
+    jsr Kernal_Time_Subroutine
 Kernal_Time.lowerBuffer
     WYSNC_REPEATER 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1297,6 +1237,7 @@ Kernal_Gameover.TopGap
     bne Kernal_Gameover.TopGap
 ;;;;;;
     jsr Kernal_Score_Subroutine
+    jsr Kernal_Time_Subroutine
 ;;;;;;
 Kernal_Gameover.Bottom
     lda #CONS_COLOR_BLACK
@@ -1424,6 +1365,70 @@ Kernal_Score.lowerBuffer
     sta COLUPF
     sta COLUBK
     WYSNC_REPEATER 2
+    rts
+
+Kernal_Time_Subroutine  
+    lda #%00000000
+    sta PF0
+    lda #%00000000
+    sta PF1
+    lda #%00000000
+    sta PF2
+    WYSNC_REPEATER 2
+    lda #CONS_TIME_BG
+    sta COLUBK
+    ; -- Always set the digit right nibble, we'll probably do this LATER in the code
+    lda Time
+    and #$0F
+    sta Time
+    lda Time+1
+    and #$0F
+    sta Time+1
+    lda Time+2
+    and #$0F
+    sta Time+2
+    ;-- loop over EVERY digit
+    ldx #02
+Kernal_PreTime.setNumAddresses
+    ldy Time,x
+    clc
+    lda #$05 ; 0 ALWAYS starts at 5
+Kernal_PreTime.loopaddress
+    dey
+    bmi Kernal_PreTime.addTempByte_a
+    adc #$06
+    jmp Kernal_PreTime.loopaddress
+Kernal_PreTime.addTempByte_a  
+    sta NumberIdx,x
+    dex
+    bpl Kernal_PreTime.setNumAddresses
+    ;----------------
+    ldy #$06
+Kernal_Time
+    WYSNC_REPEATER 1
+    SLEEP 23 
+    ldx NumberIdx+2
+    lda Score_Numbers,x
+    sta GRP1
+
+    ldx NumberIdx+1
+    lda Score_Numbers,x
+    sta GRP1
+    
+    ldx NumberIdx
+    lda Score_Numbers,x
+    sta GRP1
+
+    dec NumberIdx
+    dec NumberIdx+1
+    dec NumberIdx+2
+    
+    lda #$00
+    sta GRP1
+    WYSNC_REPEATER 1!
+    
+    dey
+    bne Kernal_Time
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
