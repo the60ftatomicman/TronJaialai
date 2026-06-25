@@ -994,7 +994,6 @@ addScore
     lda TempByte_a
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
-; Issue -- we flip the bit at the beginning, should be after.
 ;
 subtractScore
     sta TempByte_a
