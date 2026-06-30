@@ -79,8 +79,10 @@ CONS_TIME_BG           EQU CONS_COLOR_PURPLE
 ; just the first few lines when drawing a frame
     MAC START_FRAME
 .GOTO_LBL_ON_RESET SET {1}
-    lsr SWCHB      ; test Game Reset switch
-    bcc .GOTO_LBL_ON_RESET  ; reset?
+    ;lsr SWCHB      ; test Game Reset switch
+    ;bcc .GOTO_LBL_ON_RESET  ; reset?
+    LDA INPT4  ; Load the state of Player 1's fire button
+    BPL .GOTO_LBL_ON_RESET   ; Branch if Bit 7 is clear (button pulls line low)
     VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
     ENDM
 ;--------
@@ -327,7 +329,9 @@ GameState.Play.GotoStart
 GameState.Play
     nop
 NextFrame
-    START_FRAME GameState.Play.GotoStart
+    lsr SWCHB      ; test Game Reset switch
+    bcc GameState.Play.GotoStart ; reset?
+    VERTICAL_SYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 37 lines of underscan
     TIMER_SETUP 37
