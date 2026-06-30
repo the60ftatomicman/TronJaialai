@@ -256,55 +256,8 @@ GameState.Initialize
     lda AddBlockTimers,x
     sta NextColorCounter
     
-    ldy #CONS_BQ_VERT_ROWS
-Kernal_Temp_Rows
-    ;TOP
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Top_0,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Top_1,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Top_2,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Top_3,y    
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Top_4,y
-    ;BOT
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Bot_0,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Bot_1,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Bot_2,y
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Bot_3,y    
-    jsr GetRandomColor
-    ldx NextColor
-    lda Colors,x
-    sta BlockQueue_Bot_4,y
-Kernal_Temp_Next
-    dey
-    tya
-    cmp #CONS_BQ_VERT_ROWS-1
-    bcs Kernal_Temp_Rows
+    jsr InitializeRows
+
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Setup Other Player Things
@@ -1434,6 +1387,75 @@ Kernal_Time
     dey
     bne Kernal_Time
     rts
+
+InitializeRows    
+    ldy #$08
+.InitializeRows.Empty
+    lda #$00
+    sta BlockQueue_Top_0,y
+    sta BlockQueue_Top_1,y
+    sta BlockQueue_Top_2,y
+    sta BlockQueue_Top_3,y
+    sta BlockQueue_Top_4,y
+    sta BlockQueue_Bot_0,y
+    sta BlockQueue_Bot_1,y
+    sta BlockQueue_Bot_2,y
+    sta BlockQueue_Bot_3,y
+    sta BlockQueue_Bot_4,y
+    dey
+    bne .InitializeRows.Empty
+
+    ldy #CONS_BQ_VERT_ROWS
+.InitializeRows.Fill
+    ;TOP
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Top_0,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Top_1,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Top_2,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Top_3,y    
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Top_4,y
+    ;BOT
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Bot_0,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Bot_1,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Bot_2,y
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Bot_3,y    
+    jsr GetRandomColor
+    ldx NextColor
+    lda Colors,x
+    sta BlockQueue_Bot_4,y
+InitializeRows.Fill.Next
+    dey
+    tya
+    cmp #CONS_BQ_VERT_ROWS-1
+    bcs .InitializeRows.Fill
+    rts
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
