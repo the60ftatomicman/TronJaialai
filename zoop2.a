@@ -1,29 +1,13 @@
     processor 6502
-    include "vcs.h"
-    include "macro.h"
-    include "xmacro.h"
+    include "./includes/vcs.h"
+    include "./includes/macro.h"
+    include "./includes/xmacro.h"
+    include "./includes/colors.h"
+    include "./includes/zoop/zoop_macros.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants segment
-; ---- COLORS
-CONS_COLOR_BLACK  EQU $00
-CONS_COLOR_LGREY  EQU #04
-CONS_COLOR_GREY_C EQU $0C
-CONS_COLOR_GREY_7 EQU $07
-CONS_COLOR_GREY   EQU $02
-CONS_COLOR_WHITE  EQU $0E
-
-CONS_COLOR_RED    EQU $46
-CONS_COLOR_ORANGE EQU $38
-CONS_COLOR_YELLOW EQU $1E
-CONS_COLOR_GREEN  EQU $C6
-CONS_COLOR_BLUE   EQU $A6
-CONS_COLOR_PURPLE EQU $64
-
-CONS_COLOR_PINK   EQU $3C
-CONS_COLOR_TEAL   EQU $8D
-CONS_COLOR_CHART  EQU $CA
 ; ---- COLOR MAPPING TO OBJECT
 CONS_GRID_BRICKS_BG    EQU CONS_COLOR_GREY_C
 CONS_GRID_CLIFF_BG     EQU CONS_COLOR_GREY_7
@@ -33,70 +17,6 @@ CONS_PLAYERZONE_NOACT  EQU CONS_COLOR_LGREY
 CONS_SCORE_POSITIVE    EQU CONS_COLOR_GREEN
 CONS_SCORE_NEGATIVE    EQU CONS_COLOR_RED
 CONS_TIME_BG           EQU CONS_COLOR_PURPLE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Macros
-;--------
-; FLIP_BOOL
-; Original author: Andy Garber
-; Takes a memory address and flips it's value than stores it
-; Assumes the Memory address value is 1 or 0
-; usage: FLIP_BOOL SomeAddress
-    MAC FLIP_BOOL
-.MEMADDR     SET {1}
-    lda .MEMADDR
-    EOR #$01
-    sta .MEMADDR
-    ENDM
-
-;--------
-; LOAD_POINTER_WITH_DATA
-; Original author: Andy Garber
-; Loads a pointer with low byte than high byte address of data object
-; usage: LOAD_POINTER_WITH_DATA pointer data
-    MAC LOAD_POINTER_WITH_DATA
-.POINTER      SET {1}
-.DATA_BLOB    SET {2}
-    lda #<.DATA_BLOB
-    sta .POINTER
-    lda #>.DATA_BLOB
-    sta .POINTER+1
-    ENDM
-;--------
-; WYSNC_REPEATER
-; Original author: Andy Garber
-; just a wrapper around REPEAT X lines of WSYNC. used to help with spacing in this game.
-    MAC WYSNC_REPEATER
-.LINES_TO_WAIT SET {1}
-    REPEAT .LINES_TO_WAIT
-        sta WSYNC
-    REPEND
-    ENDM
-;--------
-; START_FRAME
-; Original author: Andy Garber
-; just the first few lines when drawing a frame
-    MAC START_FRAME
-.GOTO_LBL_ON_RESET SET {1}
-    ;lsr SWCHB      ; test Game Reset switch
-    ;bcc .GOTO_LBL_ON_RESET  ; reset?
-    LDA INPT4  ; Load the state of Player 1's fire button
-    BPL .GOTO_LBL_ON_RESET   ; Branch if Bit 7 is clear (button pulls line low)
-    VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
-    ENDM
-;--------
-; SET_SOUND
-; Original author: Andy Garber
-; set the sound idx and counter
-    MAC SET_SOUND
-.IDX      SET {1}
-.COUNTER  SET {2}
-    lda #.IDX
-    sta PlaySoundIdx
-    lda #.COUNTER
-    sta PlaySoundCounter
-    ENDM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,6 +47,7 @@ CONS_GAMESTATE_GAMEOVER   EQU #01
 ;
 TempByte_a .byte
 TempByte_b .byte
+TempByte_c .byte
 TempPtr_a    .DS 2
 TempPtr_b    .DS 2
 TempPtr_c    .DS 2
@@ -206,7 +127,7 @@ Start
     lda #CONS_GAMESTATE_TITLE
     sta GameState
 BranchOnGamestate
-    jsr setupPointers
+    jsr setupVarsPointers
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
     beq GameState.Initialize
@@ -992,8 +913,6 @@ subtractScore
     lda TempByte_a
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
-; lets use this instead. the clankers aren't super great at this.
-; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html
 setRandomBlock
     ldy NextColumn
     lda (TempPtr_c),y
@@ -1077,28 +996,31 @@ GetRandomQueue
     sta NextColumn
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; setupPointers
-; 
-setupPointers
+; setupVarsPointers
+; Used to setup any pointers or variables we'll use  in a specific game state
+; Author: Andy Garber
+setupVarsPointers
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
-    beq setupPointers.Initialize
+    beq setupVarsPointers.Initialize
     cmp #CONS_GAMESTATE_PLAY
-    beq setupPointers.Initialize
+    beq setupVarsPointers.Initialize
     cmp #CONS_GAMESTATE_GAMEOVER
-    beq setupPointers.GameOver
-setupPointers.Title
+    beq setupVarsPointers.GameOver
+setupVarsPointers.Title
     LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
     LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
-    jmp setupPointers.End
-setupPointers.GameOver
-    jmp setupPointers.End
-setupPointers.Initialize
+    lda #$05
+    sta TempByte_b ; -- we will use this in the title to determine our starting color for a cool rainbow effect
+    jmp setupVarsPointers.End
+setupVarsPointers.GameOver
+    jmp setupVarsPointers.End
+setupVarsPointers.Initialize
     LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
     LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
-setupPointers.End
+setupVarsPointers.End
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Gamestate.Titlescreen
@@ -1128,21 +1050,15 @@ Kernal_Title.TopGap
     bne Kernal_Title.TopGap
 ;;;;;;
     WYSNC_REPEATER 1
-    lda #$00
-    sta TempByte_a
     ldy #5
 Kernal_Title.Letters
-Kernal_Title.LoadPF
+    sty TempByte_a
+    ldy TempByte_b
     lda (TempPtr_d),y
     sta COLUBK
-    FLIP_BOOL TempByte_a
-    bne Kernal_Title.ColorB
-Kernal_Title.ColorA
+    ldy TempByte_a
+
     lda #CONS_COLOR_WHITE
-    jmp Kernal_Title.StartWritePF
-Kernal_Title.ColorB
-    lda #CONS_COLOR_WHITE
-Kernal_Title.StartWritePF
     sta COLUPF
     ldx #10
 Kernal_Title.WritePF
@@ -1156,6 +1072,7 @@ Kernal_Title.WritePF
     sta PF1
     dex
     bne Kernal_Title.WritePF
+    dec TempByte_b
     dey 
     bpl Kernal_Title.Letters
 ;;;;;;
@@ -1171,6 +1088,7 @@ Kernal_Title.Bottom
     TIMER_WAIT
 Kernal_Title.Overscan
     TIMER_SETUP 29
+    ;lda Temp
     sta WSYNC
     TIMER_WAIT
     rts
@@ -1228,10 +1146,6 @@ Kernal_Gameover.skip
 ;
 ;
 Kernal_Score_Subroutine
-    ; vv just for testing
-    ;lda #$00
-    ;sta ScoreNeg
-    ; ^^ just for testing
     lda #%0110000
     sta NUSIZ0
     lda #%1000110
@@ -1242,15 +1156,15 @@ Kernal_Score_Subroutine
     
     WYSNC_REPEATER 1
     lda ScoreNeg
-    bne Kernal_PreScore.isNegativeColor
-Kernal_PreScore.isPositiveColor
+    bne .Kernal_Score.Prescore.isNegativeColor
+.Kernal_Score.Prescore.isPositiveColor
     lda #CONS_SCORE_POSITIVE
     sta COLUBK
-    jmp Kernal_PreScore.getNibbles  
-Kernal_PreScore.isNegativeColor    
+    jmp .Kernal_Score.Prescore.getNibbles  
+.Kernal_Score.Prescore.isNegativeColor    
     lda #CONS_SCORE_NEGATIVE
     sta COLUBK
-Kernal_PreScore.getNibbles    
+.Kernal_Score.Prescore.getNibbles    
     ; -- Always set the digit right nibble, we'll probably do this LATER in the code
     lda Score
     and #$0F
@@ -1264,31 +1178,31 @@ Kernal_PreScore.getNibbles
     ;-- loop over EVERY digit
     
     ldx #02
-Kernal_PreScore.setNumAddresses
+.Kernal_Score.Prescore.setNumAddresses
     ldy Score,x
     clc
     lda #$05 ; 0 ALWAYS starts at 5
-Kernal_PreScore.loopaddress
+.Kernal_Score.Prescore.loopaddress
     dey
-    bmi Kernal_PreScore.addTempByte_a
+    bmi .Kernal_Score.Prescore.addTempByte_a
     adc #$06
-    jmp Kernal_PreScore.loopaddress
-Kernal_PreScore.addTempByte_a  
+    jmp .Kernal_Score.Prescore.loopaddress
+.Kernal_Score.Prescore.addTempByte_a  
     sta NumberIdx,x
     dex
-    bpl Kernal_PreScore.setNumAddresses
+    bpl .Kernal_Score.Prescore.setNumAddresses
     ;----------------
     ldy #$06
-Kernal_Score
+.Kernal_Score
     WYSNC_REPEATER 1
     lda ScoreNeg
-    beq Kernal_Score.extraDelay
+    beq .Kernal_Score.extraDelay
     lda Minus_Sign,y
     sta ENAM0
-    jmp Kernal_Score.printDigits
-Kernal_Score.extraDelay
+    jmp .Kernal_Score.printDigits
+.Kernal_Score.extraDelay
     SLEEP 9
-Kernal_Score.printDigits
+.Kernal_Score.printDigits
     SLEEP 7
     ldx NumberIdx+2
     lda Score_Numbers,x
@@ -1311,8 +1225,8 @@ Kernal_Score.printDigits
     WYSNC_REPEATER 1; -- todo why is this SO angry!
     
     dey
-    bne Kernal_Score
-Kernal_Score.lowerBuffer
+    bne .Kernal_Score
+.Kernal_Score.PostScore
     WYSNC_REPEATER 1
     lda #$00
     sta GRP1
@@ -1460,167 +1374,7 @@ InitializeRows.Fill.Next
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
-;;;;;;;;;;;;;;;;;;;;;;;
-AddBlockTimers
-    .byte #21
-    .byte #18
-    .byte #15
-    .byte #12
-    .byte #9
-    .byte #6
-    .byte #3
-Colors
-    .byte #CONS_COLOR_RED
-    .byte #CONS_COLOR_ORANGE
-    .byte #CONS_COLOR_YELLOW
-    .byte #CONS_COLOR_GREEN
-    .byte #CONS_COLOR_BLUE
-    .byte #CONS_COLOR_PURPLE
-PlayerZone_Colors
-    .byte #CONS_PLAYERZONE_ACTION
-    .byte #CONS_PLAYERZONE_NOACT
-    .byte #CONS_PLAYERZONE_ACTION
-PlayerColMemAddresses
-    .byte BlockQueue_Top_0
-    .byte BlockQueue_Top_1
-    .byte BlockQueue_Top_2
-    .byte BlockQueue_Top_3
-    .byte BlockQueue_Top_4
-    .byte BlockQueue_Bot_0
-    .byte BlockQueue_Bot_1
-    .byte BlockQueue_Bot_2
-    .byte BlockQueue_Bot_3
-    .byte BlockQueue_Bot_4
-;;;;;;;;;;;;;;;;;;;;;;;
-PlayerPositions_Columns
-    .byte #$2D
-    .byte #$41
-    .byte #$55
-    .byte #$69
-    .byte #$7D
-    .byte #$7D
-;;;;;;;;;;;;;;;;;;;;;;;
-Sounds_AUDC0
-    .byte #00
-    .byte #12
-    .byte #12
-    .byte #15
-    .byte #12
-Sounds_AUDF0
-    .byte #00
-    .byte #20
-    .byte #30
-    .byte #30
-    .byte #30
-Sounds_AUDV0
-    .byte #0
-    .byte #5
-    .byte #5
-    .byte #5
-    .byte #5
-;;;;;;;;;;;;;;;;;;;;;;;
-Minus_Sign
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%11111111
-    .byte #%00000000
-    .byte #%00000000
-;;;;;;;;;;;;;;;;;;;;;;; 
-Score_Numbers
-    ; ---- 00
-    .byte #%11111111
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11111111
-    ; ---- 11
-    .byte #%11111111
-    .byte #%00011100
-    .byte #%00011100
-    .byte #%00011100
-    .byte #%11011100
-    .byte #%01111100
-    ; ---- 22
-    .byte #%11111110
-    .byte #%11100000
-    .byte #%00111000
-    .byte #%00001110
-    .byte #%11100110
-    .byte #%01111100
-    ; ---- 33
-    .byte #%01111100
-    .byte #%11100011
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%11100011
-    .byte #%01111100
-    ; ---- 44
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%11111111
-    .byte #%11001110
-    .byte #%11001110
-    ; ---- 55
-    .byte #%11111111
-    .byte #%00000011
-    .byte #%00011111
-    .byte #%11100000
-    .byte #%11100000
-    .byte #%11111111
-    ; ---- 66
-    .byte #%11111111
-    .byte #%11100011
-    .byte #%11111111
-    .byte #%11100000
-    .byte #%11100000
-    .byte #%11111111
-    ; ---- 77
-    .byte #%00011000
-    .byte #%00011000
-    .byte #%00011000
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%11111111
-    ; ---- 88
-    .byte #%11111111
-    .byte #%11000011
-    .byte #%11100111
-    .byte #%11111111
-    .byte #%11000011
-    .byte #%11111111
-    ; ---- 99
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%11111111
-    .byte #%11000111
-    .byte #%11000111
-    .byte #%11111111
-;;;;;;;;;;;;;;;;;;;;;;; 
-Title_Screen_PF1_LEFT
-    .byte #%01111110
-    .byte #%01100010
-    .byte #%00110000
-    .byte #%00001100
-    .byte #%01000110
-    .byte #%01111110  
-Title_Screen_PF1_RIGHT
-    .byte #%000000110
-    .byte #%00000110
-    .byte #%00000110
-    .byte #%01111110
-    .byte #%01100110
-    .byte #%01111110
-Title_Screen_PF2_LEFT
-    .byte #%01111110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01111110
+    include "./includes/zoop/zoop_data.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
