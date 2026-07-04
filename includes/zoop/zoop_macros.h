@@ -26,26 +26,23 @@
     sta .POINTER+1
     ENDM
 ;--------
-; WYSNC_REPEATER
+; WSYNC_REPEATER
 ; Original author: Andy Garber
 ; just a wrapper around REPEAT X lines of WSYNC. used to help with spacing in this game.
-    MAC WYSNC_REPEATER
+    MAC WSYNC_REPEATER
 .LINES_TO_WAIT SET {1}
     REPEAT .LINES_TO_WAIT
         sta WSYNC
     REPEND
     ENDM
 ;--------
-; START_FRAME
+; SWITCH_STATE_BY_FIRE
 ; Original author: Andy Garber
-; just the first few lines when drawing a frame
-    MAC START_FRAME
+; Switch state if we press the fire button
+    MAC SWITCH_STATE_BY_FIRE
 .GOTO_LBL_ON_RESET SET {1}
-    ;lsr SWCHB      ; test Game Reset switch
-    ;bcc .GOTO_LBL_ON_RESET  ; reset?
     LDA INPT4  ; Load the state of Player 1's fire button
     BPL .GOTO_LBL_ON_RESET   ; Branch if Bit 7 is clear (button pulls line low)
-    VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
     ENDM
 ;--------
 ; SET_SOUND

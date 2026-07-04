@@ -3,6 +3,7 @@
     include "./includes/macro.h"
     include "./includes/xmacro.h"
     include "./includes/colors.h"
+    include "./includes/constants.h"
     include "./includes/zoop/zoop_macros.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -17,6 +18,7 @@ CONS_PLAYERZONE_NOACT  EQU CONS_COLOR_LGREY
 CONS_SCORE_POSITIVE    EQU CONS_COLOR_GREEN
 CONS_SCORE_NEGATIVE    EQU CONS_COLOR_RED
 CONS_TIME_BG           EQU CONS_COLOR_PURPLE
+CONS_COLOR_COUNT       EQU #6               ;-- See DATA/Colors for the actual list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,6 +50,7 @@ CONS_GAMESTATE_GAMEOVER   EQU #01
 TempByte_a .byte
 TempByte_b .byte
 TempByte_c .byte
+TempByte_d .byte
 TempPtr_a    .DS 2
 TempPtr_b    .DS 2
 TempPtr_c    .DS 2
@@ -63,8 +66,6 @@ Random     .byte
 ;
 PlaySoundCounter .byte
 PlaySoundIdx .byte
-;
-CliffColor .byte
 ;
 Player0Pos_Col .byte
 Player0Pos_Row .byte
@@ -126,8 +127,9 @@ Start
     sta PlaySoundIdx
     lda #CONS_GAMESTATE_TITLE
     sta GameState
-BranchOnGamestate
-    jsr setupVarsPointers
+    jmp Kernal_SwitchState
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Gamestate.Branching
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
     beq GameState.Initialize
@@ -136,12 +138,12 @@ BranchOnGamestate
     cmp #CONS_GAMESTATE_GAMEOVER
     beq GameState.GameOver    
 GameState.Title
-    jsr runTitleScreen
-    jmp BranchOnGamestate
+    jmp Kernal_Title
 GameState.GameOver
-    jsr Gamestate.Gameover
-    jmp BranchOnGamestate
+    jmp Kernal_Gameover
 GameState.Initialize
+    VERTICAL_SYNC
+
     lda #$02
     sta Player0Pos_Col
     sta BlockQueue_Idx
@@ -176,8 +178,6 @@ GameState.Initialize
     ldx NextColorTimerIdx
     lda AddBlockTimers,x
     sta NextColorCounter
-    
-    jsr InitializeRows
 
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -195,7 +195,7 @@ GameState.Initialize
 GameState.Play.GotoStart
     lda #CONS_GAMESTATE_TITLE
     sta GameState
-    jmp Start
+    jmp Kernal_SwitchState
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -208,31 +208,26 @@ NextFrame
     VERTICAL_SYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 37 lines of underscan
-    TIMER_SETUP 37
+    TIMER_SETUP CONS_PRESCREEN_LINES
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Positions
-    sta WSYNC
-;;;;;;;;;;;;;;;;;;;;;;;
+    WSYNC_REPEATER 1
 ; Set Player X -- todo make this a pointer and data table affair.
     ldy Player0Pos_Col
     lda (TempPtr_a),y
     ldx #0           ; player 0
     jsr SetHorizPos
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_SCORE_LEFTMOST_DIGIT_X
     ldx #1           ; player 1
     jsr SetHorizPos
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_SCORE_MINUS_SIGN_X
     ldx #02 ; player 0 missle
     jsr SetHorizPos
     nop
     TIMER_WAIT
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 192 lines of frame
-
-    TIMER_SETUP 192
+    TIMER_SETUP CONS_ONSCREEN_LINES
 ;;;;;;;;;;;;;;;;;;;;;;;
     jsr Kernal_Score_Subroutine
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -250,12 +245,12 @@ NextFrame
     
     lda #$00
     ldx #CONS_BQ_VERT_ROWS
-    sta WSYNC
+    WSYNC_REPEATER 1
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
 Kernal_TopBlocks.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda BlockQueue_Top_0,x
     sta COLUBK
@@ -282,12 +277,12 @@ Kernal_TopBlocks.Rows
     nop
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     dex
     bpl Kernal_TopBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda #%00000000
     sta PF0
@@ -296,28 +291,28 @@ Kernal_TopBlocks.Rows
     lda #%10000110
     sta PF2
     lda #CONS_GRID_CLIFF_BG
-    sta CliffColor
+    sta TempByte_d
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Top
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     sec
     sbc #01
-    sta CliffColor
+    sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
 Kernal_Cliff_Top.ColorBandLoop
-    sta WSYNC
+    WSYNC_REPEATER 1
     dex 
     bne Kernal_Cliff_Top.ColorBandLoop
     dey
     bne Kernal_Cliff_Top
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     
     lda #%00000001
@@ -342,7 +337,7 @@ Kernal_PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
     
 Kernal_PlayerZone.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda PlayerZone_Colors,x ; TODO -- from color data table
     sta COLUBK
 
@@ -360,19 +355,19 @@ Kernal_PlayerZone.EndPlayer
     sta GRP0 
     dey
     bne Kernal_PlayerZone.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
     lda #$00
     sta GRP0
     
     inx
-    sta WSYNC
+    WSYNC_REPEATER 1
 
     dec LoopIdx
     bne Kernal_PlayerZone
 ;;;;;;;;;;;;;;;;;;;;;;;
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda #%00000000
     sta PF0
@@ -383,30 +378,30 @@ Kernal_PlayerZone.EndPlayer
 
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Bot
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     clc
     adc #01
-    sta CliffColor
+    sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
 Kernal_Cliff_Bot.ColorBandLoop
-    sta WSYNC
+    WSYNC_REPEATER 1
     dex 
     bne Kernal_Cliff_Bot.ColorBandLoop
     dey
     bne Kernal_Cliff_Bot
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
@@ -422,12 +417,12 @@ Kernal_Cliff_Bot.ColorBandLoop
     
     lda #$00
     ldx #00
-    sta WSYNC
+    WSYNC_REPEATER 1
 Kernal_BotBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
 Kernal_BotBlocks.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda BlockQueue_Bot_0,x
     sta COLUBK
@@ -454,7 +449,7 @@ Kernal_BotBlocks.Rows
     nop
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     inx
     txa
@@ -465,7 +460,7 @@ Kernal_PreTime
 
     jsr Kernal_Time_Subroutine
 Kernal_Time.lowerBuffer
-    WYSNC_REPEATER 3
+    WSYNC_REPEATER 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
     lda #00
@@ -514,7 +509,7 @@ Kernal_TestTimeOver
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
-    jmp BranchOnGamestate
+    jmp Kernal_SwitchState
 Kernal_ClearMath
     cld
 Kernal_DecBlockCounter
@@ -565,12 +560,12 @@ Kernal_Overscan.skip
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 SetPositionMissles 
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #46 ;#46
     ldx #2           ; player 0 Missle
     jsr SetHorizPos
 
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #62
     ldx #3           ; player 1 Missle
     jsr SetHorizPos
@@ -579,7 +574,7 @@ SetPositionMissles
 ; A = X coordinate
 ; X = player number (0 or 1)
 SetHorizPos
-        sta WSYNC	; start a new line
+        WSYNC_REPEATER 1	; start a new line
         sec		; set carry flag
 SetHorizPos.1
 	sbc #15		; subtract 15
@@ -591,7 +586,7 @@ SetHorizPos.1
         asl
         sta RESP0,x	; fix coarse position
         sta HMP0,x	; set fine offset
-        sta WSYNC
+        WSYNC_REPEATER 1
         sta HMOVE	; apply the previous fine position(s)
         SLEEP 24
 	    sta HMCLR	; reset the old horizontal position(s)
@@ -932,7 +927,7 @@ setRandomBlock.testIfFull
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
-    jmp BranchOnGamestate
+    jmp Kernal_SwitchState
 setRandomBlock.shiftBlocks
     tya
     cmp #CONS_BQ_VERT_ROWS
@@ -1012,8 +1007,6 @@ setupVarsPointers.Title
     LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
     LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
-    lda #$05
-    sta TempByte_b ; -- we will use this in the title to determine our starting color for a cool rainbow effect
     jmp setupVarsPointers.End
 setupVarsPointers.GameOver
     jmp setupVarsPointers.End
@@ -1023,46 +1016,95 @@ setupVarsPointers.Initialize
 setupVarsPointers.End
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; Gamestate.Titlescreen
-;
-runTitleScreen.GotoStart
-    lda #CONS_GAMESTATE_INITIALIZE
-    sta GameState
+; Kernal_SwitchState
+; used to just give us a clean place to switch our game states
+; No vars used. set GAMESTATE before you come here!
+Kernal_SwitchState
+    VERTICAL_SYNC
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_PRESCREEN_LINES
     lda INTIM           ; Use the timer counter value
     cmp #$00
-    bne setRandomSeed
+    bne .Kernal_SwitchState.setRandomSeed
     lda #$87
-setRandomSeed
+.Kernal_SwitchState.setRandomSeed
     sta Random
-runTitleScreen
-    START_FRAME runTitleScreen.GotoStart
-    TIMER_SETUP 37
+.Kernal_SwitchState.setupVarsPointers
+    jsr setupVarsPointers
+    WSYNC_REPEATER 1
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_ONSCREEN_LINES
+    WSYNC_REPEATER 1
+    jsr InitializeRows
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_OFFSCREEN_LINES
+    WSYNC_REPEATER 1
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    jmp Gamestate.Branching
+;;;;;;;;;;;;;;;;;;;;;;;
+; Kernal_Title
+; ----------- Temp Variables -----------
+; TempByte_a = Unused
+; TempByte_b = Unused
+; TempByte_c = Unused
+; TempByte_d = Unused
+; TempPtr_a = pointer to Title_Screen_PF1_LEFT
+; TempPtr_b = pointer to Title_Screen_PF1_RIGHT
+; TempPtr_c = pointer to Title_Screen_PF2_LEFT
+; TempPtr_d = pointer to Colors
+; 
+Kernal_Title.SwitchState
+    lda #CONS_GAMESTATE_INITIALIZE
+    sta GameState
+    jmp Kernal_SwitchState
+Kernal_Title
+    SWITCH_STATE_BY_FIRE Kernal_Title.SwitchState
+    VERTICAL_SYNC
+    TIMER_SETUP CONS_PRESCREEN_LINES
     lda #%00000001
     sta CTRLPF
-    sta WSYNC
-    TIMER_WAIT
-    TIMER_SETUP 191
-;;;;;;
-    ldy #60
-Kernal_Title.TopGap
-    WYSNC_REPEATER 1
-    dey
-    bne Kernal_Title.TopGap
-;;;;;;
-    WYSNC_REPEATER 1
-    ldy #5
-Kernal_Title.Letters
-    sty TempByte_a
-    ldy TempByte_b
-    lda (TempPtr_d),y
-    sta COLUBK
-    ldy TempByte_a
-
+    ; TODO -- actually implement the characters here
+    lda #%00000011
+    sta NUSIZ0
+    lda #%00000011
+    sta NUSIZ1
     lda #CONS_COLOR_WHITE
     sta COLUPF
+    sta COLUP0
+    lda #CONS_COLOR_TEAL
+    sta COLUP1
+;;;;;;
+Kernal_Title.SetPositions
+    WSYNC_REPEATER 1
+    lda #60 ; Player 0 Position
+    ldx #0           ; player 0
+    jsr SetHorizPos
+    WSYNC_REPEATER 1
+    lda #68
+    ldx #1   ; Player 1 Position
+    jsr SetHorizPos
+    WSYNC_REPEATER 1
+    TIMER_WAIT
+    TIMER_SETUP CONS_ONSCREEN_LINES
+;;;;;;
+    ldy #60
+.Kernal_Title.TopGap
+    WSYNC_REPEATER 1
+    dey
+    bne .Kernal_Title.TopGap
+;;;;;;
+    WSYNC_REPEATER 1
+    ldy #5
+.Kernal_Title.Letters
+    lda (TempPtr_d),y
+    sta COLUBK
+;;;;;;
     ldx #10
-Kernal_Title.WritePF
-    WYSNC_REPEATER 1
+.Kernal_Title.WritePF
+    WSYNC_REPEATER 1
     lda (TempPtr_a),y
     sta PF1
     lda (TempPtr_c),y
@@ -1071,12 +1113,11 @@ Kernal_Title.WritePF
     lda (TempPtr_b),y
     sta PF1
     dex
-    bne Kernal_Title.WritePF
-    dec TempByte_b
+    bne .Kernal_Title.WritePF
     dey 
-    bpl Kernal_Title.Letters
+    bpl .Kernal_Title.Letters
 ;;;;;;
-Kernal_Title.Bottom
+.Kernal_Title.BufferBot
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -1084,37 +1125,39 @@ Kernal_Title.Bottom
     sta PF0
     sta PF1
     sta PF2
-    sta WSYNC
+    ; TODO -- add some smaller caption
+    WSYNC_REPEATER 1
     TIMER_WAIT
-Kernal_Title.Overscan
-    TIMER_SETUP 29
-    ;lda Temp
-    sta WSYNC
+.Kernal_Title.Overscan
+    TIMER_SETUP CONS_OFFSCREEN_LINES
+    ; TODO -- title music!
+    WSYNC_REPEATER 1
     TIMER_WAIT
-    rts
+    jmp Kernal_Title
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ;
-Gamestate.Gameover.GotoStart
+Kernal_Gameover.GotoStart
     lda #CONS_GAMESTATE_INITIALIZE
     sta GameState
-Gamestate.Gameover
-    START_FRAME Gamestate.Gameover.GotoStart
-    TIMER_SETUP 37
-    sta WSYNC
+    jmp Kernal_SwitchState
+Kernal_Gameover
+    SWITCH_STATE_BY_FIRE Kernal_Gameover.GotoStart
+    VERTICAL_SYNC
+    TIMER_SETUP CONS_PRESCREEN_LINES
+    WSYNC_REPEATER 1
     TIMER_WAIT
-    TIMER_SETUP 192
-;;;;;;
+    TIMER_SETUP CONS_ONSCREEN_LINES
     ldy #60
-Kernal_Gameover.TopGap
-    WYSNC_REPEATER 1
+.Kernal_Gameover.TopGap
+    WSYNC_REPEATER 1
     dey
-    bne Kernal_Gameover.TopGap
+    bne .Kernal_Gameover.TopGap
 ;;;;;;
     jsr Kernal_Score_Subroutine
     jsr Kernal_Time_Subroutine
 ;;;;;;
-Kernal_Gameover.Bottom
+.Kernal_Gameover.Bottom
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -1122,12 +1165,12 @@ Kernal_Gameover.Bottom
     sta PF0
     sta PF1
     sta PF2
-    sta WSYNC
+    WSYNC_REPEATER 1
     TIMER_WAIT
-Kernal_Gameover.Overscan
-    TIMER_SETUP 28
+.Kernal_Gameover.Overscan
+    TIMER_SETUP CONS_OFFSCREEN_LINES
     lda PlaySoundCounter
-    beq Kernal_Gameover.soundOff
+    beq .Kernal_Gameover.soundOff
     dec PlaySoundCounter
     ldx PlaySoundIdx
     lda Sounds_AUDC0,x
@@ -1136,12 +1179,12 @@ Kernal_Gameover.Overscan
     sta AUDF0
     lda Sounds_AUDV0,x
     sta AUDV0
-    jmp Kernal_Gameover.skip
-Kernal_Gameover.soundOff
+    jmp .Kernal_Gameover.skip
+.Kernal_Gameover.soundOff
     SET_SOUND $00, $01
-Kernal_Gameover.skip
+.Kernal_Gameover.skip
     TIMER_WAIT
-    rts
+    jmp Kernal_Gameover
 ;;;;;;;;;;
 ;
 ;
@@ -1154,7 +1197,7 @@ Kernal_Score_Subroutine
     sta COLUP0
     sta COLUP1
     
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda ScoreNeg
     bne .Kernal_Score.Prescore.isNegativeColor
 .Kernal_Score.Prescore.isPositiveColor
@@ -1194,7 +1237,7 @@ Kernal_Score_Subroutine
     ;----------------
     ldy #$06
 .Kernal_Score
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda ScoreNeg
     beq .Kernal_Score.extraDelay
     lda Minus_Sign,y
@@ -1222,22 +1265,22 @@ Kernal_Score_Subroutine
     
     lda #$00
     sta GRP1
-    WYSNC_REPEATER 1; -- todo why is this SO angry!
+    WSYNC_REPEATER 1; -- todo why is this SO angry!
     
     dey
     bne .Kernal_Score
 .Kernal_Score.PostScore
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda #$00
     sta GRP1
     sta ENAM0
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     rts
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Time_Subroutine  
     lda #%00000000
     sta PF0
@@ -1245,7 +1288,7 @@ Kernal_Time_Subroutine
     sta PF1
     lda #%00000000
     sta PF2
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     lda #CONS_TIME_BG
     sta COLUBK
     ; -- Always set the digit right nibble, we'll probably do this LATER in the code
@@ -1276,7 +1319,7 @@ Kernal_PreTime.addTempByte_a
     ;----------------
     ldy #$06
 Kernal_Time
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     SLEEP 23 
     ldx NumberIdx+2
     lda Score_Numbers,x
@@ -1296,12 +1339,12 @@ Kernal_Time
     
     lda #$00
     sta GRP1
-    WYSNC_REPEATER 1!
+    WSYNC_REPEATER 1!
     
     dey
     bne Kernal_Time
     rts
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 InitializeRows    
     ldy #$08
 .InitializeRows.Empty
