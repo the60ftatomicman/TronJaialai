@@ -1,29 +1,14 @@
     processor 6502
-    include "vcs.h"
-    include "macro.h"
-    include "xmacro.h"
+    include "./includes/vcs.h"
+    include "./includes/macro.h"
+    include "./includes/xmacro.h"
+    include "./includes/colors.h"
+    include "./includes/constants.h"
+    include "./includes/zoop/zoop_macros.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Constants segment
-; ---- COLORS
-CONS_COLOR_BLACK  EQU $00
-CONS_COLOR_LGREY  EQU #04
-CONS_COLOR_GREY_C EQU $0C
-CONS_COLOR_GREY_7 EQU $07
-CONS_COLOR_GREY   EQU $02
-CONS_COLOR_WHITE  EQU $0E
-
-CONS_COLOR_RED    EQU $46
-CONS_COLOR_ORANGE EQU $38
-CONS_COLOR_YELLOW EQU $1E
-CONS_COLOR_GREEN  EQU $C6
-CONS_COLOR_BLUE   EQU $A6
-CONS_COLOR_PURPLE EQU $64
-
-CONS_COLOR_PINK   EQU $3C
-CONS_COLOR_TEAL   EQU $8D
-CONS_COLOR_CHART  EQU $CA
 ; ---- COLOR MAPPING TO OBJECT
 CONS_GRID_BRICKS_BG    EQU CONS_COLOR_GREY_C
 CONS_GRID_CLIFF_BG     EQU CONS_COLOR_GREY_7
@@ -33,70 +18,7 @@ CONS_PLAYERZONE_NOACT  EQU CONS_COLOR_LGREY
 CONS_SCORE_POSITIVE    EQU CONS_COLOR_GREEN
 CONS_SCORE_NEGATIVE    EQU CONS_COLOR_RED
 CONS_TIME_BG           EQU CONS_COLOR_PURPLE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Macros
-;--------
-; FLIP_BOOL
-; Original author: Andy Garber
-; Takes a memory address and flips it's value than stores it
-; Assumes the Memory address value is 1 or 0
-; usage: FLIP_BOOL SomeAddress
-    MAC FLIP_BOOL
-.MEMADDR     SET {1}
-    lda .MEMADDR
-    EOR #$01
-    sta .MEMADDR
-    ENDM
-
-;--------
-; LOAD_POINTER_WITH_DATA
-; Original author: Andy Garber
-; Loads a pointer with low byte than high byte address of data object
-; usage: LOAD_POINTER_WITH_DATA pointer data
-    MAC LOAD_POINTER_WITH_DATA
-.POINTER      SET {1}
-.DATA_BLOB    SET {2}
-    lda #<.DATA_BLOB
-    sta .POINTER
-    lda #>.DATA_BLOB
-    sta .POINTER+1
-    ENDM
-;--------
-; WYSNC_REPEATER
-; Original author: Andy Garber
-; just a wrapper around REPEAT X lines of WSYNC. used to help with spacing in this game.
-    MAC WYSNC_REPEATER
-.LINES_TO_WAIT SET {1}
-    REPEAT .LINES_TO_WAIT
-        sta WSYNC
-    REPEND
-    ENDM
-;--------
-; START_FRAME
-; Original author: Andy Garber
-; just the first few lines when drawing a frame
-    MAC START_FRAME
-.GOTO_LBL_ON_RESET SET {1}
-    ;lsr SWCHB      ; test Game Reset switch
-    ;bcc .GOTO_LBL_ON_RESET  ; reset?
-    LDA INPT4  ; Load the state of Player 1's fire button
-    BPL .GOTO_LBL_ON_RESET   ; Branch if Bit 7 is clear (button pulls line low)
-    VERTICAL_SYNC  ; 1 + 3 lines of VSYNC
-    ENDM
-;--------
-; SET_SOUND
-; Original author: Andy Garber
-; set the sound idx and counter
-    MAC SET_SOUND
-.IDX      SET {1}
-.COUNTER  SET {2}
-    lda #.IDX
-    sta PlaySoundIdx
-    lda #.COUNTER
-    sta PlaySoundCounter
-    ENDM
+CONS_COLOR_COUNT       EQU #6               ;-- See DATA/Colors for the actual list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,6 +49,8 @@ CONS_GAMESTATE_GAMEOVER   EQU #01
 ;
 TempByte_a .byte
 TempByte_b .byte
+TempByte_c .byte
+TempByte_d .byte
 TempPtr_a    .DS 2
 TempPtr_b    .DS 2
 TempPtr_c    .DS 2
@@ -142,8 +66,6 @@ Random     .byte
 ;
 PlaySoundCounter .byte
 PlaySoundIdx .byte
-;
-CliffColor .byte
 ;
 Player0Pos_Col .byte
 Player0Pos_Row .byte
@@ -205,8 +127,9 @@ Start
     sta PlaySoundIdx
     lda #CONS_GAMESTATE_TITLE
     sta GameState
-BranchOnGamestate
-    jsr setupPointers
+    jmp Kernal_SwitchState
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Gamestate.Branching
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
     beq GameState.Initialize
@@ -215,12 +138,12 @@ BranchOnGamestate
     cmp #CONS_GAMESTATE_GAMEOVER
     beq GameState.GameOver    
 GameState.Title
-    jsr runTitleScreen
-    jmp BranchOnGamestate
+    jmp Kernal_Title
 GameState.GameOver
-    jsr Gamestate.Gameover
-    jmp BranchOnGamestate
+    jmp Kernal_Gameover
 GameState.Initialize
+    VERTICAL_SYNC
+
     lda #$02
     sta Player0Pos_Col
     sta BlockQueue_Idx
@@ -255,8 +178,6 @@ GameState.Initialize
     ldx NextColorTimerIdx
     lda AddBlockTimers,x
     sta NextColorCounter
-    
-    jsr InitializeRows
 
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,7 +195,7 @@ GameState.Initialize
 GameState.Play.GotoStart
     lda #CONS_GAMESTATE_TITLE
     sta GameState
-    jmp Start
+    jmp Kernal_SwitchState
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -287,31 +208,26 @@ NextFrame
     VERTICAL_SYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 37 lines of underscan
-    TIMER_SETUP 37
+    TIMER_SETUP CONS_PRESCREEN_LINES
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Set Positions
-    sta WSYNC
-;;;;;;;;;;;;;;;;;;;;;;;
+    WSYNC_REPEATER 1
 ; Set Player X -- todo make this a pointer and data table affair.
     ldy Player0Pos_Col
     lda (TempPtr_a),y
     ldx #0           ; player 0
     jsr SetHorizPos
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_SCORE_LEFTMOST_DIGIT_X
     ldx #1           ; player 1
     jsr SetHorizPos
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_SCORE_MINUS_SIGN_X
     ldx #02 ; player 0 missle
     jsr SetHorizPos
     nop
     TIMER_WAIT
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 192 lines of frame
-
-    TIMER_SETUP 192
+    TIMER_SETUP CONS_ONSCREEN_LINES
 ;;;;;;;;;;;;;;;;;;;;;;;
     jsr Kernal_Score_Subroutine
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -329,12 +245,12 @@ NextFrame
     
     lda #$00
     ldx #CONS_BQ_VERT_ROWS
-    sta WSYNC
+    WSYNC_REPEATER 1
 Kernal_TopBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
 Kernal_TopBlocks.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda BlockQueue_Top_0,x
     sta COLUBK
@@ -361,12 +277,12 @@ Kernal_TopBlocks.Rows
     nop
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     dex
     bpl Kernal_TopBlocks
 ;;;;;;;;;;;;;;;;;;;;;;;
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda #%00000000
     sta PF0
@@ -375,28 +291,28 @@ Kernal_TopBlocks.Rows
     lda #%10000110
     sta PF2
     lda #CONS_GRID_CLIFF_BG
-    sta CliffColor
+    sta TempByte_d
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Top
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     sec
     sbc #01
-    sta CliffColor
+    sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
 Kernal_Cliff_Top.ColorBandLoop
-    sta WSYNC
+    WSYNC_REPEATER 1
     dex 
     bne Kernal_Cliff_Top.ColorBandLoop
     dey
     bne Kernal_Cliff_Top
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     
     lda #%00000001
@@ -421,7 +337,7 @@ Kernal_PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
     
 Kernal_PlayerZone.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda PlayerZone_Colors,x ; TODO -- from color data table
     sta COLUBK
 
@@ -439,19 +355,19 @@ Kernal_PlayerZone.EndPlayer
     sta GRP0 
     dey
     bne Kernal_PlayerZone.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
     lda #$00
     sta GRP0
     
     inx
-    sta WSYNC
+    WSYNC_REPEATER 1
 
     dec LoopIdx
     bne Kernal_PlayerZone
 ;;;;;;;;;;;;;;;;;;;;;;;
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda #%00000000
     sta PF0
@@ -462,30 +378,30 @@ Kernal_PlayerZone.EndPlayer
 
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
 Kernal_Cliff_Bot
-    lda CliffColor
+    lda TempByte_d
     sta COLUBK
     clc
     adc #01
-    sta CliffColor
+    sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
 Kernal_Cliff_Bot.ColorBandLoop
-    sta WSYNC
+    WSYNC_REPEATER 1
     dex 
     bne Kernal_Cliff_Bot.ColorBandLoop
     dey
     bne Kernal_Cliff_Bot
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
 ;;;;;;;;;;;;;;;;;;;;;;;
     lda #%00000001
     sta CTRLPF
@@ -501,12 +417,12 @@ Kernal_Cliff_Bot.ColorBandLoop
     
     lda #$00
     ldx #00
-    sta WSYNC
+    WSYNC_REPEATER 1
 Kernal_BotBlocks
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
 Kernal_BotBlocks.Rows
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     lda BlockQueue_Bot_0,x
     sta COLUBK
@@ -533,7 +449,7 @@ Kernal_BotBlocks.Rows
     nop
     lda #CONS_COLOR_BLACK
     sta COLUBK
-    sta WSYNC
+    WSYNC_REPEATER 1
     
     inx
     txa
@@ -544,7 +460,7 @@ Kernal_PreTime
 
     jsr Kernal_Time_Subroutine
 Kernal_Time.lowerBuffer
-    WYSNC_REPEATER 3
+    WSYNC_REPEATER 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_StopVisuals
     lda #00
@@ -593,7 +509,7 @@ Kernal_TestTimeOver
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
-    jmp BranchOnGamestate
+    jmp Kernal_SwitchState
 Kernal_ClearMath
     cld
 Kernal_DecBlockCounter
@@ -644,12 +560,12 @@ Kernal_Overscan.skip
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Subroutines
 SetPositionMissles 
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #46 ;#46
     ldx #2           ; player 0 Missle
     jsr SetHorizPos
 
-    sta WSYNC
+    WSYNC_REPEATER 1
     lda #62
     ldx #3           ; player 1 Missle
     jsr SetHorizPos
@@ -658,7 +574,7 @@ SetPositionMissles
 ; A = X coordinate
 ; X = player number (0 or 1)
 SetHorizPos
-        sta WSYNC	; start a new line
+        WSYNC_REPEATER 1	; start a new line
         sec		; set carry flag
 SetHorizPos.1
 	sbc #15		; subtract 15
@@ -670,7 +586,7 @@ SetHorizPos.1
         asl
         sta RESP0,x	; fix coarse position
         sta HMP0,x	; set fine offset
-        sta WSYNC
+        WSYNC_REPEATER 1
         sta HMOVE	; apply the previous fine position(s)
         SLEEP 24
 	    sta HMCLR	; reset the old horizontal position(s)
@@ -992,8 +908,6 @@ subtractScore
     lda TempByte_a
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;    
-; lets use this instead. the clankers aren't super great at this.
-; https://www.randomterrain.com/atari-2600-lets-make-a-game-spiceware-10.html
 setRandomBlock
     ldy NextColumn
     lda (TempPtr_c),y
@@ -1013,7 +927,7 @@ setRandomBlock.testIfFull
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
-    jmp BranchOnGamestate
+    jmp Kernal_SwitchState
 setRandomBlock.shiftBlocks
     tya
     cmp #CONS_BQ_VERT_ROWS
@@ -1077,76 +991,120 @@ GetRandomQueue
     sta NextColumn
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; setupPointers
-; 
-setupPointers
+; setupVarsPointers
+; Used to setup any pointers or variables we'll use  in a specific game state
+; Author: Andy Garber
+setupVarsPointers
     lda GameState
     cmp #CONS_GAMESTATE_INITIALIZE
-    beq setupPointers.Initialize
+    beq setupVarsPointers.Initialize
     cmp #CONS_GAMESTATE_PLAY
-    beq setupPointers.Initialize
+    beq setupVarsPointers.Initialize
     cmp #CONS_GAMESTATE_GAMEOVER
-    beq setupPointers.GameOver
-setupPointers.Title
+    beq setupVarsPointers.GameOver
+setupVarsPointers.Title
     LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
     LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
-    jmp setupPointers.End
-setupPointers.GameOver
-    jmp setupPointers.End
-setupPointers.Initialize
+    jmp setupVarsPointers.End
+setupVarsPointers.GameOver
+    jmp setupVarsPointers.End
+setupVarsPointers.Initialize
     LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
     LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
-setupPointers.End
+setupVarsPointers.End
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
-; Gamestate.Titlescreen
-;
-runTitleScreen.GotoStart
-    lda #CONS_GAMESTATE_INITIALIZE
-    sta GameState
+; Kernal_SwitchState
+; used to just give us a clean place to switch our game states
+; No vars used. set GAMESTATE before you come here!
+Kernal_SwitchState
+    VERTICAL_SYNC
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_PRESCREEN_LINES
     lda INTIM           ; Use the timer counter value
     cmp #$00
-    bne setRandomSeed
+    bne .Kernal_SwitchState.setRandomSeed
     lda #$87
-setRandomSeed
+.Kernal_SwitchState.setRandomSeed
     sta Random
-runTitleScreen
-    START_FRAME runTitleScreen.GotoStart
-    TIMER_SETUP 37
+.Kernal_SwitchState.setupVarsPointers
+    jsr setupVarsPointers
+    WSYNC_REPEATER 1
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_ONSCREEN_LINES
+    WSYNC_REPEATER 1
+    jsr InitializeRows
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    TIMER_SETUP CONS_OFFSCREEN_LINES
+    WSYNC_REPEATER 1
+    TIMER_WAIT
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    jmp Gamestate.Branching
+;;;;;;;;;;;;;;;;;;;;;;;
+; Kernal_Title
+; ----------- Temp Variables -----------
+; TempByte_a = Unused
+; TempByte_b = Unused
+; TempByte_c = Unused
+; TempByte_d = Unused
+; TempPtr_a = pointer to Title_Screen_PF1_LEFT
+; TempPtr_b = pointer to Title_Screen_PF1_RIGHT
+; TempPtr_c = pointer to Title_Screen_PF2_LEFT
+; TempPtr_d = pointer to Colors
+; 
+Kernal_Title.SwitchState
+    lda #CONS_GAMESTATE_INITIALIZE
+    sta GameState
+    jmp Kernal_SwitchState
+Kernal_Title
+    SWITCH_STATE_BY_FIRE Kernal_Title.SwitchState
+    VERTICAL_SYNC
+    TIMER_SETUP CONS_PRESCREEN_LINES
     lda #%00000001
     sta CTRLPF
-    sta WSYNC
+    ; TODO -- actually implement the characters here
+    lda #%00000011
+    sta NUSIZ0
+    lda #%00000011
+    sta NUSIZ1
+    lda #CONS_COLOR_WHITE
+    sta COLUPF
+    sta COLUP0
+    lda #CONS_COLOR_TEAL
+    sta COLUP1
+;;;;;;
+Kernal_Title.SetPositions
+    WSYNC_REPEATER 1
+    lda #60 ; Player 0 Position
+    ldx #0           ; player 0
+    jsr SetHorizPos
+    WSYNC_REPEATER 1
+    lda #68
+    ldx #1   ; Player 1 Position
+    jsr SetHorizPos
+    WSYNC_REPEATER 1
     TIMER_WAIT
-    TIMER_SETUP 191
+    TIMER_SETUP CONS_ONSCREEN_LINES
 ;;;;;;
     ldy #60
-Kernal_Title.TopGap
-    WYSNC_REPEATER 1
+.Kernal_Title.TopGap
+    WSYNC_REPEATER 1
     dey
-    bne Kernal_Title.TopGap
+    bne .Kernal_Title.TopGap
 ;;;;;;
-    WYSNC_REPEATER 1
-    lda #$00
-    sta TempByte_a
+    WSYNC_REPEATER 1
     ldy #5
-Kernal_Title.Letters
-Kernal_Title.LoadPF
+.Kernal_Title.Letters
     lda (TempPtr_d),y
     sta COLUBK
-    FLIP_BOOL TempByte_a
-    bne Kernal_Title.ColorB
-Kernal_Title.ColorA
-    lda #CONS_COLOR_WHITE
-    jmp Kernal_Title.StartWritePF
-Kernal_Title.ColorB
-    lda #CONS_COLOR_WHITE
-Kernal_Title.StartWritePF
-    sta COLUPF
+;;;;;;
     ldx #10
-Kernal_Title.WritePF
-    WYSNC_REPEATER 1
+.Kernal_Title.WritePF
+    WSYNC_REPEATER 1
     lda (TempPtr_a),y
     sta PF1
     lda (TempPtr_c),y
@@ -1155,11 +1113,11 @@ Kernal_Title.WritePF
     lda (TempPtr_b),y
     sta PF1
     dex
-    bne Kernal_Title.WritePF
+    bne .Kernal_Title.WritePF
     dey 
-    bpl Kernal_Title.Letters
+    bpl .Kernal_Title.Letters
 ;;;;;;
-Kernal_Title.Bottom
+.Kernal_Title.BufferBot
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -1167,36 +1125,39 @@ Kernal_Title.Bottom
     sta PF0
     sta PF1
     sta PF2
-    sta WSYNC
+    ; TODO -- add some smaller caption
+    WSYNC_REPEATER 1
     TIMER_WAIT
-Kernal_Title.Overscan
-    TIMER_SETUP 29
-    sta WSYNC
+.Kernal_Title.Overscan
+    TIMER_SETUP CONS_OFFSCREEN_LINES
+    ; TODO -- title music!
+    WSYNC_REPEATER 1
     TIMER_WAIT
-    rts
+    jmp Kernal_Title
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ;
-Gamestate.Gameover.GotoStart
+Kernal_Gameover.GotoStart
     lda #CONS_GAMESTATE_INITIALIZE
     sta GameState
-Gamestate.Gameover
-    START_FRAME Gamestate.Gameover.GotoStart
-    TIMER_SETUP 37
-    sta WSYNC
+    jmp Kernal_SwitchState
+Kernal_Gameover
+    SWITCH_STATE_BY_FIRE Kernal_Gameover.GotoStart
+    VERTICAL_SYNC
+    TIMER_SETUP CONS_PRESCREEN_LINES
+    WSYNC_REPEATER 1
     TIMER_WAIT
-    TIMER_SETUP 192
-;;;;;;
+    TIMER_SETUP CONS_ONSCREEN_LINES
     ldy #60
-Kernal_Gameover.TopGap
-    WYSNC_REPEATER 1
+.Kernal_Gameover.TopGap
+    WSYNC_REPEATER 1
     dey
-    bne Kernal_Gameover.TopGap
+    bne .Kernal_Gameover.TopGap
 ;;;;;;
     jsr Kernal_Score_Subroutine
     jsr Kernal_Time_Subroutine
 ;;;;;;
-Kernal_Gameover.Bottom
+.Kernal_Gameover.Bottom
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
@@ -1204,12 +1165,12 @@ Kernal_Gameover.Bottom
     sta PF0
     sta PF1
     sta PF2
-    sta WSYNC
+    WSYNC_REPEATER 1
     TIMER_WAIT
-Kernal_Gameover.Overscan
-    TIMER_SETUP 28
+.Kernal_Gameover.Overscan
+    TIMER_SETUP CONS_OFFSCREEN_LINES
     lda PlaySoundCounter
-    beq Kernal_Gameover.soundOff
+    beq .Kernal_Gameover.soundOff
     dec PlaySoundCounter
     ldx PlaySoundIdx
     lda Sounds_AUDC0,x
@@ -1218,20 +1179,16 @@ Kernal_Gameover.Overscan
     sta AUDF0
     lda Sounds_AUDV0,x
     sta AUDV0
-    jmp Kernal_Gameover.skip
-Kernal_Gameover.soundOff
+    jmp .Kernal_Gameover.skip
+.Kernal_Gameover.soundOff
     SET_SOUND $00, $01
-Kernal_Gameover.skip
+.Kernal_Gameover.skip
     TIMER_WAIT
-    rts
+    jmp Kernal_Gameover
 ;;;;;;;;;;
 ;
 ;
 Kernal_Score_Subroutine
-    ; vv just for testing
-    ;lda #$00
-    ;sta ScoreNeg
-    ; ^^ just for testing
     lda #%0110000
     sta NUSIZ0
     lda #%1000110
@@ -1240,17 +1197,17 @@ Kernal_Score_Subroutine
     sta COLUP0
     sta COLUP1
     
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     lda ScoreNeg
-    bne Kernal_PreScore.isNegativeColor
-Kernal_PreScore.isPositiveColor
+    bne .Kernal_Score.Prescore.isNegativeColor
+.Kernal_Score.Prescore.isPositiveColor
     lda #CONS_SCORE_POSITIVE
     sta COLUBK
-    jmp Kernal_PreScore.getNibbles  
-Kernal_PreScore.isNegativeColor    
+    jmp .Kernal_Score.Prescore.getNibbles  
+.Kernal_Score.Prescore.isNegativeColor    
     lda #CONS_SCORE_NEGATIVE
     sta COLUBK
-Kernal_PreScore.getNibbles    
+.Kernal_Score.Prescore.getNibbles    
     ; -- Always set the digit right nibble, we'll probably do this LATER in the code
     lda Score
     and #$0F
@@ -1264,31 +1221,31 @@ Kernal_PreScore.getNibbles
     ;-- loop over EVERY digit
     
     ldx #02
-Kernal_PreScore.setNumAddresses
+.Kernal_Score.Prescore.setNumAddresses
     ldy Score,x
     clc
     lda #$05 ; 0 ALWAYS starts at 5
-Kernal_PreScore.loopaddress
+.Kernal_Score.Prescore.loopaddress
     dey
-    bmi Kernal_PreScore.addTempByte_a
+    bmi .Kernal_Score.Prescore.addTempByte_a
     adc #$06
-    jmp Kernal_PreScore.loopaddress
-Kernal_PreScore.addTempByte_a  
+    jmp .Kernal_Score.Prescore.loopaddress
+.Kernal_Score.Prescore.addTempByte_a  
     sta NumberIdx,x
     dex
-    bpl Kernal_PreScore.setNumAddresses
+    bpl .Kernal_Score.Prescore.setNumAddresses
     ;----------------
     ldy #$06
-Kernal_Score
-    WYSNC_REPEATER 1
+.Kernal_Score
+    WSYNC_REPEATER 1
     lda ScoreNeg
-    beq Kernal_Score.extraDelay
+    beq .Kernal_Score.extraDelay
     lda Minus_Sign,y
     sta ENAM0
-    jmp Kernal_Score.printDigits
-Kernal_Score.extraDelay
+    jmp .Kernal_Score.printDigits
+.Kernal_Score.extraDelay
     SLEEP 9
-Kernal_Score.printDigits
+.Kernal_Score.printDigits
     SLEEP 7
     ldx NumberIdx+2
     lda Score_Numbers,x
@@ -1308,22 +1265,22 @@ Kernal_Score.printDigits
     
     lda #$00
     sta GRP1
-    WYSNC_REPEATER 1; -- todo why is this SO angry!
+    WSYNC_REPEATER 1; -- todo why is this SO angry!
     
     dey
-    bne Kernal_Score
-Kernal_Score.lowerBuffer
-    WYSNC_REPEATER 1
+    bne .Kernal_Score
+.Kernal_Score.PostScore
+    WSYNC_REPEATER 1
     lda #$00
     sta GRP1
     sta ENAM0
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     lda #CONS_COLOR_BLACK
     sta COLUPF
     sta COLUBK
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     rts
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Kernal_Time_Subroutine  
     lda #%00000000
     sta PF0
@@ -1331,7 +1288,7 @@ Kernal_Time_Subroutine
     sta PF1
     lda #%00000000
     sta PF2
-    WYSNC_REPEATER 2
+    WSYNC_REPEATER 2
     lda #CONS_TIME_BG
     sta COLUBK
     ; -- Always set the digit right nibble, we'll probably do this LATER in the code
@@ -1362,7 +1319,7 @@ Kernal_PreTime.addTempByte_a
     ;----------------
     ldy #$06
 Kernal_Time
-    WYSNC_REPEATER 1
+    WSYNC_REPEATER 1
     SLEEP 23 
     ldx NumberIdx+2
     lda Score_Numbers,x
@@ -1382,12 +1339,12 @@ Kernal_Time
     
     lda #$00
     sta GRP1
-    WYSNC_REPEATER 1!
+    WSYNC_REPEATER 1!
     
     dey
     bne Kernal_Time
     rts
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 InitializeRows    
     ldy #$08
 .InitializeRows.Empty
@@ -1460,167 +1417,7 @@ InitializeRows.Fill.Next
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Data
-;;;;;;;;;;;;;;;;;;;;;;;
-AddBlockTimers
-    .byte #21
-    .byte #18
-    .byte #15
-    .byte #12
-    .byte #9
-    .byte #6
-    .byte #3
-Colors
-    .byte #CONS_COLOR_RED
-    .byte #CONS_COLOR_ORANGE
-    .byte #CONS_COLOR_YELLOW
-    .byte #CONS_COLOR_GREEN
-    .byte #CONS_COLOR_BLUE
-    .byte #CONS_COLOR_PURPLE
-PlayerZone_Colors
-    .byte #CONS_PLAYERZONE_ACTION
-    .byte #CONS_PLAYERZONE_NOACT
-    .byte #CONS_PLAYERZONE_ACTION
-PlayerColMemAddresses
-    .byte BlockQueue_Top_0
-    .byte BlockQueue_Top_1
-    .byte BlockQueue_Top_2
-    .byte BlockQueue_Top_3
-    .byte BlockQueue_Top_4
-    .byte BlockQueue_Bot_0
-    .byte BlockQueue_Bot_1
-    .byte BlockQueue_Bot_2
-    .byte BlockQueue_Bot_3
-    .byte BlockQueue_Bot_4
-;;;;;;;;;;;;;;;;;;;;;;;
-PlayerPositions_Columns
-    .byte #$2D
-    .byte #$41
-    .byte #$55
-    .byte #$69
-    .byte #$7D
-    .byte #$7D
-;;;;;;;;;;;;;;;;;;;;;;;
-Sounds_AUDC0
-    .byte #00
-    .byte #12
-    .byte #12
-    .byte #15
-    .byte #12
-Sounds_AUDF0
-    .byte #00
-    .byte #20
-    .byte #30
-    .byte #30
-    .byte #30
-Sounds_AUDV0
-    .byte #0
-    .byte #5
-    .byte #5
-    .byte #5
-    .byte #5
-;;;;;;;;;;;;;;;;;;;;;;;
-Minus_Sign
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%00000000
-    .byte #%11111111
-    .byte #%00000000
-    .byte #%00000000
-;;;;;;;;;;;;;;;;;;;;;;; 
-Score_Numbers
-    ; ---- 00
-    .byte #%11111111
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11100011
-    .byte #%11111111
-    ; ---- 11
-    .byte #%11111111
-    .byte #%00011100
-    .byte #%00011100
-    .byte #%00011100
-    .byte #%11011100
-    .byte #%01111100
-    ; ---- 22
-    .byte #%11111110
-    .byte #%11100000
-    .byte #%00111000
-    .byte #%00001110
-    .byte #%11100110
-    .byte #%01111100
-    ; ---- 33
-    .byte #%01111100
-    .byte #%11100011
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%11100011
-    .byte #%01111100
-    ; ---- 44
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%00001110
-    .byte #%11111111
-    .byte #%11001110
-    .byte #%11001110
-    ; ---- 55
-    .byte #%11111111
-    .byte #%00000011
-    .byte #%00011111
-    .byte #%11100000
-    .byte #%11100000
-    .byte #%11111111
-    ; ---- 66
-    .byte #%11111111
-    .byte #%11100011
-    .byte #%11111111
-    .byte #%11100000
-    .byte #%11100000
-    .byte #%11111111
-    ; ---- 77
-    .byte #%00011000
-    .byte #%00011000
-    .byte #%00011000
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%11111111
-    ; ---- 88
-    .byte #%11111111
-    .byte #%11000011
-    .byte #%11100111
-    .byte #%11111111
-    .byte #%11000011
-    .byte #%11111111
-    ; ---- 99
-    .byte #%00000111
-    .byte #%00000111
-    .byte #%11111111
-    .byte #%11000111
-    .byte #%11000111
-    .byte #%11111111
-;;;;;;;;;;;;;;;;;;;;;;; 
-Title_Screen_PF1_LEFT
-    .byte #%01111110
-    .byte #%01100010
-    .byte #%00110000
-    .byte #%00001100
-    .byte #%01000110
-    .byte #%01111110  
-Title_Screen_PF1_RIGHT
-    .byte #%000000110
-    .byte #%00000110
-    .byte #%00000110
-    .byte #%01111110
-    .byte #%01100110
-    .byte #%01111110
-Title_Screen_PF2_LEFT
-    .byte #%01111110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01100110
-    .byte #%01111110
+    include "./includes/zoop/zoop_data.h"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
