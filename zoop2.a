@@ -43,9 +43,8 @@ CONS_SCORE_MINUS_SIGN_X     EQU #$20
 CONS_TIMER_FRAMES_PER_SEC EQU #20
 ;
 CONS_GAMESTATE_TITLE      EQU #00
-CONS_GAMESTATE_INITIALIZE EQU #03
-CONS_GAMESTATE_PLAY       EQU #02
 CONS_GAMESTATE_GAMEOVER   EQU #01
+CONS_GAMESTATE_PLAY       EQU #02
 ;
 TempByte_a .byte
 TempByte_b .byte
@@ -131,19 +130,26 @@ Start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Gamestate.Branching
     lda GameState
-    cmp #CONS_GAMESTATE_INITIALIZE
-    beq GameState.Initialize
-    ;cmp #CONS_GAMESTATE_PLAY
-    ;beq GameState.Play
+    cmp #CONS_GAMESTATE_PLAY
+    beq GameState.Play
     cmp #CONS_GAMESTATE_GAMEOVER
     beq GameState.GameOver    
 GameState.Title
     jmp Kernal_Title
 GameState.GameOver
     jmp Kernal_Gameover
-GameState.Initialize
-    VERTICAL_SYNC
-
+GameState.Play
+    jmp Kernal_Play
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Kernal_Play.GotoStart
+    lda #CONS_GAMESTATE_TITLE
+    sta GameState
+    jmp Kernal_SwitchState
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; On Frame Code segment
+Kernal_Play
     lda #$02
     sta Player0Pos_Col
     sta BlockQueue_Idx
@@ -179,32 +185,20 @@ GameState.Initialize
     lda AddBlockTimers,x
     sta NextColorCounter
 
-    
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Setup Other Player Things
-    ;jsr GetRandomColor messes up horizontal placement!
     ldx NextColor
     lda Colors,x
     sta Player0_Color
+; Setup Other Player Things
+    ;jsr GetRandomColor messes up horizontal placement!
     ;Just to easily see end of memory
     ;lda #$EE
     ;sta BlockQueue_Idx+1
     ;lda #$FF
     ;sta BlockQueue_Idx+2
-    jmp NextFrame
-GameState.Play.GotoStart
-    lda #CONS_GAMESTATE_TITLE
-    sta GameState
-    jmp Kernal_SwitchState
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; On Frame Code segment
-GameState.Play
-    nop
-NextFrame
+;;;;
+.Kernal_Play.NextFrame
     lsr SWCHB      ; test Game Reset switch
-    bcc GameState.Play.GotoStart ; reset?
+    bcc Kernal_Play.GotoStart ; reset?
     VERTICAL_SYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 37 lines of underscan
@@ -246,10 +240,10 @@ NextFrame
     lda #$00
     ldx #CONS_BQ_VERT_ROWS
     WSYNC_REPEATER 1
-Kernal_TopBlocks
+.Kernal_Play.Blocks.Top
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
-Kernal_TopBlocks.Rows
+.Kernal_Play.Blocks.Top.Rows
     WSYNC_REPEATER 1
     
     lda BlockQueue_Top_0,x
@@ -272,7 +266,7 @@ Kernal_TopBlocks.Rows
     sta COLUBK
 
     dey
-    bne Kernal_TopBlocks.Rows
+    bne .Kernal_Play.Blocks.Top.Rows
     
     nop
     lda #CONS_COLOR_BLACK
@@ -280,7 +274,7 @@ Kernal_TopBlocks.Rows
     WSYNC_REPEATER 1
     
     dex
-    bpl Kernal_TopBlocks
+    bpl .Kernal_Play.Blocks.Top
 ;;;;;;;;;;;;;;;;;;;;;;;
     WSYNC_REPEATER 1
     
@@ -296,19 +290,19 @@ Kernal_TopBlocks.Rows
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
-Kernal_Cliff_Top
+.Kernal_Play.Cliff.Top
     lda TempByte_d
     sta COLUBK
     sec
     sbc #01
     sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
-Kernal_Cliff_Top.ColorBandLoop
+.Kernal_Play.Cliff.Top.ColorBandLoop
     WSYNC_REPEATER 1
     dex 
-    bne Kernal_Cliff_Top.ColorBandLoop
+    bne .Kernal_Play.Cliff.Top.ColorBandLoop
     dey
-    bne Kernal_Cliff_Top
+    bne .Kernal_Play.Cliff.Top
     WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
@@ -333,28 +327,28 @@ Kernal_Cliff_Top.ColorBandLoop
     lda #CONS_PLAYERZ_ROWS
     sta LoopIdx
     ldx #00
-Kernal_PlayerZone
+.Kernal_Play.PlayerZone
     ldy #CONS_PLAYERZ_ROW_HEIGHT
     
-Kernal_PlayerZone.Rows
+.Kernal_Play.PlayerZone.Rows
     WSYNC_REPEATER 1
     lda PlayerZone_Colors,x ; TODO -- from color data table
     sta COLUBK
 
 
-Kernal_PlayerZone.PlayerLogic.ComparePlayer
+.Kernal_Play.PlayerZone.PlayerLogic.ComparePlayer
     lda Player0Pos_Row
     cmp LoopIdx
-    bne Kernal_PlayerZone.SkipPlayer 
-Kernal_PlayerZone.DrawPlayer
+    bne .Kernal_Play.PlayerZone.SkipPlayer 
+.Kernal_Play.PlayerZone.DrawPlayer
     lda #$FF
-    jmp Kernal_PlayerZone.EndPlayer
-Kernal_PlayerZone.SkipPlayer 
+    jmp .Kernal_Play.PlayerZone.EndPlayer
+.Kernal_Play.PlayerZone.SkipPlayer 
     lda #$00
-Kernal_PlayerZone.EndPlayer
+.Kernal_Play.PlayerZone.EndPlayer
     sta GRP0 
     dey
-    bne Kernal_PlayerZone.Rows
+    bne .Kernal_Play.PlayerZone.Rows
     WSYNC_REPEATER 1
     lda #CONS_COLOR_BLACK
     sta COLUBK
@@ -365,7 +359,7 @@ Kernal_PlayerZone.EndPlayer
     WSYNC_REPEATER 1
 
     dec LoopIdx
-    bne Kernal_PlayerZone
+    bne .Kernal_Play.PlayerZone
 ;;;;;;;;;;;;;;;;;;;;;;;
     WSYNC_REPEATER 1
     
@@ -386,19 +380,19 @@ Kernal_PlayerZone.EndPlayer
     lda #CONS_COLOR_BLACK
     sta COLUPF
     ldy #CONS_CLIFF_HEIGHT
-Kernal_Cliff_Bot
+.Kernal_Play.Cliff.Bot
     lda TempByte_d
     sta COLUBK
     clc
     adc #01
     sta TempByte_d
     ldx #CONS_CLIFF_SHADING_GAP
-Kernal_Cliff_Bot.ColorBandLoop
+.Kernal_Play.Cliff.Bot.ColorBandLoop
     WSYNC_REPEATER 1
     dex 
-    bne Kernal_Cliff_Bot.ColorBandLoop
+    bne .Kernal_Play.Cliff.Bot.ColorBandLoop
     dey
-    bne Kernal_Cliff_Bot
+    bne .Kernal_Play.Cliff.Bot
     lda #CONS_COLOR_BLACK
     sta COLUBK
     WSYNC_REPEATER 1
@@ -418,10 +412,10 @@ Kernal_Cliff_Bot.ColorBandLoop
     lda #$00
     ldx #00
     WSYNC_REPEATER 1
-Kernal_BotBlocks
+.Kernal_Play.Blocks.Bot
     ;TODO -- honsetly do I need this? Could just try to use the X value!
     ldy #CONS_BQ_VERT_ROW_HEIGHT
-Kernal_BotBlocks.Rows
+.Kernal_Play.Blocks.Bot.Rows
     WSYNC_REPEATER 1
     
     lda BlockQueue_Bot_0,x
@@ -444,7 +438,7 @@ Kernal_BotBlocks.Rows
     sta COLUBK
 
     dey
-    bne Kernal_BotBlocks.Rows
+    bne .Kernal_Play.Blocks.Bot.Rows
     
     nop
     lda #CONS_COLOR_BLACK
@@ -454,15 +448,13 @@ Kernal_BotBlocks.Rows
     inx
     txa
     cmp #CONS_BQ_VERT_ROWS+1
-    bmi Kernal_BotBlocks
+    bmi .Kernal_Play.Blocks.Bot
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_PreTime
-
     jsr Kernal_Time_Subroutine
-Kernal_Time.lowerBuffer
+.Kernal_Play.lowerBuffer
     WSYNC_REPEATER 3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_StopVisuals
+.Kernal_Play.StopVisuals
     lda #00
     sta GRP0
     sta GRP1
@@ -481,45 +473,45 @@ Kernal_StopVisuals
     sta PF2
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_DecrementTimer
+.Kernal_Play.DecrementTimer.Tick
     dec TimeDec
-    bne Kernal_WaitTilEnd
+    bne .Kernal_Play.WaitTilEnd
     lda CONS_TIMER_FRAMES_PER_SEC
     sta TimeDec
-Kernal_DecrementTimer.ActualDec
+.Kernal_Play.DecrementTimer.Decrement
     sed
     dec Time
-    bpl Kernal_ClearMath
+    bpl .Kernal_Play.ClearMath
     lda #$09
     sta Time
     dec Time+1
-    bpl Kernal_ClearMath
+    bpl .Kernal_Play.ClearMath
     lda #$09
     sta Time+1
     dec Time+2
-    bpl Kernal_ClearMath
+    bpl .Kernal_Play.ClearMath
     lda #$09
     sta Time+2
-Kernal_TestTimeOver
+.Kernal_Play.TestTimeOver
     lda Time
     adc Time+1
     adc Time+2
     CMP #$27 ; if its time over we hit 9s in all columns
-    bne Kernal_ClearMath
+    bne .Kernal_Play.ClearMath
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
     jmp Kernal_SwitchState
-Kernal_ClearMath
+.Kernal_Play.ClearMath
     cld
-Kernal_DecBlockCounter
+.Kernal_Play.BlockCounter.IncTimerIdxc
     dec NextColorCounter
-    bne Kernal_WaitTilEnd
+    bne .Kernal_Play.WaitTilEnd
     lda NextColorTimerIdx
     cmp #06; amount of entries we have in AddBlockTimers - 1
-    bcs Kernal_DecBlockCounter.IncTimerIdx
+    bcs .Kernal_Play.BlockCounter.IncTimerIdxc.IncTimerIdx
     inc NextColorTimerIdx
-Kernal_DecBlockCounter.IncTimerIdx
+.Kernal_Play.BlockCounter.IncTimerIdxc.IncTimerIdx
     ldx NextColorTimerIdx
     lda AddBlockTimers,x
     sta NextColorCounter
@@ -527,7 +519,7 @@ Kernal_DecBlockCounter.IncTimerIdx
     jsr GetRandomQueue
     jsr setRandomBlock
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Kernal_WaitTilEnd
+.Kernal_Play.WaitTilEnd
     jsr ReadJoystick
     jsr setBlockQueueIdx 
     nop  ; at: 199 of 233 lines by this point, dont cross! note in PIA will be 232 if right.
@@ -553,7 +545,7 @@ Kernal_Overscan.skip
     nop
     TIMER_WAIT
 ; total = 262 lines, go to next frame
-    jmp NextFrame
+    jmp .Kernal_Play.NextFrame
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -576,9 +568,9 @@ SetPositionMissles
 SetHorizPos
         WSYNC_REPEATER 1	; start a new line
         sec		; set carry flag
-SetHorizPos.1
+.SetHorizPos.1
 	sbc #15		; subtract 15
-	bcs SetHorizPos.1 ; branch until negative
+	bcs .SetHorizPos.1 ; branch until negative
 	eor #7		; calculate fine offset
         asl
         asl
@@ -670,7 +662,6 @@ setBlockQueueIdx
 ReadJoystick
       lda #%00000000
       sta Player0_InputSettings  ; Set current input state to 0
-.ReadJoystick
 ; ----------------------
 ; LEFT
 ; ----------------------
@@ -915,31 +906,31 @@ setRandomBlock
     lda #>00
     sta TempPtr_b+1
     ldy #CONS_BQ_VERT_ROWS
-setRandomBlock.testIfEmpty
+.setRandomBlock.testIfEmpty
     lda (TempPtr_b),y
     cmp #CONS_COLOR_BLACK
-    beq setRandomBlock.shiftBlocks.setNextColor
+    beq .setRandomBlock.shiftBlocks.setNextColor
     ldy #$00
-setRandomBlock.testIfFull
+.setRandomBlock.testIfFull
     lda (TempPtr_b),y
     cmp #CONS_COLOR_BLACK
-    beq setRandomBlock.shiftBlocks
+    beq .setRandomBlock.shiftBlocks
     SET_SOUND $04, $10
     lda #CONS_GAMESTATE_GAMEOVER
     sta GameState
     jmp Kernal_SwitchState
-setRandomBlock.shiftBlocks
+.setRandomBlock.shiftBlocks
     tya
     cmp #CONS_BQ_VERT_ROWS
-    beq setRandomBlock.shiftBlocks.setNextColor
+    beq .setRandomBlock.shiftBlocks.setNextColor
     tay
     iny
     lda (TempPtr_b),y
     dey
     sta (TempPtr_b),y
     iny
-    jmp setRandomBlock.shiftBlocks
-setRandomBlock.shiftBlocks.setNextColor
+    jmp .setRandomBlock.shiftBlocks
+.setRandomBlock.shiftBlocks.setNextColor
     ldx NextColor
     lda Colors,x
     ldy #CONS_BQ_VERT_ROWS
@@ -996,24 +987,22 @@ GetRandomQueue
 ; Author: Andy Garber
 setupVarsPointers
     lda GameState
-    cmp #CONS_GAMESTATE_INITIALIZE
-    beq setupVarsPointers.Initialize
     cmp #CONS_GAMESTATE_PLAY
-    beq setupVarsPointers.Initialize
+    beq .setupVarsPointers.Play
     cmp #CONS_GAMESTATE_GAMEOVER
-    beq setupVarsPointers.GameOver
-setupVarsPointers.Title
+    beq .setupVarsPointers.GameOver
+.setupVarsPointers.Title
     LOAD_POINTER_WITH_DATA TempPtr_a,Title_Screen_PF1_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
     LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
-    jmp setupVarsPointers.End
-setupVarsPointers.GameOver
-    jmp setupVarsPointers.End
-setupVarsPointers.Initialize
+    jmp .setupVarsPointers.End
+.setupVarsPointers.GameOver
+    jmp .setupVarsPointers.End
+.setupVarsPointers.Play
     LOAD_POINTER_WITH_DATA TempPtr_a,PlayerPositions_Columns
     LOAD_POINTER_WITH_DATA TempPtr_c,PlayerColMemAddresses
-setupVarsPointers.End
+.setupVarsPointers.End
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Kernal_SwitchState
@@ -1057,7 +1046,7 @@ Kernal_SwitchState
 ; TempPtr_d = pointer to Colors
 ; 
 Kernal_Title.SwitchState
-    lda #CONS_GAMESTATE_INITIALIZE
+    lda #CONS_GAMESTATE_PLAY
     sta GameState
     jmp Kernal_SwitchState
 Kernal_Title
@@ -1077,7 +1066,7 @@ Kernal_Title
     lda #CONS_COLOR_TEAL
     sta COLUP1
 ;;;;;;
-Kernal_Title.SetPositions
+.Kernal_Title.SetPositions
     WSYNC_REPEATER 1
     lda #60 ; Player 0 Position
     ldx #0           ; player 0
@@ -1138,7 +1127,7 @@ Kernal_Title.SetPositions
 ;
 ;
 Kernal_Gameover.GotoStart
-    lda #CONS_GAMESTATE_INITIALIZE
+    lda #CONS_GAMESTATE_PLAY
     sta GameState
     jmp Kernal_SwitchState
 Kernal_Gameover
@@ -1303,22 +1292,22 @@ Kernal_Time_Subroutine
     sta Time+2
     ;-- loop over EVERY digit
     ldx #02
-Kernal_PreTime.setNumAddresses
+.Kernal_PreTime.setNumAddresses
     ldy Time,x
     clc
     lda #$05 ; 0 ALWAYS starts at 5
-Kernal_PreTime.loopaddress
+.Kernal_PreTime.loopaddress
     dey
-    bmi Kernal_PreTime.addTempByte_a
+    bmi .Kernal_PreTime.addTempByte_a
     adc #$06
-    jmp Kernal_PreTime.loopaddress
-Kernal_PreTime.addTempByte_a  
+    jmp .Kernal_PreTime.loopaddress
+.Kernal_PreTime.addTempByte_a  
     sta NumberIdx,x
     dex
-    bpl Kernal_PreTime.setNumAddresses
+    bpl .Kernal_PreTime.setNumAddresses
     ;----------------
     ldy #$06
-Kernal_Time
+.Kernal_Time
     WSYNC_REPEATER 1
     SLEEP 23 
     ldx NumberIdx+2
@@ -1342,7 +1331,7 @@ Kernal_Time
     WSYNC_REPEATER 1!
     
     dey
-    bne Kernal_Time
+    bne .Kernal_Time
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 InitializeRows    
@@ -1406,7 +1395,7 @@ InitializeRows
     ldx NextColor
     lda Colors,x
     sta BlockQueue_Bot_4,y
-InitializeRows.Fill.Next
+.InitializeRows.Fill.Next
     dey
     tya
     cmp #CONS_BQ_VERT_ROWS-1
