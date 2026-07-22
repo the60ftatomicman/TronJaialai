@@ -996,6 +996,14 @@ setupVarsPointers
     LOAD_POINTER_WITH_DATA TempPtr_b,Title_Screen_PF1_RIGHT
     LOAD_POINTER_WITH_DATA TempPtr_c,Title_Screen_PF2_LEFT
     LOAD_POINTER_WITH_DATA TempPtr_d,Colors
+
+    LOAD_POINTER_WITH_DATA NextColorTimerIdx,Title_Screen_Option1_Sprite1
+    LOAD_POINTER_WITH_DATA TempByte_a,Title_Screen_Option1_Sprite2
+    LOAD_POINTER_WITH_DATA TempByte_c,Title_Screen_Option1_Sprite3
+
+    LOAD_POINTER_WITH_DATA NextColumn,Title_Screen_Option2_Sprite1
+    LOAD_POINTER_WITH_DATA Player0Pos_Col,Title_Screen_Option2_Sprite2
+    LOAD_POINTER_WITH_DATA Player0_Color,Title_Screen_Option2_Sprite3
     jmp .setupVarsPointers.End
 .setupVarsPointers.GameOver
     jmp .setupVarsPointers.End
@@ -1036,15 +1044,21 @@ Kernal_SwitchState
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Kernal_Title
 ; ----------- Temp Variables -----------
-; TempByte_a = Unused
+; TempByte_a = pointer to Option 1 Sprite 2
 ; TempByte_b = Unused
-; TempByte_c = Unused
+; TempByte_c = pointer to Option 1 Sprite 3
 ; TempByte_d = Unused
 ; TempPtr_a = pointer to Title_Screen_PF1_LEFT
 ; TempPtr_b = pointer to Title_Screen_PF1_RIGHT
 ; TempPtr_c = pointer to Title_Screen_PF2_LEFT
 ; TempPtr_d = pointer to Colors
-; 
+; NextColorTimerIdx = pointer to Option 1 Sprite 1
+; NextColor = pointer to Option 2 Sprite 1
+; Player0Pos_Col = pointer to Option 2 Sprite 2
+; Player0_Color = pointer to Option 2 Sprite 3
+; NumberIdx   = the option underlined
+; NumberIdx+1 = the digit for Optiona A
+; NumberIdx+2 = the digit for Option B
 Kernal_Title.SwitchState
     lda #CONS_GAMESTATE_PLAY
     sta GameState
@@ -1056,9 +1070,9 @@ Kernal_Title
     lda #%00000001
     sta CTRLPF
     ; TODO -- actually implement the characters here
-    lda #%00000011
+    lda #%00000001
     sta NUSIZ0
-    lda #%00000011
+    lda #%00000100
     sta NUSIZ1
     lda #CONS_COLOR_WHITE
     sta COLUPF
@@ -1098,7 +1112,7 @@ Kernal_Title
     sta PF1
     lda (TempPtr_c),y
     sta PF2
-    SLEEP 12
+    SLEEP 13
     lda (TempPtr_b),y
     sta PF1
     dex
@@ -1115,7 +1129,53 @@ Kernal_Title
     sta PF1
     sta PF2
     ; TODO -- add some smaller caption
+    WSYNC_REPEATER 20
+    lda #$00
+    sta NumberIdx
+    ldy #$05
+.Kernal_Title.Option1
+    lda (TempByte_c),y
+    tax
+    lda (NextColorTimerIdx),y
+    sta GRP0
+    lda (TempByte_a),y
+    sta GRP1
+    SLEEP 10
+    stx GRP0
+    ldx NumberIdx
+    lda Score_Numbers,x
+    sta GRP1
     WSYNC_REPEATER 1
+    inc NumberIdx
+    dey
+    bpl .Kernal_Title.Option1
+    lda #$00
+    sta GRP0
+    sta GRP1
+;;;;;;;;;;;;;;;;;;
+    WSYNC_REPEATER 3
+    lda #$00
+    sta NumberIdx
+    ldy #$05
+.Kernal_Title.Option2
+    lda (Player0_Color),y
+    tax
+    lda (NextColumn),y
+    sta GRP0
+    lda (Player0Pos_Col),y
+    sta GRP1
+    SLEEP 8
+    stx GRP0
+    ldx NumberIdx
+    lda Score_Numbers,x
+    sta GRP1
+    WSYNC_REPEATER 1
+    inc NumberIdx
+    dey
+    bpl .Kernal_Title.Option2
+    lda #$00
+    sta GRP0
+    sta GRP1
     TIMER_WAIT
 .Kernal_Title.Overscan
     TIMER_SETUP CONS_OFFSCREEN_LINES

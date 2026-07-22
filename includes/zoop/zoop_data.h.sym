@@ -1,0 +1,39 @@
+--- Symbol List (sorted by symbol)
+AddBlockTimers           00a1 ????             
+BlockQueue_Bot_0         0000 ????         (R )
+BlockQueue_Bot_1         0000 ????         (R )
+BlockQueue_Bot_2         0000 ????         (R )
+BlockQueue_Bot_3         0000 ????         (R )
+BlockQueue_Bot_4         0000 ????         (R )
+BlockQueue_Top_0         0000 ????         (R )
+BlockQueue_Top_1         0000 ????         (R )
+BlockQueue_Top_2         0000 ????         (R )
+BlockQueue_Top_3         0000 ????         (R )
+BlockQueue_Top_4         0000 ????         (R )
+Colors                   00a7 ????             
+CONS_COLOR_BLUE          0000 ????         (R )
+CONS_COLOR_GREEN         0000 ????         (R )
+CONS_COLOR_ORANGE        0000 ????         (R )
+CONS_COLOR_PURPLE        0000 ????         (R )
+CONS_COLOR_RED           0000 ????         (R )
+CONS_COLOR_YELLOW        0000 ????         (R )
+CONS_PLAYERZONE_ACTION   0000 ????         (R )
+CONS_PLAYERZONE_NOACT    0000 ????         (R )
+Minus_Sign               00cf ????             
+PlayerColMemAddresses    00b0 ????             
+PlayerPositions_Columns  00ba ????             
+PlayerZone_Colors        00ad ????             
+Score_Numbers            00d6 ????             
+Sounds_AUDC0             00c0 ????             
+Sounds_AUDF0             00c5 ????             
+Sounds_AUDV0             00ca ????             
+Title_Screen_Option1_Sprite1 0124 ????             
+Title_Screen_Option1_Sprite2 0129 ????             
+Title_Screen_Option1_Sprite3 012e ????             
+Title_Screen_Option2_Sprite1 0133 ????             
+Title_Screen_Option2_Sprite2 0138 ????             
+Title_Screen_Option2_Sprite3 013d ????             
+Title_Screen_PF1_LEFT    0112 ????             
+Title_Screen_PF1_RIGHT   0118 ????             
+Title_Screen_PF2_LEFT    011e ????             
+--- End of Symbol List.

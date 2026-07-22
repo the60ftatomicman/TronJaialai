@@ -145,7 +145,7 @@ Title_Screen_PF1_LEFT
     .byte #%01000110
     .byte #%01111110  
 Title_Screen_PF1_RIGHT
-    .byte #%000000110
+    .byte #%00000011
     .byte #%00000110
     .byte #%00000110
     .byte #%01111110
@@ -158,3 +158,46 @@ Title_Screen_PF2_LEFT
     .byte #%01100110
     .byte #%01100110
     .byte #%01111110
+Title_Screen_Option1_Sprite1
+    .byte #%11101110
+    .byte #%10001000
+    .byte #%10001110
+    .byte #%10001000
+    .byte #%10001000
+    .byte #%10001110
+Title_Screen_Option1_Sprite2
+    .byte #%01001110
+    .byte #%10101000
+    .byte #%10101110
+    .byte #%10101000
+    .byte #%10101000
+    .byte #%10101110
+Title_Screen_Option1_Sprite3
+    .byte #%11100000
+    .byte #%10001000
+    .byte #%10000000
+    .byte #%10001000
+    .byte #%10000000
+    .byte #%10000000
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Title_Screen_Option2_Sprite1
+    .byte #%11001110
+    .byte #%10101000
+    .byte #%11001000
+    .byte #%10101000
+    .byte #%10101000
+    .byte #%11001000
+Title_Screen_Option2_Sprite2
+    .byte #%11101110
+    .byte #%10101000
+    .byte #%10101000
+    .byte #%10101000
+    .byte #%10101000
+    .byte #%11101110
+Title_Screen_Option2_Sprite3
+    .byte #%11100000
+    .byte #%00101000
+    .byte #%01100000
+    .byte #%11001000
+    .byte #%10000000
+    .byte #%11100000
