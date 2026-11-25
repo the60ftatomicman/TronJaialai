@@ -73,6 +73,8 @@ Player0_InputSettings .DS 2 ; 0 == current, 1 == previous
 ;
 GameState .byte
 LoopIdx .DS 1
+StartingBrickCount .byte
+Difficulty .byte
 ;
 BlockQueue_Idx      .byte
 TimeDec     .byte
@@ -126,6 +128,8 @@ Start
     sta PlaySoundIdx
     lda #CONS_GAMESTATE_TITLE
     sta GameState
+    lda #03
+    sta StartingBrickCount
     jmp Kernal_SwitchState
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Gamestate.Branching
@@ -182,7 +186,7 @@ Kernal_Play
     sta PlaySoundIdx
     
     ldx NextColorTimerIdx
-    lda AddBlockTimers,x
+    lda AddBlockTimers_1,x
     sta NextColorCounter
 
     ldx NextColor
@@ -513,7 +517,7 @@ Kernal_Play
     inc NextColorTimerIdx
 .Kernal_Play.BlockCounter.IncTimerIdxc.IncTimerIdx
     ldx NextColorTimerIdx
-    lda AddBlockTimers,x
+    lda AddBlockTimers_1,x
     sta NextColorCounter
     jsr GetRandomColor
     jsr GetRandomQueue
@@ -1004,6 +1008,10 @@ setupVarsPointers
     LOAD_POINTER_WITH_DATA NextColumn,Title_Screen_Option2_Sprite1
     LOAD_POINTER_WITH_DATA Player0Pos_Col,Title_Screen_Option2_Sprite2
     LOAD_POINTER_WITH_DATA Player0_Color,Title_Screen_Option2_Sprite3
+    lda #$00
+    sta NumberIdx
+    lda #$00
+    sta NumberIdx+1
     jmp .setupVarsPointers.End
 .setupVarsPointers.GameOver
     jmp .setupVarsPointers.End
@@ -1057,8 +1065,7 @@ Kernal_SwitchState
 ; Player0Pos_Col = pointer to Option 2 Sprite 2
 ; Player0_Color = pointer to Option 2 Sprite 3
 ; NumberIdx   = the option underlined
-; NumberIdx+1 = the digit for Optiona A
-; NumberIdx+2 = the digit for Option B
+; NumberIdx+1 = selected option
 Kernal_Title.SwitchState
     lda #CONS_GAMESTATE_PLAY
     sta GameState
@@ -1102,17 +1109,18 @@ Kernal_Title
     WSYNC_REPEATER 1
     ldy #5
 .Kernal_Title.Letters
+    WSYNC_REPEATER 1 ; added
     lda (TempPtr_d),y
     sta COLUBK
 ;;;;;;
     ldx #10
 .Kernal_Title.WritePF
-    WSYNC_REPEATER 1
+    WSYNC_REPEATER 1 ; existing
     lda (TempPtr_a),y
     sta PF1
     lda (TempPtr_c),y
     sta PF2
-    SLEEP 13
+    SLEEP 14
     lda (TempPtr_b),y
     sta PF1
     dex
@@ -1140,7 +1148,7 @@ Kernal_Title
     sta GRP0
     lda (TempByte_a),y
     sta GRP1
-    SLEEP 10
+    SLEEP 9
     stx GRP0
     ldx NumberIdx
     lda Score_Numbers,x
@@ -1153,7 +1161,23 @@ Kernal_Title
     sta GRP0
     sta GRP1
 ;;;;;;;;;;;;;;;;;;
-    WSYNC_REPEATER 3
+    WSYNC_REPEATER 2
+    lda NumberIdx+1
+    cmp #$00
+    bne .Kernal_Title.skipOptionOneUnderline
+    SLEEP 40
+    lda #CONS_COLOR_RED
+    sta COLUP1
+    lda #%10011001
+    sta GRP1
+.Kernal_Title.skipOptionOneUnderline
+    WSYNC_REPEATER 1
+    lda #CONS_COLOR_TEAL
+    sta COLUP1
+    lda #$00
+    sta GRP1
+    WSYNC_REPEATER 2
+;;;;;;;;;;;;;;;;;;
     lda #$00
     sta NumberIdx
     ldy #$05
@@ -1394,7 +1418,7 @@ Kernal_Time_Subroutine
     bne .Kernal_Time
     rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-InitializeRows    
+InitializeRows
     ldy #$08
 .InitializeRows.Empty
     lda #$00
@@ -1411,6 +1435,8 @@ InitializeRows
     dey
     bne .InitializeRows.Empty
 
+    lda StartingBrickCount
+    sta TempByte_a
     ldy #CONS_BQ_VERT_ROWS
 .InitializeRows.Fill
     ;TOP
@@ -1457,9 +1483,11 @@ InitializeRows
     sta BlockQueue_Bot_4,y
 .InitializeRows.Fill.Next
     dey
-    tya
-    cmp #CONS_BQ_VERT_ROWS-1
-    bcs .InitializeRows.Fill
+    clc
+    dec StartingBrickCount
+    bne .InitializeRows.Fill
+    lda TempByte_a
+    sta StartingBrickCount
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
